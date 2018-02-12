@@ -32,7 +32,7 @@
 */
 
 // undef to remove Intel EMM support
-#define YIN_EMMSUPPORT
+#undef YIN_EMMSUPPORT
 #ifdef YIN_EMMSUPPORT
 # include <emmintrin.h>
 #endif
@@ -189,7 +189,7 @@ public:
         sol = new Solution[TMAX];
         
         for (unsigned i = 0; i < TMAX; ++i)
-            sol[i].Solution::Solution(W);
+			sol[i] = Solution(W);
 
         reset();
         return true;
@@ -346,7 +346,7 @@ public:
     *   @returns the requested solution's calculated frequency.
     */
 
-    inline const getFrequency(int offset = 0) const {
+    inline const Sample getFrequency(int offset = 0) const {
         return getSolution(offset)->freq;
     }
 
