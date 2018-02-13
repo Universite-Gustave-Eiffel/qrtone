@@ -1,7 +1,7 @@
 package org.noise_planet.openwarble;
 
 import org.junit.Test;
-import org.noise_planet.openwarble.OpenWarble;
+import org.noise_planet.openwarble.yinacf;
 import java.lang.reflect.*;
 
 import static org.hamcrest.Matchers.closeTo;
@@ -14,14 +14,15 @@ public class YinACF_Test {
 
   @Test
   public void constructorTest() {
-    
-    OpenWarble p = new OpenWarble();
 
     try {
-        Class c = OpenWarble.class;
+        Class c = yinacf.class;
+        Field[] f = c.getDeclaredFields();
+        System.out.println("Fields:");
+        for (Field aF : f) System.out.println(aF.toString());
         Method[] m = c.getDeclaredMethods();
-        for (int i = 0; i < m.length; i++)
-        System.out.println(m[i].toString());
+        System.out.println("Methods:");
+        for (Method aM : m) System.out.println(aM.toString());
     } catch (Throwable e) {
         System.err.println(e);
     }

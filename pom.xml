@@ -41,6 +41,7 @@
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.11</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.hamcrest</groupId>
@@ -60,8 +61,8 @@
                     <!-- Sets the package name of all generated classes -->
                     <packageName>org.noise_planet.openwarble</packageName>
                     
-                    <!-- If sets, generates a single class -->
-                    <mainClass>OpenWarble</mainClass>
+                    <!-- If sets, generates a single class
+                    <mainClass>OpenWarble</mainClass> -->
 
                     <!-- -->
                     <!--<importClasses>-->

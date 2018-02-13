@@ -1,6 +1,6 @@
 #ifndef YINACF_H
 #define YINACF_H
-/* Copyight (c) 1005 Michaël Roy
+/* Copyight (c) 1005 MichaÃ«l Roy
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
