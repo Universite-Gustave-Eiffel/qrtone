@@ -1,7 +1,7 @@
 package org.noise_planet.openwarble;
 
 import org.junit.Test;
-import org.noise_planet.openwarble.yinacf;
+import org.noise_planet.openwarble.OpenWarble;
 import java.lang.reflect.*;
 
 import static org.hamcrest.Matchers.closeTo;
@@ -16,7 +16,7 @@ public class YinACF_Test {
   public void constructorTest() {
 
     try {
-        Class c = yinacf.class;
+        Class c = OpenWarble.class;
         Field[] f = c.getDeclaredFields();
         System.out.println("Fields:");
         for (Field aF : f) System.out.println(aF.toString());

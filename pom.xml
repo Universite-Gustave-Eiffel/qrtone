@@ -61,8 +61,8 @@
                     <!-- Sets the package name of all generated classes -->
                     <packageName>org.noise_planet.openwarble</packageName>
                     
-                    <!-- If sets, generates a single class
-                    <mainClass>OpenWarble</mainClass> -->
+                    <!-- If sets, generates a single class -->
+                    <mainClass>OpenWarble</mainClass>
 
                     <!-- -->
                     <!--<importClasses>-->
