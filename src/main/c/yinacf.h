@@ -71,7 +71,7 @@ private:
     public:
         Sample* diff;           /**< difference (step 2) */
         Sample* cmndiff;        /**< cumulative mean normalized difference (step 3) */
-        unsigned est;           /**< T[theta] */
+        int est;           /**< T[theta] */
         Sample freq;            /**< frequency estimate */
 
     public:
@@ -89,20 +89,22 @@ private:
             freq = 0;
         }
 
-        /**
-        *   builds solution with window size \a W.
-        *
-        *   Builds solution with window size \a W.
-        *
-        *   @param W window size in samples.
-        */
 
-        Solution(unsigned W) {
-            diff = new Sample[W];
-            cmndiff = new Sample[W];
-            est = 0;
-            freq = 0;
-        }
+		/**
+		*   builds solution with window size \a W.
+		*
+		*   Builds solution with window size \a W.
+		*
+		*   @param W window size in samples.
+		*/
+		void init(int W) {
+			if (diff) delete[] diff;
+			if (cmndiff) delete[] cmndiff;
+			diff = new Sample[W];
+			cmndiff = new Sample[W];
+			est = 0;
+			freq = 0;		
+		}
 
         /**
         *   destructor.
@@ -118,13 +120,13 @@ private:
 
 private:
     Sample* in;             /**< input delay line */
-    unsigned head;          /**< delay line pointer */
-    unsigned N;             /**< delay line length */
-    unsigned W;             /**< window length */
+    int head;          /**< delay line pointer */
+    int N;             /**< delay line length */
+    int W;             /**< window length */
     Sample THRESHOLD;       /**< threshold for initial frequency estimate (step 4) */
-    unsigned TMAX;          /**< TMAX for frequency results integration */
+    int TMAX;          /**< TMAX for frequency results integration */
     Solution* sol;          /**< solutions buffer */
-    unsigned ho;            /**< solution pointer */
+    int ho;            /**< solution pointer */
 
 public:
     /**
@@ -174,7 +176,7 @@ public:
     *   @returns always \p true.
     */
 
-    bool build (unsigned windowSize, unsigned tmax) {
+    bool build (int windowSize, int tmax) {
 
         destroy();
 
@@ -188,8 +190,8 @@ public:
         ho = 0;
         sol = new Solution[TMAX];
         
-        for (unsigned i = 0; i < TMAX; ++i)
-			sol[i] = Solution(W);
+        for (int i = 0; i < TMAX; ++i)
+			sol[i].init(W);
 
         reset();
         return true;
@@ -224,7 +226,7 @@ public:
     */
 
     void reset() {
-        unsigned i, j;
+        int i, j;
         if (N) {
             head = 0;
             for (i = 0; i < N; ++i)
@@ -283,7 +285,7 @@ public:
     *   @see tick()
     */
 
-    inline unsigned getLatency() const {
+    inline int getLatency() const {
         return N + (TMAX / 2);
     }
 
@@ -295,7 +297,7 @@ public:
     *   @see build()
     */
 
-    inline unsigned getWindowSize() const {
+    inline int getWindowSize() const {
         return W;
     }
 
@@ -380,7 +382,7 @@ public:
     *   @returns TMAX.
     */
 
-    inline unsigned getMaxPeriod() const {
+    inline int getMaxPeriod() const {
         return TMAX;
     }
 
@@ -394,21 +396,21 @@ private:
         if (++ho >= (int)TMAX) ho = 0;
     }
 
-    const Sample& getSample(unsigned delay) const {
-        unsigned n = head + delay;
+    const Sample& getSample(int delay) const {
+        int n = head + delay;
         if (n >= N) n -= N;
         return in[n];
     }
 
-    const void getSamples(unsigned delay, unsigned n, Sample* p) const {
-        unsigned o = head + delay;
+    const void getSamples(int delay, int n, Sample* p) const {
+        int o = head + delay;
         while(n--) {
             if (o >= N) o -= N;
             *(p++) = in[o++];
         }
     }
 
-    Solution* getSolution(unsigned n) const {
+    Solution* getSolution(int n) const {
         n = n + ho;
         if (n >= TMAX) n -= TMAX;
         return (Solution*)&sol[n];
@@ -419,25 +421,25 @@ private:
         computeDiff(this, s, pscur, psprev);
     }
 
-    virtual void estimateFreq(Solution* ps, unsigned mn, unsigned mx) {
+    virtual void estimateFreq(Solution* ps, int mn, int mx) {
         //  make preliminary guesstimate
-        unsigned est = getDip(ps, mn, mx);       // step 4
+        int est = getDip(ps, mn, mx);       // step 4
         if (est) ps->est = est;
     }
 
-    virtual unsigned getDip(Solution* ps, int mn, int mx) const {
+    virtual int getDip(Solution* ps, int mn, int mx) const {
         static const int MIN_WL = 2;
         int i;
         Sample *cmndiff = ps->cmndiff;
         Sample mindip = Sample(10000);
-        unsigned mini = 0;
+        int mini = 0;
         bool lt1, lt2;
 
         if (mn < MIN_WL) mn = MIN_WL;
         if (mx >= (int)W) mx = (int)(W - 1);
         // return global minima or first minima below threshold
         lt2 = (cmndiff[mn - 1] < cmndiff[mn]);
-        for (i = mn; i <= mx; ++i) {
+        for (i = mn; i < mx; ++i) {
             lt1 = lt2;
             lt2 = (cmndiff[i] < cmndiff[i + 1]);
             if (!lt1 && lt2) {
@@ -452,12 +454,12 @@ private:
         return mini;
     }
 
-    virtual Sample parabolicInterpolation(unsigned est, Solution* ps) {
+    virtual Sample parabolicInterpolation(int est, Solution* ps) {
         //  parabolic interpolation with b-a = 1, b-c = -1, fb < fa && fb < fc
         //  returns normalized frequency 
         //  
         Sample d1, d2;
-        unsigned i = 0;
+        int i = 0;
         Sample* p = &ps->diff[est];
 
         //  dip index could be slightly offset from cmndiff[]'s
@@ -496,7 +498,7 @@ private:
         Sample dmin = pscur->cmndiff[pscur->est];
         Solution* psmin = pscur;
 
-        for (unsigned i = 0; i < TMAX; ++i) {
+        for (int i = 0; i < TMAX; ++i) {
             Solution* ps = getSolution(i);
             if (ps->est && ps->cmndiff[ps->est] < dmin) {
                 dmin = ps->cmndiff[ps->est];
@@ -506,7 +508,7 @@ private:
 
         if (psmin != pscur) {
             //  re-estimate around local minima
-            unsigned est = getDip(pscur, (int)psmin->est - TMAX / 5, (int)psmin->est + TMAX / 5);
+            int est = getDip(pscur, (int)psmin->est - TMAX / 5, (int)psmin->est + TMAX / 5);
             if (est && (!pscur->est || pscur->cmndiff[est] < pscur->cmndiff[pscur->est])) {
                 pscur->est = est;
             }
@@ -529,7 +531,7 @@ private:
         Sample* d = pscur->diff;
         Sample* p = psprev->diff;
         Sample* c = pscur->cmndiff;
-        for (unsigned i = 1; i < that->W; ++i) {
+        for (int i = 1; i < that->W; ++i) {
             Sample d2 = sw - that->getSample(i + that->W - 1);
             Sample d1 = sm1 - that->getSample(i - 1);
             d[i] = p[i] + ((d2 + d1) * (d2 - d1));     //  a2 - b2 = (a + b)(a - b)
@@ -541,9 +543,9 @@ private:
 
 #ifdef YIN_EMMSUPPORT
 #pragma optimize("s", on)
-    const void getSamples(unsigned delay, __m128& f) const {
+    const void getSamples(int delay, __m128& f) const {
         float p[4];
-        unsigned n = head + delay;
+        int n = head + delay;
         if (n >= N) n -= N;
         int x = (int)N - (int)(n + 4);
         if (x >= 0)
@@ -585,7 +587,7 @@ private:
         float* p = psprev->diff;
         float* c = pscur->cmndiff;
 
-        unsigned i;
+        int i;
         for (i = 1; i < that->W - 4; i += 4) {
             __m128 smp1, smp2;
             that->getSamples(i + that->W - 1, smp1);
