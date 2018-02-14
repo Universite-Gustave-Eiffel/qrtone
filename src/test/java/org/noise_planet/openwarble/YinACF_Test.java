@@ -19,7 +19,9 @@ public class YinACF_Test {
 
 
         // Make 1000 Hz signal
-        final int sampleRate = 44000;
+        final int sampleRate = 44100;
+        final float minimalFrequency = 100;
+        final int window = (int)Math.ceil(sampleRate / minimalFrequency);
         final int signalFrequency = 1000;
         double powerRMS = 2500; // 90 dBspl
         double powerPeak = powerRMS * Math.sqrt(2);
@@ -29,9 +31,13 @@ public class YinACF_Test {
             signal[s] = (float)(Math.sin(2 * Math.PI * signalFrequency * t) * (powerPeak));
         }
 
-        assertTrue(yinacf.build(yin, 440, 440));
+        assertTrue(yinacf.build(yin, window, window));
 
-        assertEquals(signalFrequency, yinacf.tick(yin, signal[0]), 1);
+        int latency = yinacf.getLatency(yin);
+        for(int i=0; i < latency; i++) {
+            yinacf.tick(yin, signal[i]);
+        }
+        assertEquals(signalFrequency, yinacf.getFrequency(yin, 0) * sampleRate, 1);
     }
 
 }
