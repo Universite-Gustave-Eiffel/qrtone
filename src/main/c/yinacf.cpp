@@ -19,8 +19,8 @@ extern "C" void reset(YinFloat* that) {
 }
 
 
-extern "C" float tick(YinFloat* that, float s) {
-	return that->tick(s);
+extern "C" float tick(YinFloat* that, float s, int evaluate) {
+	return that->tick(s, evaluate);
 }
 
 

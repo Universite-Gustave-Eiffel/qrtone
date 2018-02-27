@@ -259,7 +259,7 @@ public:
     *   @see getLatency()
     */
 
-    virtual Sample tick(const Sample& s) {
+    virtual Sample tick(const Sample& s, int evaluate) {
         Sample freq = 0;
         pushSolution();
         Solution* psin = getSolution(TMAX - 1);
@@ -268,13 +268,18 @@ public:
         psin->est = 0;
         psin->freq = 0;
 
-        computeDiff(s, psin, psprev);  // step 2,3
+        computeDiff(this, s, psin, psprev);  // step 2,3
 
-        //  make preliminary guesstimate
-        estimateFreq(psin, 0, W);
+        if(evaluate != 0) {
 
-        // return best local frequency estimate (is delayed by TMAX /2)
-        return getBestLocalEstimate();
+            //  make preliminary guesstimate
+            estimateFreq(psin, 0, W);
+
+            // return best local frequency estimate (is delayed by TMAX /2)
+            return getBestLocalEstimate();
+        } else {
+            return 0;
+        }
     }
 
     /**
