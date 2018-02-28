@@ -61,13 +61,10 @@
                     <!-- Sets the package name of all generated classes -->
                     <packageName>org.noise_planet.openwarble</packageName>
                     
-                    <!-- If sets, generates a single class
-                    <mainClass>YinACF</mainClass>-->
-
-                    <!-- -->
-                    <!--<importClasses>-->
-                        <!--<importClass>org.renjin.math.Xerbla</importClass>-->
-                    <!--</importClasses>-->
+                    <cFlags>
+                       <flag>-DCHECK_OVERFLOW</flag>
+                       <flag>-Dkiss_fft_scalar=double</flag>
+                    </cFlags>
                 </configuration>
                 <executions>
                     <execution>
