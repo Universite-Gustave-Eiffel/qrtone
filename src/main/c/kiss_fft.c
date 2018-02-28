@@ -406,3 +406,22 @@ int kiss_fft_next_fast_size(int n)
     }
     return n;
 }
+
+kiss_fft_cpx * createInput(int n, kiss_fft_scalar* real) {
+    kiss_fft_cpx * ret = (kiss_fft_cpx*)KISS_FFT_TMP_ALLOC(sizeof(kiss_fft_cpx)*n);
+    int i;
+    for(i = 0; i < n; i++) {
+        ret[i].r = real[i];
+        ret[i].i = 0;
+    }
+    return ret;
+}
+
+kiss_fft_scalar* computeRMS(const kiss_fft_cfg cfg, kiss_fft_cpx * dataIn) {
+    int k;
+    kiss_fft_scalar * dataOut = (kiss_fft_scalar*)KISS_FFT_TMP_ALLOC(sizeof(kiss_fft_scalar)*cfg->nfft);
+    for(k = 0; k < cfg->nfft; k++) {
+        dataOut[k] = dataIn[k].r * dataIn[k].r + dataIn[k].i * dataIn[k].i;
+    }
+    return dataOut;
+}

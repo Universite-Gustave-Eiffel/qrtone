@@ -1,6 +1,7 @@
 package org.noise_planet.openwarble;
 
 import org.junit.Test;
+import org.renjin.gcc.runtime.DoublePtr;
 import org.renjin.gcc.runtime.Ptr;
 
 import java.io.IOException;
@@ -20,6 +21,10 @@ public class FFT_Test {
 
   private static final double TONE_RATIO = 1.0594630943591;
 
+  private double squareAbsoluteFFTToRMS(double squareAbsoluteFFT, int sampleSize) {
+    return Math.sqrt(squareAbsoluteFFT / 2) / (sampleSize / 2);
+  }
+
   @Test
   public void core1khzTest() {
 
@@ -27,29 +32,39 @@ public class FFT_Test {
 
     // Make 1000 Hz signal
     final int sampleRate = 44100;
-    final float minimalFrequency = 500;
-    final int window = (int) Math.ceil(sampleRate / minimalFrequency);
+    final float minimalFrequency = 50;
+    final int window = (int)(Math.round(Math.ceil(sampleRate / minimalFrequency) / 2) * 2);
     final int signalFrequency = 1000;
     double powerRMS = 2500; // 90 dBspl
     double powerPeak = powerRMS * Math.sqrt(2);
-    float[] signal = new float[sampleRate];
+    double[] signal = new double[sampleRate];
     for (int s = 0; s < signal.length; s++) {
       double t = s * (1 / (double) sampleRate);
-      signal[s] = (float) (Math.sin(2 * Math.PI * signalFrequency * t) * (powerPeak));
+      signal[s] = (Math.sin(2 * Math.PI * signalFrequency * t) * (powerPeak));
     }
 
+    Ptr cfg = kiss_fft.kiss_fft_alloc(window, 0, new DoublePtr(null, 0), new DoublePtr(null, 0));
     long begin = System.currentTimeMillis();
 
 
-
-    System.out.println("Will insert  samples");
     float lastFreq = 0;
-    for (int i = 0; i < signal.length; i++) {
 
-    }
-    System.out.println("Evaluate time " + (System.currentTimeMillis() - begin)+ " ms");
+    double[] windowData = Arrays.copyOfRange(signal, 0, window);
 
-    assertEquals(signalFrequency, lastFreq * sampleRate, 0.1);
+    Ptr input = kiss_fft.createInput(window, new DoublePtr(windowData));
+
+    kiss_fft.kiss_fft(cfg, input, input);
+
+
+    Ptr rmsPtr = kiss_fft.computeRMS(cfg, input);
+
+    assertTrue(rmsPtr instanceof DoublePtr);
+
+    double[] rms = ((DoublePtr)rmsPtr).array;
+
+    double rmsAtSignal = squareAbsoluteFFTToRMS(rms[signalFrequency / (sampleRate / window)], window);
+
+    assertEquals(powerRMS, rmsAtSignal , 50);
 
   }
 
