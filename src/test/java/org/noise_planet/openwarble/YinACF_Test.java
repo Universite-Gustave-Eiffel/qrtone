@@ -122,13 +122,16 @@ public class YinACF_Test {
         InputStream inputStream = YinACF_Test.class.getResourceAsStream("raw1_44100_16bitPCM.raw");
         short[] signal = loadShortStream(inputStream, ByteOrder.LITTLE_ENDIAN);
 
-        double windowTime = 0.025;
+        double windowTime = 0.01;
         final int sampleRate = 22050;
         int window = (int) Math.ceil(sampleRate * windowTime);
 
         Ptr yin = yinacf.create();
 
+
         assertTrue(yinacf.build(yin, window, window));
+
+        yinacf.setThreshold(yin, 0.2f);
 
 
         double[] pitchesTestTime = new double[]{0.237, 0.328, 0.411, 0.505, 0.584, 0.673, 0.761, 0.855, 0.940, 1.023,
@@ -149,21 +152,26 @@ public class YinACF_Test {
         List<Double> freqsSequences = new ArrayList<Double>();
 
         for(int i = 0; i < signal.length; i++) {
-            if (i % window == 0 && i > latency) {
+            if (i % window == 0 &&  i > latency) {
                 lastFreq = yinacf.tick(yin, signal[i], 1) * sampleRate;
 
                 int id = Arrays.binarySearch(refFreqs, lastFreq);
                 if(id < 0) {
                   id = (-id - 1);
-                  double delta = (refFreqs[id]*(256./243.) - lastFreq) / 3;
+                  if(id == refFreqs.length || (id > 0 && Math.abs(refFreqs[id] - lastFreq) > Math.abs(refFreqs[id-1] - lastFreq))) {
+                    id -=1;
+                  }
+                  double delta = (refFreqs[id]*(256./243.) - refFreqs[id]) / 3;
                   if(Math.abs(refFreqs[id] - lastFreq) > delta) {
                     id = -1;
                   }
                 }
-                if(freqsSequences.isEmpty() || freqsSequences.get(freqsSequences.size() - 1) != refFreqs[id]) {
-                  freqsSequences.add(refFreqs[id]);
+                if(id >= 0) {
+                  if (freqsSequences.isEmpty() || freqsSequences.get(freqsSequences.size() - 1) != refFreqs[id]) {
+                    System.out.println(String.format("%.3f s : %.0f Hz (%.0f Hz)", (double) (i - window) / sampleRate, refFreqs[id], lastFreq));
+                    freqsSequences.add(refFreqs[id]);
+                  }
                 }
-                System.out.println(String.format("%.3f s : %.0f Hz", (double)(i - window) / sampleRate, lastFreq));
                 // Accept error of a third of semitone
                 //double delta = (pitchesTestFrequencies[testId] * (256. / 243.) - lastFreq) / 3;
                 //assertEquals(pitchesTestFrequencies[testId], lastFreq, delta);
@@ -172,6 +180,11 @@ public class YinACF_Test {
             }
         }
         System.out.println(String.format("Done in %d ms for a %.2f s audio file",System.currentTimeMillis() - begin, (double)signal.length / sampleRate));
+
+
+        // Check extracted values with expected entries
+
+
         //
         //for(double startTime : pitchesTestTime) {
         //    final int startSample = (int)(startTime * sampleRate);
