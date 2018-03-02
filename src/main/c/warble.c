@@ -1,27 +1,53 @@
-/*
- * This file is part of the Warble application.
- *
- * The 'OnoMaP' system is led by Lab-STICC and Ifsttar and generates noise maps via
- * citizen-contributed noise data.
- *
- * This application is co-funded by the ENERGIC-OD Project (European Network for
- * Redistributing Geospatial Information to user Communities - Open Data). ENERGIC-OD
- * (http://www.energic-od.eu/) is partially funded under the ICT Policy Support Programme (ICT
- * PSP) as part of the Competitiveness and Innovation Framework Programme by the European
- * Community. The application work is also supported by the French geographic portal GEOPAL of the
- * Pays de la Loire region (http://www.geopal.org).
- *
- * Copyright (C) IFSTTAR - LAE and Lab-STICC – CNRS UMR 6285 Equipe DECIDE Vannes
- *
- * NoiseCapture is a free software; you can redistribute it and/or modify it under the terms of the
- * GNU General Public License as published by the Free Software Foundation; either version 3 of
- * the License, or(at your option) any later version. NoiseCapture is distributed in the hope that
- * it will be useful,but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.You should have received a copy of the GNU General Public License along with this
- * program; if not, write to the Free Software Foundation,Inc., 51 Franklin Street, Fifth Floor,
- * Boston, MA 02110-1301  USA or see For more information,  write to Ifsttar,
- * 14-20 Boulevard Newton Cite Descartes, Champs sur Marne F-77447 Marne la Vallee Cedex 2 FRANCE
- *  or write to scientific.computing@ifsttar.fr
- */
 
+#include <stdint.h>
+
+/**
+ * @struct  Warble
+ * @breif	Object to encapsulate the parameters for the generation and recognition of pitch sequence.
+ */
+typedef struct _Warble {
+	double firstFrequency;          /**< Frequency of word 0 */
+	double frequencyMultiplication; /**< Increment factor between each word, 0 if usage of frequencyIncrement */
+	int16_t frequencyIncrement;     /**< Increment between each word, 0 if usage of frequencyMultiplication */
+	int16_t wordSize;               /**< Number of frequency bands */
+	int16_t payloadSize;            /**< Number of payload words */
+	int16_t paritySize;             /**< Number of Reed–Solomon error-correcting words*/
+	int16_t wordTriggerCount;       /**< Number of constant words that trigger the sequence of words */
+	int16_t* wordTriggers;          /**< Word index that trigger the sequence of words */
+    int16_t* parsed;                /**< parsed words of length wordTriggerCount+payloadSize+paritySize */
+    int64_t triggerSampleIndex;     /**< Sample index of first trigger */
+} Warble;
+
+
+/***/
+Warble* Warble_create(double firstFrequency,
+ double frequencyMultiplication,
+  int16_t frequencyIncrement,int16_t wordSize,
+  int16_t payloadSize,int16_t wordTriggerCount, int16_t* wordTriggers)  {
+    Warble* warble = (Warble*)malloc(sizeof(Warble));
+    warble->firstFrequency = firstFrequency;
+
+    return warble;
+  }
+
+
+/**
+ * Free buffer in object
+ * @param warble Object to free
+ */
+void Warble_free(Warble *warble) {
+    free(warble->wordTriggers);
+    free(warble->parsed);
+    free(warble);
+}
+
+/**
+ * Analyse the provided spectrum
+ * @return 1 if the message can be collected using Warble_GetPayload
+ */
+int16_t Warble_feed(Warble *warble, double* rms, int rmsSize, double sampleRate, int64_t sampleIndex);
+
+/**
+ * @return payload of size warble->payloadSize
+ */
+int16_t* Warble_GetPayload(Warble *warble);
