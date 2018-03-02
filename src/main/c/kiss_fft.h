@@ -117,6 +117,12 @@ int kiss_fft_next_fast_size(int n);
 #define kiss_fftr_next_fast_size_real(n) \
         (kiss_fft_next_fast_size( ((n)+1)>>1)<<1)
 
+/*
+ * Compute RMS array from FFT result
+ * Returned array must be freed
+ */
+kiss_fft_scalar* kiss_fft_rms(const kiss_fft_cfg cfg, kiss_fft_cpx * dataIn);
+
 #ifdef __cplusplus
 } 
 #endif
