@@ -57,6 +57,18 @@ typedef struct _warble {
 	int64_t triggerSampleIndex;     /**< Sample index of first trigger */
 } warble;
 
+/**
+* http://asp.eurasipjournals.com/content/pdf/1687-6180-2012-56.pdf
+* ipfs://QmdAMfyq71Fm72Rt5u1qtWM7teReGAHmceAtDN5SG4Pt22
+* Sysel and Rajmic:Goertzel algorithm generalized to non-integer multiples of fundamental frequency. EURASIP Journal on Advances in Signal Processing 2012 2012:56.
+* @param signal Audio signal
+* @param s_length Audio signal array size
+* @param sampleRate Sampling rate in Hz
+* @param freqs Array of frequency search in Hz
+* @param f_length Size of freqs
+* @param[out] outFreqsPower Rms power, must be allocated with the same size of freqs
+*/
+void generalized_goertzel(const double* signal, int32_t s_length, double sampleRate, const double* freqs, int32_t f_length, double* outFreqsPower);
 
 /***/
 warble* warble_create(double firstFrequency,

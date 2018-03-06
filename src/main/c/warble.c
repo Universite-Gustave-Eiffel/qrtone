@@ -33,6 +33,8 @@
 
 #include "warble.h"
 #include "math.h"
+#include <stdlib.h>
+#include "warble_complex.h"
 
 /**
  * http://asp.eurasipjournals.com/content/pdf/1687-6180-2012-56.pdf
@@ -47,8 +49,6 @@
  */
 void generalized_goertzel(const double* signal, int32_t s_length,double sampleRate,const double* freqs, int32_t f_length, double* outFreqsPower) {
 	int32_t id_freq;
-	double* y_real = malloc(sizeof(double) * f_length);
-	double* y_im = malloc(sizeof(double) * f_length);
 	// Fix frequency using the sampleRate of the signal
 	double samplingRateFactor = s_length / sampleRate;
 	// Computation via second-order system
@@ -57,8 +57,8 @@ void generalized_goertzel(const double* signal, int32_t s_length,double sampleRa
 		// precompute the constants
 		double pik_term = 2 * M_PI *(freqs[id_freq] * samplingRateFactor) / (s_length);
 		double cc_real = cos(pik_term);
-		double cos_pik_term2 = cc_real * 2;
-		double cc_im = -sin(pik_term);
+		double cos_pik_term2 = cos(pik_term) * 2;
+		warblecomplex cc = CX_EXP(NEW_CX(pik_term, 0));
 		// state variables
 		double s0 = 0.;
 		double s1 = 0.;
@@ -77,10 +77,11 @@ void generalized_goertzel(const double* signal, int32_t s_length,double sampleRa
 		// complex multiplication substituting the last iteration
 		// and correcting the phase for (potentially) non - integer valued
 		// frequencies at the same time
-		y_real[id_freq] = (s0 - s1 * cc_real) * cos(pik_term * (s_length - 1));
-		y_im[id_freq] = (s0 - s1 * cc_im) * -sin(pik_term * (s_length - 1));	
+		warblecomplex parta = CX_SUB(NEW_CX(s0, 0), CX_MUL(NEW_CX(s1, 0), cc));
+		warblecomplex partb = CX_EXP(NEW_CX(pik_term * (s_length - 1.), 0));
+		warblecomplex y = CX_MUL(parta , partb);
 		// Compute RMS
-		outFreqsPower[id_freq] = sqrt(y_real[id_freq] * y_real[id_freq] + y_im[id_freq] * y_im[id_freq]) / s_length;
+		outFreqsPower[id_freq] = sqrt((y.r * y.r + y.i * y.i )) / s_length * sqrt(2);
 	}
 }
 

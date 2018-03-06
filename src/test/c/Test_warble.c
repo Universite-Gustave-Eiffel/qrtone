@@ -1,51 +1,55 @@
 /* Use ./TestAudio/audioExtract.py to create audioData.h - this converts a wave file to an array of doubles in C.
  * Copy audioData.h into same folder as this test then build and run - the program should give F0 of the signal in
  * audioData.h */
-#define _USE_MATH_DEFINES
 
-#include "kiss_fft.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <math.h>
 #include <assert.h>
 
-#define SAMPLES 22050
+#include "warble_complex.h"
+
+#define SAMPLES 4410
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
+#define CHECK(a) if(!a) return -1
+
+int testComplex() {
+	return 0;
+}
 
 int test1khz() {
-	const int sampleRate = 44100;
-	const int window = 4410;
+	const double sampleRate = 44100;
 	double powerRMS = 500; // 90 dBspl
 	float signalFrequency = 1000;
 	double powerPeak = powerRMS * sqrt(2);
 
-	kiss_fft_cpx audio[SAMPLES];
+	double audio[SAMPLES];
 
 	for (int s = 0; s < SAMPLES; s++) {
 		double t = s * (1 / (double)sampleRate);
-		audio[s].r = sin(2 * M_PI * signalFrequency * t) * (powerPeak);
-		audio[s].i = 0;
+		audio[s] = sin(2 * M_PI * signalFrequency * t) * (powerPeak);
 	}
 
-	kiss_fft_cfg* cfg = kiss_fft_alloc(window, 0, NULL, NULL);
+	double out[1] = {0};
 
-	kiss_fft_cpx fft_out[SAMPLES];
+	double freqs[1] = { 1000 };
 
-	kiss_fft(cfg, audio, fft_out);
+	generalized_goertzel(audio, SAMPLES, sampleRate, freqs, 1,out);
 
-	int freqBand = (int)round(signalFrequency / (sampleRate / (double)window));
+	printf("found %.f Hz (%.2f)", signalFrequency, out[0]);
 
-	double rms = (2. / window * sqrt((fft_out[freqBand].r * fft_out[freqBand].r + fft_out[freqBand].i * fft_out[freqBand].i))) / sqrt(2);
+	CHECK(abs(out[0] - powerRMS) < 0.1);
 
-	kiss_fft_free(cfg);
-
-	return abs(rms - powerRMS) < 0.1 ? 0 : -1;
+	return 0;
 }
 
 int main(int argc, char** argv) {
+	if (testComplex() != 0) {
+		return -1;
+	}
 	if (test1khz() != 0) {
 		return -1;
 	}
