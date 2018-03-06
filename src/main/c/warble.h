@@ -45,6 +45,11 @@ void warble_free(warble *warble);
 int16_t warble_feed(warble *warble, double* rms, int rmsSize, double sampleRate, int64_t sampleIndex);
 
 /**
+ * Generate an audio signal for the provided words and configuration
+ */
+int16_t* warble_generate_signal(warble *warble, int16_t* words, double sampleRate);
+
+/**
 * @return payload of size warble->payloadSize
 */
 int16_t* warble_GetPayload(warble *warble);

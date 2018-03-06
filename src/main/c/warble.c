@@ -17,7 +17,7 @@ warble* warble_create(double firstFrequency,
 	this->wordTriggers = wordTriggers;
 	this->triggerSampleIndex = -1;
 	this->paritySize =  wordSize - 1 - payloadSize / 2;
-	this->parsed = malloc(sizeof(int16_t) * wordTriggerCount + payloadSize + this->paritySize);
+	this->parsed = malloc(sizeof(int16_t) * (wordTriggerCount + payloadSize + this->paritySize));
     return this;
 }
 
@@ -36,9 +36,15 @@ void warble_free(warble *warble) {
  * Analyse the provided spectrum
  * @return 1 if the message can be collected using warble_GetPayload
  */
-int16_t warble_feed(warble *warble, double* rms, int rmsSize, double sampleRate, int64_t sampleIndex);
+int16_t warble_feed(warble *warble, double* rms, int rmsSize, double sampleRate, int64_t sampleIndex) {
+
+	return 0;
+}
 
 /**
  * @return payload of size warble->payloadSize
  */
-int16_t* warble_GetPayload(warble *warble);
+int16_t* warble_GetPayload(warble *warble) {
+	// Use Reed-Solomon Forward Error Correction
+
+}
