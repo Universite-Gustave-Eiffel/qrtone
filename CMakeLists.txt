@@ -4,7 +4,7 @@ cmake_minimum_required (VERSION 2.6)
 
 project (openwarble)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DCHECK_OVERFLOW -Dkiss_fft_scalar=double")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DCHECK_OVERFLOW -Dkiss_fft_scalar=double -D_USE_MATH_DEFINES")
 
 add_library(openwarble src/main/c/warble.c src/main/c/kiss_fft.c)
 
