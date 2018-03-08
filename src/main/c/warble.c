@@ -34,20 +34,10 @@
 #include "warble.h"
 #include "math.h"
 #include <stdlib.h>
+#include <string.h>
 #include "warble_complex.h"
 
-/**
- * http://asp.eurasipjournals.com/content/pdf/1687-6180-2012-56.pdf
- * ipfs://QmdAMfyq71Fm72Rt5u1qtWM7teReGAHmceAtDN5SG4Pt22
- * Sysel and Rajmic:Goertzel algorithm generalized to non-integer multiples of fundamental frequency. EURASIP Journal on Advances in Signal Processing 2012 2012:56.
- * @param signal Audio signal
- * @param s_length Audio signal array size
- * @param sampleRate Sampling rate in Hz
- * @param freqs Array of frequency search in Hz
- * @param f_length Size of freqs
- * @param[out] outFreqsPower Rms power, must be allocated with the same size of freqs
- */
-void generalized_goertzel(const double* signal, int32_t s_length,double sampleRate,const double* freqs, int32_t f_length, double* outFreqsPower) {
+void warble_generalized_goertzel(const double* signal, int32_t s_length,double sampleRate,const double* freqs, int32_t f_length, double* outFreqsPower) {
 	int32_t id_freq;
 	// Fix frequency using the sampleRate of the signal
 	double samplingRateFactor = s_length / sampleRate;
@@ -81,53 +71,64 @@ void generalized_goertzel(const double* signal, int32_t s_length,double sampleRa
 		warblecomplex partb = CX_EXP(NEW_CX(pik_term * (s_length - 1.), 0));
 		warblecomplex y = CX_MUL(parta , partb);
 		// Compute RMS
-		outFreqsPower[id_freq] = sqrt((y.r * y.r + y.i * y.i )) / s_length * sqrt(2);
+		outFreqsPower[id_freq] = sqrt((y.r * y.r + y.i * y.i ) * 2) / s_length;
 	}
 }
 
 
 
-warble* warble_create(double firstFrequency,
- double frequencyMultiplication,
-  int16_t frequencyIncrement,int16_t wordSize,
-  int16_t payloadSize,int16_t wordTriggerCount, int16_t* wordTriggers)  {
+warble* warble_create(double sampleRate, double firstFrequency,
+	double frequencyMultiplication,
+	int16_t frequencyIncrement, int16_t wordSize,
+	int16_t payloadSize, char* wordTriggers, int16_t wordTriggerCount)  {
     warble* this = (warble*) malloc(sizeof(warble));
+	this->sampleRate = sampleRate;
     this->firstFrequency = firstFrequency;
 	this->frequencyIncrement = frequencyIncrement;
-	this->wordSize = wordSize;
 	this->payloadSize = payloadSize;
 	this->wordTriggerCount = wordTriggerCount;
-	this->wordTriggers = wordTriggers;
+	this->wordTriggers = malloc(sizeof(char) * wordTriggerCount);
+	memcpy(this->wordTriggers, wordTriggers, sizeof(char) * wordTriggerCount);
 	this->triggerSampleIndex = -1;
-	this->paritySize =  wordSize - 1 - payloadSize / 2;
-	this->parsed = malloc(sizeof(int16_t) * (wordTriggerCount + payloadSize + this->paritySize));
+	//this->paritySize =  wordSize - 1 - payloadSize / 2;
+	this->parsed = malloc(sizeof(unsigned char) * (wordTriggerCount + payloadSize));
+	this->frequencies = malloc(sizeof(double) * WARBLE_PITCH_COUNT);
+	int i;
+	// Precompute pitch frequencies
+	for(i = 0; i < WARBLE_PITCH_COUNT; i++) {
+		if(frequencyIncrement != 0) {
+			this->frequencies[i] = firstFrequency + i * frequencyIncrement;
+		} else {
+			this->frequencies[i] = firstFrequency * pow(frequencyMultiplication, i);
+		}
+	}
     return this;
 }
 
-
-/**
- * Free buffer in object
- * @param warble Object to free
- */
 void warble_free(warble *warble) {
     free(warble->wordTriggers);
     free(warble->parsed);
+	free(warble->frequencies);
     free(warble);
 }
 
-/**
- * Analyse the provided spectrum
- * @return 1 if the message can be collected using warble_GetPayload
- */
-int16_t warble_feed(warble *warble, double* rms, int rmsSize, double sampleRate, int64_t sampleIndex) {
-
+int16_t warble_feed(warble *warble, double* rms, int rms_size, double sample_rate, int64_t sample_index) {
 	return 0;
 }
 
-/**
- * @return payload of size warble->payloadSize
- */
-int16_t* warble_GetPayload(warble *warble) {
+size_t warble_feed_window_size(warble *warble) {
+	return 0;
+}
+
+size_t warble_generate_window_size(warble *warble) {
+	return 0;
+}
+
+void warble_generate_signal(warble *warble, unsigned char* words, double* signal_out) {
+	
+}
+
+void warble_GetPayload(warble *warble, unsigned char * payload) {
 	// Use Reed-Solomon Forward Error Correction
 
 }

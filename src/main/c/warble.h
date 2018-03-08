@@ -40,24 +40,30 @@ extern "C" {
 	
 #include <stdint.h>
 
+
+#define WARBLE_PITCH_COUNT 32
+
 /**
 * @struct  Warble
 * @breif	Object to encapsulate the parameters for the generation and recognition of pitch sequence.
 */
 typedef struct _warble {
+	// Inputs
 	double firstFrequency;          /**< Frequency of word 0 */
 	double frequencyMultiplication; /**< Increment factor between each word, 0 if usage of frequencyIncrement */
 	int16_t frequencyIncrement;     /**< Increment between each word, 0 if usage of frequencyMultiplication */
-	int16_t wordSize;               /**< Number of frequency bands */
 	int16_t payloadSize;            /**< Number of payload words */
-	int16_t paritySize;             /**< Number of Reed–Solomon error-correcting words*/
-	int16_t wordTriggerCount;       /**< Number of constant words that trigger the sequence of words */
-	int16_t* wordTriggers;          /**< Word index that trigger the sequence of words */
-	int16_t* parsed;                /**< parsed words of length wordTriggerCount+payloadSize+paritySize */
+	int16_t wordTriggerCount;       /**< Number of pitch that trigger the sequence of words */
+	char* wordTriggers;             /**< Word index that trigger the sequence of words */
+	double sampleRate;				/**< Sample rate of audio in Hz */
+	// Algorithm data
+	unsigned char* parsed;          /**< parsed words of length wordTriggerCount+payloadSize+paritySize */
+	double* frequencies;            /**< Computed pitch frequencies length is 32 */
 	int64_t triggerSampleIndex;     /**< Sample index of first trigger */
 } warble;
 
 /**
+* Goertzel algorithm - Compute the RMS power of the selected frequencies for the provided audio signals.
 * http://asp.eurasipjournals.com/content/pdf/1687-6180-2012-56.pdf
 * ipfs://QmdAMfyq71Fm72Rt5u1qtWM7teReGAHmceAtDN5SG4Pt22
 * Sysel and Rajmic:Goertzel algorithm generalized to non-integer multiples of fundamental frequency. EURASIP Journal on Advances in Signal Processing 2012 2012:56.
@@ -68,13 +74,13 @@ typedef struct _warble {
 * @param f_length Size of freqs
 * @param[out] outFreqsPower Rms power, must be allocated with the same size of freqs
 */
-void generalized_goertzel(const double* signal, int32_t s_length, double sampleRate, const double* freqs, int32_t f_length, double* outFreqsPower);
+void warble_generalized_goertzel(const double* signal, int32_t s_length, double sampleRate, const double* freqs, int32_t f_length, double* outFreqsPower);
 
 /***/
-warble* warble_create(double firstFrequency,
+warble* warble_create(double sampleRate, double firstFrequency,
 	double frequencyMultiplication,
 	int16_t frequencyIncrement, int16_t wordSize,
-	int16_t payloadSize, int16_t wordTriggerCount, int16_t* wordTriggers);
+	int16_t payloadSize, char* wordTriggers, int16_t wordTriggerCount);
 
 
 /**
@@ -85,19 +91,34 @@ void warble_free(warble *warble);
 
 /**
 * Analyse the provided spectrum
+* @param warble Object
 * @return 1 if the message can be collected using warble_GetPayload
 */
-int16_t warble_feed(warble *warble, double* rms, int rmsSize, double sampleRate, int64_t sampleIndex);
+int16_t warble_feed(warble *warble, double* rms, int rms_size, double sample_rate, int64_t sample_index);
+
+/**
+ * Return the expected window size as input of warble_feed
+* @param warble Object
+ */
+size_t warble_feed_window_size(warble *warble);
+
+/**
+* Return the expected window size output of warble_generate_signal
+* @param warble Object
+*/
+size_t warble_generate_window_size(warble *warble);
 
 /**
  * Generate an audio signal for the provided words and configuration
+* @param warble Object
  */
-int16_t* warble_generate_signal(warble *warble, int16_t* words, double sampleRate);
+void warble_generate_signal(warble *warble, unsigned char* words, double* signal_out);
 
 /**
-* @return payload of size warble->payloadSize
+* @param warble Object
+* @param payload
 */
-int16_t* warble_GetPayload(warble *warble);
+void warble_GetPayload(warble *warble, unsigned char * payload);
 
 #ifdef __cplusplus
 }

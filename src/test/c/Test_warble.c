@@ -37,9 +37,9 @@ int test1khz() {
 
 	double freqs[1] = { 1000 };
 
-	generalized_goertzel(audio, SAMPLES, sampleRate, freqs, 1,out);
+	warble_generalized_goertzel(audio, SAMPLES, sampleRate, freqs, 1,out);
 
-	printf("found %.f Hz (%.2f)", signalFrequency, out[0]);
+	printf("found %.f Hz (%.2f)\n", signalFrequency, out[0]);
 
 	CHECK(abs(out[0] - powerRMS) < 0.1);
 
