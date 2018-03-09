@@ -53,8 +53,8 @@ typedef struct _warble {
 	double frequencyMultiplication; /**< Increment factor between each word, 0 if usage of frequencyIncrement */
 	int16_t frequencyIncrement;     /**< Increment between each word, 0 if usage of frequencyMultiplication */
 	int16_t payloadSize;            /**< Number of payload words */
-	int16_t wordTriggerCount;       /**< Number of pitch that trigger the sequence of words */
-	char* wordTriggers;             /**< Word index that trigger the sequence of words */
+	int16_t frequenciesIndexTriggersCount;       /**< Number of pitch that trigger the sequence of words */
+	int16_t* frequenciesIndexTriggers;             /**< Word index that trigger the sequence of words */
 	double sampleRate;				/**< Sample rate of audio in Hz */
 	// Algorithm data
 	unsigned char* parsed;          /**< parsed words of length wordTriggerCount+payloadSize+paritySize */
@@ -76,11 +76,16 @@ typedef struct _warble {
 */
 void warble_generalized_goertzel(const double* signal, int32_t s_length, double sampleRate, const double* freqs, int32_t f_length, double* outFreqsPower);
 
+/*
+ * Compute RMS of the provided signal
+ */
+double warble_compute_rms(const double* signal, int32_t s_length);
+
 /***/
 warble* warble_create(double sampleRate, double firstFrequency,
 	double frequencyMultiplication,
 	int16_t frequencyIncrement, int16_t wordSize,
-	int16_t payloadSize, char* wordTriggers, int16_t wordTriggerCount);
+	int16_t payloadSize, int16_t* frequenciesIndexTriggers, int16_t frequenciesIndexTriggersCount);
 
 
 /**

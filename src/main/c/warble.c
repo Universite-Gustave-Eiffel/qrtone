@@ -75,23 +75,30 @@ void warble_generalized_goertzel(const double* signal, int32_t s_length,double s
 	}
 }
 
-
+double warble_compute_rms(const double* signal, int32_t s_length) {
+	double sum = 0;
+	int32_t i;
+	for(i=0; i < s_length; i++) {
+		sum += signal[i] * signal[i];
+	}
+	return sqrt(sum / s_length);
+}
 
 warble* warble_create(double sampleRate, double firstFrequency,
 	double frequencyMultiplication,
 	int16_t frequencyIncrement, int16_t wordSize,
-	int16_t payloadSize, char* wordTriggers, int16_t wordTriggerCount)  {
+	int16_t payloadSize, int16_t* frequenciesIndexTriggers, int16_t frequenciesIndexTriggersCount)  {
     warble* this = (warble*) malloc(sizeof(warble));
 	this->sampleRate = sampleRate;
     this->firstFrequency = firstFrequency;
 	this->frequencyIncrement = frequencyIncrement;
 	this->payloadSize = payloadSize;
-	this->wordTriggerCount = wordTriggerCount;
-	this->wordTriggers = malloc(sizeof(char) * wordTriggerCount);
-	memcpy(this->wordTriggers, wordTriggers, sizeof(char) * wordTriggerCount);
+	this->frequenciesIndexTriggersCount = frequenciesIndexTriggersCount;
+	this->frequenciesIndexTriggers = malloc(sizeof(char) * frequenciesIndexTriggersCount);
+	memcpy(this->frequenciesIndexTriggers, frequenciesIndexTriggers, sizeof(int16_t) * frequenciesIndexTriggersCount);
 	this->triggerSampleIndex = -1;
 	//this->paritySize =  wordSize - 1 - payloadSize / 2;
-	this->parsed = malloc(sizeof(unsigned char) * (wordTriggerCount + payloadSize));
+	this->parsed = malloc(sizeof(unsigned char) * (payloadSize));
 	this->frequencies = malloc(sizeof(double) * WARBLE_PITCH_COUNT);
 	int i;
 	// Precompute pitch frequencies
@@ -106,7 +113,7 @@ warble* warble_create(double sampleRate, double firstFrequency,
 }
 
 void warble_free(warble *warble) {
-    free(warble->wordTriggers);
+    free(warble->frequenciesIndexTriggers);
     free(warble->parsed);
 	free(warble->frequencies);
     free(warble);

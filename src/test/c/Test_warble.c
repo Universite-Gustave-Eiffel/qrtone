@@ -7,7 +7,9 @@
 #include <math.h>
 #include <assert.h>
 
+#include "warble.h"
 #include "warble_complex.h"
+#include "minunit.h"
 
 #define SAMPLES 4410
 
@@ -16,11 +18,7 @@
 
 #define CHECK(a) if(!a) return -1
 
-int testComplex() {
-	return 0;
-}
-
-int test1khz() {
+MU_TEST(test1khz) {
 	const double sampleRate = 44100;
 	double powerRMS = 500; // 90 dBspl
 	float signalFrequency = 1000;
@@ -39,19 +37,20 @@ int test1khz() {
 
 	warble_generalized_goertzel(audio, SAMPLES, sampleRate, freqs, 1,out);
 
-	printf("found %.f Hz (%.2f)\n", signalFrequency, out[0]);
+	double signal_rms = warble_compute_rms(audio, SAMPLES);
 
-	CHECK(abs(out[0] - powerRMS) < 0.1);
+	mu_assert_double_eq(powerRMS, out[0], 0.1);
 
-	return 0;
+	mu_assert_double_eq(powerRMS, signal_rms, 0.1);
+}
+
+
+MU_TEST_SUITE(test_suite) {
+	MU_RUN_TEST(test1khz);
 }
 
 int main(int argc, char** argv) {
-	if (testComplex() != 0) {
-		return -1;
-	}
-	if (test1khz() != 0) {
-		return -1;
-	}
-	return 0;
+	MU_RUN_SUITE(test_suite);
+	MU_REPORT();
+	return minunit_fail > 0 ? -1 : 0;
 }
