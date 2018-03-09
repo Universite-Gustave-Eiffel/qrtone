@@ -50,9 +50,6 @@ extern "C" {
 */
 typedef struct _warble {
 	// Inputs
-	double firstFrequency;          /**< Frequency of word 0 */
-	double frequencyMultiplication; /**< Increment factor between each word, 0 if usage of frequencyIncrement */
-	int16_t frequencyIncrement;     /**< Increment between each word, 0 if usage of frequencyMultiplication */
 	int16_t payloadSize;            /**< Number of payload words */
 	int16_t frequenciesIndexTriggersCount;       /**< Number of pitch that trigger the sequence of words */
 	int16_t* frequenciesIndexTriggers;             /**< Word index that trigger the sequence of words */
@@ -85,6 +82,9 @@ double warble_compute_rms(const double* signal, int32_t s_length);
 
 /*
  * Initialize warble configuration object
+ *  @param firstFrequency lowest frequency
+ *	@param frequencyMultiplication; /**< Increment factor between each word, 0 if usage of frequencyIncrement
+ *  @param frequencyIncrement;     /**< Increment between each word, 0 if usage of frequencyMultiplication 
  */
 void warble_init(warble* warble, double sampleRate, double firstFrequency,
 	double frequencyMultiplication,
@@ -120,7 +120,7 @@ size_t warble_generate_window_size(warble *warble);
  * Generate an audio signal for the provided words and configuration
 * @param warble Object
  */
-void warble_generate_signal(warble *warble, unsigned char* words, double* signal_out);
+void warble_generate_signal(warble *warble,double powerPeak, unsigned char* words, double* signal_out);
 
 /**
 * @param warble Object

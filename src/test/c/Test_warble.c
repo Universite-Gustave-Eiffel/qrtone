@@ -50,6 +50,8 @@ MU_TEST(testGenerateSignal) {
 	double word_length = 0.0872; // pitch length in seconds
 	warble cfg;
 	int sample_rate = 44100;
+	double powerRMS = 500;
+	double powerPeak = powerRMS * sqrt(2);
 	int16_t triggers[2] = {9, 25};
 	char payload[] = "parrot";
 
@@ -60,20 +62,26 @@ MU_TEST(testGenerateSignal) {
 	memset(signal, 0, sizeof(double) * windowSize);
 
 	// Replaces zeroes with pitchs
-	warble_generate_signal(&cfg, payload, signal);
+	warble_generate_signal(&cfg, powerPeak, payload, signal);
 
 	// Check frequencies
+	double rms[32];
 
+	// Analyze first trigger
+	warble_generalized_goertzel(signal, cfg.word_length, cfg.sampleRate, cfg.frequencies, WARBLE_PITCH_COUNT, rms);
+
+	mu_assert_double_eq(powerRMS, rms[9], 0.1);
 
 	free(signal);
 }
 
 MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(test1khz);
+	MU_RUN_TEST(testGenerateSignal);
 }
 
 int main(int argc, char** argv) {
 	MU_RUN_SUITE(test_suite);
 	MU_REPORT();
-	return minunit_fail > 0 ? -1 : 0;
+	return minunit_status == 1 ? -1 : 0;
 }
