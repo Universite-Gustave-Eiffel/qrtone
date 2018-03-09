@@ -96,8 +96,6 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 	int16_t frequencyIncrement, double word_time,
 	int16_t payloadSize, int16_t* frequenciesIndexTriggers, int16_t frequenciesIndexTriggersCount)  {
 	this->sampleRate = sampleRate;
-    this->firstFrequency = firstFrequency;
-	this->frequencyIncrement = frequencyIncrement;
 	this->payloadSize = payloadSize;
 	this->word_length = (int32_t)(sampleRate * word_time);
 	this->frequenciesIndexTriggersCount = frequenciesIndexTriggersCount;
@@ -141,7 +139,7 @@ warble_generate_pitch(double* signal_out, int32_t length, double sample_rate, do
 	int32_t i;
 	double t_step = 1 / sample_rate;
 	for(i=0; i < length; i++) {
-		signal_out[i] += sin(i * t_step * WARBLE_2PI * frequency * power_peak);
+		signal_out[i] += sin(i * t_step * WARBLE_2PI * frequency) * power_peak;
 	}
 }
 

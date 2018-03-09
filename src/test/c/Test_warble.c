@@ -70,6 +70,9 @@ MU_TEST(testGenerateSignal) {
 	// Analyze first trigger
 	warble_generalized_goertzel(signal, cfg.word_length, cfg.sampleRate, cfg.frequencies, WARBLE_PITCH_COUNT, rms);
 
+
+	double signal_rms = warble_compute_rms(signal, cfg.word_length);
+
 	mu_assert_double_eq(powerRMS, rms[9], 0.1);
 
 	free(signal);
