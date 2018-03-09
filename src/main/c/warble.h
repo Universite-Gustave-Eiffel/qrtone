@@ -41,7 +41,8 @@ extern "C" {
 #include <stdint.h>
 
 
-#define WARBLE_PITCH_COUNT 32
+#define WARBLE_PITCH_COUNT 32  // Number of used frequency bands
+#define WARBLE_PITCH_ROOT 16   // column and rows that make a char
 
 /**
 * @struct  Warble
@@ -60,6 +61,7 @@ typedef struct _warble {
 	unsigned char* parsed;          /**< parsed words of length wordTriggerCount+payloadSize+paritySize */
 	double* frequencies;            /**< Computed pitch frequencies length is 32 */
 	int64_t triggerSampleIndex;     /**< Sample index of first trigger */
+	int32_t word_length;			/** pitch length in samples*/
 } warble;
 
 /**
@@ -81,12 +83,13 @@ void warble_generalized_goertzel(const double* signal, int32_t s_length, double 
  */
 double warble_compute_rms(const double* signal, int32_t s_length);
 
-/***/
-warble* warble_create(double sampleRate, double firstFrequency,
+/*
+ * Initialize warble configuration object
+ */
+void warble_init(warble* warble, double sampleRate, double firstFrequency,
 	double frequencyMultiplication,
-	int16_t frequencyIncrement, int16_t wordSize,
+	int16_t frequencyIncrement, double word_time,
 	int16_t payloadSize, int16_t* frequenciesIndexTriggers, int16_t frequenciesIndexTriggersCount);
-
 
 /**
 * Free buffer in object

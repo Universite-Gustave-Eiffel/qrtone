@@ -13,6 +13,8 @@
 
 #define SAMPLES 4410
 
+#define MULT 1.0594630943591
+
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
@@ -44,6 +46,27 @@ MU_TEST(test1khz) {
 	mu_assert_double_eq(powerRMS, signal_rms, 0.1);
 }
 
+MU_TEST(testGenerateSignal) {
+	double word_length = 0.0872; // pitch length in seconds
+	warble cfg;
+	int sample_rate = 44100;
+	int16_t triggers[2] = {9, 25};
+	char payload[] = "parrot";
+
+	warble_init(&cfg, sample_rate, 1720., MULT, 0, word_length, (int16_t)strlen(payload), triggers, 2);
+
+	size_t windowSize = warble_generate_window_size(&cfg);
+	double* signal = malloc(sizeof(double) * windowSize);
+	memset(signal, 0, sizeof(double) * windowSize);
+
+	// Replaces zeroes with pitchs
+	warble_generate_signal(&cfg, payload, signal);
+
+	// Check frequencies
+
+
+	free(signal);
+}
 
 MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(test1khz);

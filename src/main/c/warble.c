@@ -37,6 +37,8 @@
 #include <string.h>
 #include "warble_complex.h"
 
+#define WARBLE_2PI 6.283185307179586
+
 void warble_generalized_goertzel(const double* signal, int32_t s_length,double sampleRate,const double* freqs, int32_t f_length, double* outFreqsPower) {
 	int32_t id_freq;
 	// Fix frequency using the sampleRate of the signal
@@ -84,15 +86,20 @@ double warble_compute_rms(const double* signal, int32_t s_length) {
 	return sqrt(sum / s_length);
 }
 
-warble* warble_create(double sampleRate, double firstFrequency,
+warble* warble_create() {
+	warble* this = (warble*)malloc(sizeof(warble));
+	return this;
+}
+
+void warble_init(warble* this, double sampleRate, double firstFrequency,
 	double frequencyMultiplication,
-	int16_t frequencyIncrement, int16_t wordSize,
+	int16_t frequencyIncrement, double word_time,
 	int16_t payloadSize, int16_t* frequenciesIndexTriggers, int16_t frequenciesIndexTriggersCount)  {
-    warble* this = (warble*) malloc(sizeof(warble));
 	this->sampleRate = sampleRate;
     this->firstFrequency = firstFrequency;
 	this->frequencyIncrement = frequencyIncrement;
 	this->payloadSize = payloadSize;
+	this->word_length = (int32_t)(sampleRate * word_time);
 	this->frequenciesIndexTriggersCount = frequenciesIndexTriggersCount;
 	this->frequenciesIndexTriggers = malloc(sizeof(char) * frequenciesIndexTriggersCount);
 	memcpy(this->frequenciesIndexTriggers, frequenciesIndexTriggers, sizeof(int16_t) * frequenciesIndexTriggersCount);
@@ -109,7 +116,6 @@ warble* warble_create(double sampleRate, double firstFrequency,
 			this->frequencies[i] = firstFrequency * pow(frequencyMultiplication, i);
 		}
 	}
-    return this;
 }
 
 void warble_free(warble *warble) {
@@ -128,11 +134,37 @@ size_t warble_feed_window_size(warble *warble) {
 }
 
 size_t warble_generate_window_size(warble *warble) {
-	return 0;
+	return (warble->frequenciesIndexTriggersCount + warble->payloadSize) * warble->word_length;
+}
+
+warble_generate_pitch(double* signal_out, int32_t start, int32_t length, double sample_rate, double frequency) {
+	int32_t i;
+	double t_step = 1 / sample_rate;
+	for(i=0; i < length; i++) {
+		signal_out[i+start] += sin(i * t_step * WARBLE_2PI * frequency);
+	}
 }
 
 void warble_generate_signal(warble *warble, unsigned char* words, double* signal_out) {
-	
+	int s = 0;
+	int i;
+	// Triggers signal
+	for(i=0; i<warble->frequenciesIndexTriggersCount; i++) {
+		warble_generate_pitch(signal_out, s, warble->word_length, warble->sampleRate, warble->frequencies[warble->frequenciesIndexTriggers[i]]);
+		s += warble->word_length;
+	}
+
+	// Other pitchs
+
+	for(i=0; i < warble->payloadSize; i++) {
+		int col = words[i] % WARBLE_PITCH_ROOT;
+		int row = words[i] / WARBLE_PITCH_ROOT;
+		double freq1 = warble->frequencies[col];
+		double freq2 = warble->frequencies[row];
+		warble_generate_pitch(signal_out, s, warble->word_length, warble->sampleRate, freq1);
+		warble_generate_pitch(signal_out, s, warble->word_length, warble->sampleRate, freq2);
+		s += warble->word_length;
+	}
 }
 
 void warble_GetPayload(warble *warble, unsigned char * payload) {
