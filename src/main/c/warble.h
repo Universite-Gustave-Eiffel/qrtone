@@ -59,6 +59,7 @@ typedef struct _warble {
 	double* frequencies;            /**< Computed pitch frequencies length is 32 */
 	int64_t triggerSampleIndex;     /**< Sample index of first trigger */
 	int32_t word_length;			/** pitch length in samples*/
+	int32_t window_length;			/** Window length of the signal provided to warble_feed **/
 } warble;
 
 /**
@@ -102,13 +103,7 @@ void warble_free(warble *warble);
 * @param warble Object
 * @return 1 if the message can be collected using warble_GetPayload
 */
-int16_t warble_feed(warble *warble, double* rms, int rms_size, double sample_rate, int64_t sample_index);
-
-/**
- * Return the expected window size as input of warble_feed
-* @param warble Object
- */
-size_t warble_feed_window_size(warble *warble);
+int16_t warble_feed(warble *warble, double* signal, int64_t sample_index);
 
 /**
 * Return the expected window size output of warble_generate_signal

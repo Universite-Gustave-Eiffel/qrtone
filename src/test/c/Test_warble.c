@@ -80,9 +80,38 @@ MU_TEST(testGenerateSignal) {
 	free(signal);
 }
 
+
+MU_TEST(testFeedSignal1) {
+	double word_length = 0.0872; // pitch length in seconds
+	warble cfg;
+	int sample_rate = 44100;
+	double powerRMS = 500;
+	double powerPeak = powerRMS * sqrt(2);
+	int16_t triggers[2] = { 9, 25 };
+	char payload[] = "parrot";
+
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (int16_t)strlen(payload), triggers, 2);
+
+	size_t signal_size = warble_generate_window_size(&cfg);
+	double* signal = malloc(sizeof(double) * signal_size);
+	memset(signal, 0, sizeof(double) * signal_size);
+
+	// Replaces zeroes with pitchs
+	warble_generate_signal(&cfg, powerPeak, payload, signal);
+
+	int i;
+	for(i=0; i < signal_size - cfg.window_length; i+=cfg.window_length) {
+		if (warble_feed(&cfg, &(signal[i]), i)) {
+			printf("%s", cfg.parsed);
+		}
+	}
+	free(signal);
+}
+
 MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(test1khz);
 	MU_RUN_TEST(testGenerateSignal);
+	MU_RUN_TEST(testFeedSignal1);
 }
 
 int main(int argc, char** argv) {
