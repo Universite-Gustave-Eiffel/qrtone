@@ -99,9 +99,9 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 	this->sampleRate = sampleRate;
 	this->payloadSize = payloadSize;
 	this->word_length = (int32_t)(sampleRate * word_time);
-	this->window_length = (int32_t)(sampleRate * (word_time / 3));
+	this->window_length = (int32_t)(sampleRate * 0.04);
 	this->frequenciesIndexTriggersCount = frequenciesIndexTriggersCount;
-	this->frequenciesIndexTriggers = malloc(sizeof(char) * frequenciesIndexTriggersCount);
+	this->frequenciesIndexTriggers = malloc(sizeof(int16_t) * frequenciesIndexTriggersCount);
 	memcpy(this->frequenciesIndexTriggers, frequenciesIndexTriggers, sizeof(int16_t) * frequenciesIndexTriggersCount);
 	this->triggerSampleIndex = -1;
 	//this->paritySize =  wordSize - 1 - payloadSize / 2;
@@ -121,17 +121,16 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 }
 
 void warble_free(warble *warble) {
-    free(warble->frequenciesIndexTriggers);
+	free(warble->frequenciesIndexTriggers);
     free(warble->parsed);
 	free(warble->frequencies);
-    free(warble);
 }
 
-int warble_is_triggered(warble *warble, const double* signal, int32_t wordIndex) {
+int warble_is_triggered(warble *warble, const double* signal,int signal_length, int32_t wordIndex) {
 	double trigger[] = {warble->frequencies[warble->frequenciesIndexTriggers[wordIndex]] };
 	double rms[1] = { 0 };
 	double signalRMS = warble_compute_rms(signal, warble->window_length);
-	warble_generalized_goertzel(signal, warble->window_length, warble->sampleRate, trigger, 1, rms);
+	warble_generalized_goertzel(signal, signal_length, warble->sampleRate, trigger, 1, rms);
 	const double splSignal = 20 * log10(signalRMS);
 	const double splPitch = 20 * log10(rms[0]);
 	return splSignal - splPitch < PITCH_SIGNAL_TO_NOISE_TRIGGER;
@@ -140,47 +139,59 @@ int warble_is_triggered(warble *warble, const double* signal, int32_t wordIndex)
 int16_t warble_feed(warble *warble, double* signal, int64_t sample_index) {
 	if(warble->triggerSampleIndex < 0) {
 		// Looking for start of pitch
-		if(warble_is_triggered(warble, signal, 0)) {
+		if(warble_is_triggered(warble, signal, warble->window_length, 0)) {
 			// Accept pitch for first gate
 			// TODO Should compute a better start index ?
 			warble->triggerSampleIndex = sample_index;
 		}
 	} else {
-		int wordIndex = (int)round((sample_index - warble->triggerSampleIndex) / (double)warble->word_length);
-		if(wordIndex < warble->frequenciesIndexTriggersCount) {
-			// Still in trigger pitch
-			if (!warble_is_triggered(warble, signal, wordIndex)) {
-				// Fail to recognize expected pitch
-				// Quit pitch, and wait for a new fist trigger
-				warble->triggerSampleIndex = -1;
-			}		
-		} else {
-			double rms[WARBLE_PITCH_COUNT];
-			warble_generalized_goertzel(signal, warble->window_length, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rms);
-			int sortedIndex[3] = { -1, -1, -1 };
-			int i;
-			int j;
-			// Sort rms by descending order
-			for(int i=0; i<WARBLE_PITCH_COUNT; i++) {
-				for (int j = 0; j<3; j++) {
-					if(sortedIndex[j] == -1 || rms[sortedIndex[j]] < rms[i] ) {
-						// Move values
-						int k;
-						for(k = j; k < 2; k++) {
-							sortedIndex[k + 1] = sortedIndex[k];
-						}
-						sortedIndex[j] = i;
-						break;
-					}
-				}				
-			}
-			//if(20 * log10(rms[sortedIndex[1]]) - 20 * log10(rms[sortedIndex[2]]) > PITCH_SIGNAL_TO_NOISE_TRIGGER) {
-			warble->parsed[wordIndex - warble->frequenciesIndexTriggersCount] = (unsigned char)(sortedIndex[1] * WARBLE_PITCH_ROOT + sortedIndex[0]);
-			if(wordIndex == warble->payloadSize + warble->frequenciesIndexTriggersCount - 1) {
-				return 1;
-			}
+		int wordIndex = (int)((sample_index - warble->triggerSampleIndex + warble->window_length / 2) / (double)warble->word_length);
+		if(wordIndex > warble->payloadSize + warble->frequenciesIndexTriggersCount) {
+			warble->triggerSampleIndex = -1;
+			return 0; // we have an issue here
 		}
-	
+
+		int64_t startPitch = warble->triggerSampleIndex + warble->word_length * wordIndex;
+		int64_t endPitch = startPitch + warble->window_length;
+
+		int windowStartDiff = (int)(startPitch - sample_index);
+
+		if(windowStartDiff > 0 && windowStartDiff < warble->window_length && sample_index + warble->window_length <= endPitch) {
+			if(wordIndex < warble->frequenciesIndexTriggersCount) {
+				// Still in trigger pitch
+				if (!warble_is_triggered(warble, &(signal[windowStartDiff]), warble->window_length - windowStartDiff, wordIndex)) {
+					// Fail to recognize expected pitch
+					// Quit pitch, and wait for a new fist trigger
+					warble->triggerSampleIndex = -1;
+				}		
+			} else {
+				double rms[WARBLE_PITCH_COUNT];
+				warble_generalized_goertzel(&(signal[windowStartDiff]), warble->window_length - windowStartDiff, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rms);
+				int sortedIndex[3] = { -1, -1, -1 };
+				int i;
+				int j;
+				// Sort rms by descending order
+				for(int i=0; i<WARBLE_PITCH_COUNT; i++) {
+					for (int j = 0; j<3; j++) {
+						if(sortedIndex[j] == -1 || rms[sortedIndex[j]] < rms[i] ) {
+							// Move values
+							int k;
+							for(k = j; k < 2; k++) {
+								sortedIndex[k + 1] = sortedIndex[k];
+							}
+							sortedIndex[j] = i;
+							break;
+						}
+					}				
+				}
+				//if(20 * log10(rms[sortedIndex[1]]) - 20 * log10(rms[sortedIndex[2]]) > PITCH_SIGNAL_TO_NOISE_TRIGGER) {
+				warble->parsed[wordIndex - warble->frequenciesIndexTriggersCount] = (unsigned char)(sortedIndex[1] * WARBLE_PITCH_ROOT + sortedIndex[0]);
+				if(wordIndex == warble->payloadSize + warble->frequenciesIndexTriggersCount - 1) {
+					warble->triggerSampleIndex = -1;
+					return 1;
+				}
+			}
+		}	
 	}
 	return 0;
 }
