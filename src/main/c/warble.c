@@ -148,7 +148,7 @@ void warble_generate_signal(warble *warble,double power_peak, unsigned char* wor
 	int i;
 	// Triggers signal
 	for(i=0; i<warble->frequenciesIndexTriggersCount; i++) {
-		warble_generate_pitch(&signal_out[s], warble->word_length, warble->sampleRate, warble->frequencies[warble->frequenciesIndexTriggers[i]], power_peak);
+		warble_generate_pitch(&(signal_out[s]), warble->word_length, warble->sampleRate, warble->frequencies[warble->frequenciesIndexTriggers[i]], power_peak);
 		s += warble->word_length;
 	}
 
@@ -159,8 +159,8 @@ void warble_generate_signal(warble *warble,double power_peak, unsigned char* wor
 		int row = words[i] / WARBLE_PITCH_ROOT;
 		double freq1 = warble->frequencies[col];
 		double freq2 = warble->frequencies[row];
-		warble_generate_pitch(&signal_out[s], warble->word_length, warble->sampleRate, freq1, power_peak);
-		warble_generate_pitch(&signal_out[s], warble->word_length, warble->sampleRate, freq2, power_peak);
+		warble_generate_pitch(&(signal_out[s]), warble->word_length, warble->sampleRate, freq1, power_peak);
+		warble_generate_pitch(&(signal_out[s]), warble->word_length, warble->sampleRate, freq2, power_peak);
 		s += warble->word_length;
 	}
 }

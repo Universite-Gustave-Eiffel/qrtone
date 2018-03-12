@@ -55,7 +55,7 @@ MU_TEST(testGenerateSignal) {
 	int16_t triggers[2] = {9, 25};
 	char payload[] = "parrot";
 
-	warble_init(&cfg, sample_rate, 1720., MULT, 0, word_length, (int16_t)strlen(payload), triggers, 2);
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (int16_t)strlen(payload), triggers, 2);
 
 	size_t windowSize = warble_generate_window_size(&cfg);
 	double* signal = malloc(sizeof(double) * windowSize);
@@ -70,10 +70,12 @@ MU_TEST(testGenerateSignal) {
 	// Analyze first trigger
 	warble_generalized_goertzel(signal, cfg.word_length, cfg.sampleRate, cfg.frequencies, WARBLE_PITCH_COUNT, rms);
 
+	mu_assert_double_eq(powerRMS, rms[triggers[0]], 0.3);
 
-	double signal_rms = warble_compute_rms(signal, cfg.word_length);
+	// Analyze second trigger
+	warble_generalized_goertzel(&(signal[cfg.word_length]), cfg.word_length, cfg.sampleRate, cfg.frequencies, WARBLE_PITCH_COUNT, rms);
 
-	mu_assert_double_eq(powerRMS, rms[9], 0.1);
+	mu_assert_double_eq(powerRMS, rms[triggers[1]], 0.3);
 
 	free(signal);
 }
