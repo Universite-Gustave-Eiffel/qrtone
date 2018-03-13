@@ -1,6 +1,13 @@
 /* Use ./TestAudio/audioExtract.py to create audioData.h - this converts a wave file to an array of doubles in C.
  * Copy audioData.h into same folder as this test then build and run - the program should give F0 of the signal in
  * audioData.h */
+#ifdef _DEBUG
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#ifdef _WIN32
+#include <crtdbg.h>
+#endif
+#endif
 
 #include <stdio.h>
 #include <stdint.h>
@@ -79,6 +86,7 @@ MU_TEST(testGenerateSignal) {
 	mu_assert_double_eq(powerRMS, rms[triggers[1]], 0.3);
 
 	free(signal);
+	warble_free(&cfg);
 }
 
 
@@ -143,7 +151,7 @@ MU_TEST(testFeedSignal1) {
 	double powerPeak = powerRMS * sqrt(2);
 	int16_t triggers[2] = { 9, 25 };
 	char payload[] = "!0BSduvwxyz";
-	int blankBefore = (int)(44100 * 0.21);
+	int blankBefore = (int)(44100 * 0.13);
 	int blankAfter = (int)(44100 * 0.2);
 
 	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (int16_t)strlen(payload), triggers, 2);
@@ -175,5 +183,10 @@ MU_TEST_SUITE(test_suite) {
 int main(int argc, char** argv) {
 	MU_RUN_SUITE(test_suite);
 	MU_REPORT();
+	#ifdef _WIN32
+	#ifdef _DEBUG
+		_CrtDumpMemoryLeaks(); //Display memory leaks
+	#endif
+	#endif
 	return minunit_status == 1 ? -1 : 0;
 }
