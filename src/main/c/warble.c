@@ -36,9 +36,30 @@
 #include <stdlib.h>
 #include <string.h>
 #include "warble_complex.h"
+#include "correct.h"
 
 #define WARBLE_2PI 6.283185307179586
 #define PITCH_SIGNAL_TO_NOISE_TRIGGER 3 // Accept pitch if pitch power is less than 3dB lower than signal level
+#define PERCENT_CODE_ERROR 12.0
+
+// Pseudo random generator
+int warble_rand(int64_t* next) {
+	*next = *next * 1103515245 + 12345;
+	return (unsigned int)(*next / 65536) % 32768;
+}
+
+// randomly swap specified integer
+void warble_fisher_yates_shuffle_index(int n, int* index) {
+	int i;
+	int cache;
+	int64_t rnd_cache = n;
+	for(i = n - 1; i > 0; i--) {
+		int j = warble_rand(&rnd_cache) % (i + 1);
+		cache = index[j];
+		index[j] = index[i];
+		index[i] = cache;
+	}
+}
 
 void warble_generalized_goertzel(const double* signal, int32_t s_length,double sampleRate,const double* freqs, int32_t f_length, double* outFreqsPower) {
 	int32_t id_freq;
@@ -98,6 +119,8 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 	int16_t payloadSize, int16_t* frequenciesIndexTriggers, int16_t frequenciesIndexTriggersCount)  {
 	this->sampleRate = sampleRate;
 	this->payloadSize = payloadSize;
+	int16_t distance = payloadSize + (int16_t)pow(2, round(log(payloadSize / PERCENT_CODE_ERROR) / log(2)));
+	this->block_length = this->payloadSize + distance;
 	this->word_length = (int32_t)(sampleRate * word_time);
 	this->window_length = (int32_t)(this->word_length / 2);
 	this->frequenciesIndexTriggersCount = frequenciesIndexTriggersCount;
@@ -105,8 +128,8 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 	memcpy(this->frequenciesIndexTriggers, frequenciesIndexTriggers, sizeof(int16_t) * frequenciesIndexTriggersCount);
 	this->triggerSampleIndex = -1;
 	//this->paritySize =  wordSize - 1 - payloadSize / 2;
-	this->parsed = malloc(sizeof(unsigned char) * (payloadSize) + 1);
-	this->parsed[payloadSize] = '\0';
+	this->parsed = malloc(sizeof(unsigned char) * (this->block_length) + 1);
+	this->parsed[this->block_length] = '\0';
 
 	this->frequencies = malloc(sizeof(double) * WARBLE_PITCH_COUNT);
 	int i;
@@ -118,12 +141,19 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 			this->frequencies[i] = firstFrequency * pow(frequencyMultiplication, i);
 		}
 	}
+	// Compute index shuffling of messages
+	this->shuffleIndex = malloc(sizeof(int) * this->block_length);
+	for(i = 0; i < this->block_length; i++) {
+		this->shuffleIndex[i] = i;
+	}
+	warble_fisher_yates_shuffle_index(this->block_length, this->shuffleIndex);
 }
 
 void warble_free(warble *warble) {
 	free(warble->frequenciesIndexTriggers);
     free(warble->parsed);
 	free(warble->frequencies);
+	free(warble->shuffleIndex);
 }
 
 int warble_is_triggered(warble *warble, const double* signal,int signal_length, int32_t wordIndex,double* triggerRMS) {
@@ -144,8 +174,8 @@ unsigned char spectrumToChar(warble *warble, double* rms) {
 	int i;
 	int j;
 	// Sort rms by descending order
-	for (int i = 0; i<WARBLE_PITCH_COUNT; i++) {
-		for (int j = 0; j<3; j++) {
+	for (i = 0; i<WARBLE_PITCH_COUNT; i++) {
+		for (j = 0; j<3; j++) {
 			if (sortedIndex[j] == -1 || rms[sortedIndex[j]] < rms[i]) {
 				// Move values
 				int k;
@@ -223,6 +253,21 @@ warble_generate_pitch(double* signal_out, int32_t length, double sample_rate, do
 	for(i=0; i < length; i++) {
 		signal_out[i] += sin(i * t_step * WARBLE_2PI * frequency) * power_peak;
 	}
+}
+
+void warble_reed_encode_salomon(warble *warble, unsigned char* msg, size_t msg_length, unsigned char* words) {
+	size_t min_distance = warble->block_length - warble->payloadSize;
+	correct_reed_solomon *rs = correct_reed_solomon_create(
+		correct_rs_primitive_polynomial_ccsds, 1, 1, min_distance);
+	int* indices = malloc(warble->block_length * sizeof(int));
+	size_t block_length = msg_length + min_distance;
+	size_t pad_length = warble->payloadSize - msg_length;
+	int res = correct_reed_solomon_encode(rs, msg, msg_length, words);
+	correct_reed_solomon_destroy(rs);
+}
+
+void warble_reed_decode_salomon(warble *warble, unsigned char* payload, unsigned char* words) {
+
 }
 
 void warble_generate_signal(warble *warble,double power_peak, unsigned char* words, double* signal_out) {

@@ -1,6 +1,7 @@
 cmake_minimum_required (VERSION 3.0)
 
 include_directories (main/c/)
+include_directories (main/c/libcorrect/include)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_USE_MATH_DEFINES")
 

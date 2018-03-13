@@ -51,11 +51,13 @@ extern "C" {
 typedef struct _warble {
 	// Inputs
 	int16_t payloadSize;            /**< Number of payload words */
+	int16_t block_length;           /**< Number of words (payload+forward correction codes) */
 	int16_t frequenciesIndexTriggersCount;       /**< Number of pitch that trigger the sequence of words */
 	int16_t* frequenciesIndexTriggers;             /**< Word index that trigger the sequence of words */
 	double sampleRate;				/**< Sample rate of audio in Hz */
 	// Algorithm data
 	unsigned char* parsed;          /**< parsed words of length wordTriggerCount+payloadSize+paritySize */
+	int32_t* shuffleIndex;		    /**< Shuffle index, used to (de)shuffle words sent/received after/before reed solomon */
 	double* frequencies;            /**< Computed pitch frequencies length is 32 */
 	int64_t triggerSampleIndex;     /**< Sample index of first trigger */
 	double triggerSampleRMS;		/**< Highest RMS of first trigger */
@@ -124,6 +126,16 @@ size_t warble_generate_window_size(warble *warble);
 * @param warble Object
  */
 void warble_generate_signal(warble *warble,double powerPeak, unsigned char* words, double* signal_out);
+
+/*
+ * Chuffle and encode using reed salomon algorithm
+ */
+void warble_reed_encode_salomon(warble *warble, unsigned char* msg, size_t msg_length, unsigned char* words);
+
+/*
+ * decode and reassemble using reed salomon algorithm
+ */
+void warble_reed_decode_salomon(warble *warble, unsigned char* payload, unsigned char* words);
 
 /**
 * @param warble Object
