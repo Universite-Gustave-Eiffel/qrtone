@@ -99,7 +99,7 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 	this->sampleRate = sampleRate;
 	this->payloadSize = payloadSize;
 	this->word_length = (int32_t)(sampleRate * word_time);
-	this->window_length = (int32_t)(sampleRate * 0.025);
+	this->window_length = (int32_t)(this->word_length / 2);
 	this->frequenciesIndexTriggersCount = frequenciesIndexTriggersCount;
 	this->frequenciesIndexTriggers = malloc(sizeof(int16_t) * frequenciesIndexTriggersCount);
 	memcpy(this->frequenciesIndexTriggers, frequenciesIndexTriggers, sizeof(int16_t) * frequenciesIndexTriggersCount);
@@ -126,13 +126,16 @@ void warble_free(warble *warble) {
 	free(warble->frequencies);
 }
 
-int warble_is_triggered(warble *warble, const double* signal,int signal_length, int32_t wordIndex) {
+int warble_is_triggered(warble *warble, const double* signal,int signal_length, int32_t wordIndex,double* triggerRMS) {
 	double trigger[] = {warble->frequencies[warble->frequenciesIndexTriggers[wordIndex]] };
 	double rms[1] = { 0 };
 	double signalRMS = warble_compute_rms(signal, warble->window_length);
 	warble_generalized_goertzel(signal, signal_length, warble->sampleRate, trigger, 1, rms);
 	const double splSignal = 20 * log10(signalRMS);
 	const double splPitch = 20 * log10(rms[0]);
+	if(triggerRMS) {
+		*triggerRMS = rms[0];
+	}
 	return splSignal - splPitch < PITCH_SIGNAL_TO_NOISE_TRIGGER;
 }
 
@@ -161,12 +164,15 @@ unsigned char spectrumToChar(warble *warble, double* rms) {
 }
 
 int16_t warble_feed(warble *warble, double* signal, int64_t sample_index) {
-	if(warble->triggerSampleIndex < 0) {
+	if(warble->triggerSampleIndex < 0 || sample_index - warble->triggerSampleIndex <= warble->word_length) {
 		// Looking for start of pitch
-		if(warble_is_triggered(warble, signal, warble->window_length, 0)) {
-			// Accept pitch for first gate
-			// TODO Should compute a better start index ?
-			warble->triggerSampleIndex = sample_index;
+		double triggerRMS;
+		if(warble_is_triggered(warble, signal, warble->window_length, 0, &triggerRMS)) {
+			// Accept pitch for first gate when the power is at maximum level
+			if(warble->triggerSampleIndex < 0 || warble->triggerSampleRMS < triggerRMS) {
+				warble->triggerSampleIndex = sample_index;
+				warble->triggerSampleRMS = triggerRMS;
+			}
 		}
 	} else {
 		int wordIndex = (int)((sample_index - warble->triggerSampleIndex + warble->window_length / 2) / (double)warble->word_length);
@@ -183,7 +189,7 @@ int16_t warble_feed(warble *warble, double* signal, int64_t sample_index) {
 		if(windowStartDiff > 0 && windowStartDiff < warble->window_length && sample_index + warble->window_length <= endPitch) {
 			if(wordIndex < warble->frequenciesIndexTriggersCount) {
 				// Still in trigger pitch
-				if (!warble_is_triggered(warble, &(signal[windowStartDiff]), warble->window_length - windowStartDiff, wordIndex)) {
+				if (!warble_is_triggered(warble, &(signal[windowStartDiff]), warble->window_length - windowStartDiff, wordIndex, NULL)) {
 					// Fail to recognize expected pitch
 					// Quit pitch, and wait for a new fist trigger
 					warble->triggerSampleIndex = -1;

@@ -58,6 +58,7 @@ typedef struct _warble {
 	unsigned char* parsed;          /**< parsed words of length wordTriggerCount+payloadSize+paritySize */
 	double* frequencies;            /**< Computed pitch frequencies length is 32 */
 	int64_t triggerSampleIndex;     /**< Sample index of first trigger */
+	double triggerSampleRMS;		/**< Highest RMS of first trigger */
 	int32_t word_length;			/** pitch length in samples*/
 	int32_t window_length;			/** Window length of the signal provided to warble_feed **/
 } warble;

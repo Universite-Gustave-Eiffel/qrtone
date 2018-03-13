@@ -96,7 +96,7 @@ MU_TEST(testWriteSignal) {
 	double powerRMS = 500;
 	double powerPeak = powerRMS * sqrt(2);
 	int16_t triggers[2] = { 9, 25 };
-	char payload[] = "parrotparrotparrot";
+	char payload[] = "HelloTheWorld";
 	int blankBefore = (int)(44100 * 0.55);
 	int blankAfter = (int)(44100 * 0.6);
 
@@ -136,15 +136,15 @@ MU_TEST(testWriteSignal) {
 }
 
 MU_TEST(testFeedSignal1) {
-	double word_length = 0.05; // pitch length in seconds
+	double word_length = 0.078; // pitch length in seconds
 	warble cfg;
 	int sample_rate = 44100;
 	double powerRMS = 500;
 	double powerPeak = powerRMS * sqrt(2);
 	int16_t triggers[2] = { 9, 25 };
-	char payload[] = "parrotparrotparrot";
-	int blankBefore = (int)(44100 * 0.55);
-	int blankAfter = (int)(44100 * 0.6);
+	char payload[] = "!0BSduvwxyz";
+	int blankBefore = (int)(44100 * 0.21);
+	int blankAfter = (int)(44100 * 0.2);
 
 	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (int16_t)strlen(payload), triggers, 2);
 
