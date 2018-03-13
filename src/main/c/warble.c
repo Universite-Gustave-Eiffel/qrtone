@@ -99,7 +99,7 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 	this->sampleRate = sampleRate;
 	this->payloadSize = payloadSize;
 	this->word_length = (int32_t)(sampleRate * word_time);
-	this->window_length = (int32_t)(sampleRate * 0.04);
+	this->window_length = (int32_t)(sampleRate * 0.025);
 	this->frequenciesIndexTriggersCount = frequenciesIndexTriggersCount;
 	this->frequenciesIndexTriggers = malloc(sizeof(int16_t) * frequenciesIndexTriggersCount);
 	memcpy(this->frequenciesIndexTriggers, frequenciesIndexTriggers, sizeof(int16_t) * frequenciesIndexTriggersCount);
@@ -136,6 +136,30 @@ int warble_is_triggered(warble *warble, const double* signal,int signal_length, 
 	return splSignal - splPitch < PITCH_SIGNAL_TO_NOISE_TRIGGER;
 }
 
+unsigned char spectrumToChar(warble *warble, double* rms) {
+	int sortedIndex[3] = { -1, -1, -1 };
+	int i;
+	int j;
+	// Sort rms by descending order
+	for (int i = 0; i<WARBLE_PITCH_COUNT; i++) {
+		for (int j = 0; j<3; j++) {
+			if (sortedIndex[j] == -1 || rms[sortedIndex[j]] < rms[i]) {
+				// Move values
+				int k;
+				for (k = j; k < 2; k++) {
+					sortedIndex[k + 1] = sortedIndex[k];
+				}
+				sortedIndex[j] = i;
+				break;
+			}
+		}
+	}
+	//if(20 * log10(rms[sortedIndex[1]]) - 20 * log10(rms[sortedIndex[2]]) > PITCH_SIGNAL_TO_NOISE_TRIGGER) {
+	int f0index = min(sortedIndex[0], sortedIndex[1]);
+	int f1index = max(sortedIndex[0], sortedIndex[1]) - WARBLE_PITCH_ROOT;
+	return  (unsigned char)(f1index * WARBLE_PITCH_ROOT + f0index);
+}
+
 int16_t warble_feed(warble *warble, double* signal, int64_t sample_index) {
 	if(warble->triggerSampleIndex < 0) {
 		// Looking for start of pitch
@@ -167,25 +191,8 @@ int16_t warble_feed(warble *warble, double* signal, int64_t sample_index) {
 			} else {
 				double rms[WARBLE_PITCH_COUNT];
 				warble_generalized_goertzel(&(signal[windowStartDiff]), warble->window_length - windowStartDiff, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rms);
-				int sortedIndex[3] = { -1, -1, -1 };
-				int i;
-				int j;
-				// Sort rms by descending order
-				for(int i=0; i<WARBLE_PITCH_COUNT; i++) {
-					for (int j = 0; j<3; j++) {
-						if(sortedIndex[j] == -1 || rms[sortedIndex[j]] < rms[i] ) {
-							// Move values
-							int k;
-							for(k = j; k < 2; k++) {
-								sortedIndex[k + 1] = sortedIndex[k];
-							}
-							sortedIndex[j] = i;
-							break;
-						}
-					}				
-				}
-				//if(20 * log10(rms[sortedIndex[1]]) - 20 * log10(rms[sortedIndex[2]]) > PITCH_SIGNAL_TO_NOISE_TRIGGER) {
-				warble->parsed[wordIndex - warble->frequenciesIndexTriggersCount] = (unsigned char)(sortedIndex[1] * WARBLE_PITCH_ROOT + sortedIndex[0]);
+
+				warble->parsed[wordIndex - warble->frequenciesIndexTriggersCount] = spectrumToChar(warble, rms);
 				if(wordIndex == warble->payloadSize + warble->frequenciesIndexTriggersCount - 1) {
 					warble->triggerSampleIndex = -1;
 					return 1;
@@ -227,7 +234,7 @@ void warble_generate_signal(warble *warble,double power_peak, unsigned char* wor
 		int col = words[i] % WARBLE_PITCH_ROOT;
 		int row = words[i] / WARBLE_PITCH_ROOT;
 		double freq1 = warble->frequencies[col];
-		double freq2 = warble->frequencies[row];
+		double freq2 = warble->frequencies[WARBLE_PITCH_ROOT + row];
 		warble_generate_pitch(&(signal_out[s]), warble->word_length, warble->sampleRate, freq1, power_peak);
 		warble_generate_pitch(&(signal_out[s]), warble->word_length, warble->sampleRate, freq2, power_peak);
 		s += warble->word_length;

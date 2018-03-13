@@ -81,6 +81,13 @@ void warble_generalized_goertzel(const double* signal, int32_t s_length, double 
  */
 double warble_compute_rms(const double* signal, int32_t s_length);
 
+/**
+ * Convert spectrum to character
+ * @param warble configuration
+ * @param rms root mean square values of warble->frequencies
+ */
+unsigned char spectrumToChar(warble *warble, double* rms);
+
 /*
  * Initialize warble configuration object
  *  @param firstFrequency lowest frequency

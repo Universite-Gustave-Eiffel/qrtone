@@ -112,7 +112,7 @@ MU_TEST(testWriteSignal) {
 	fprintf(f, "t");
 	for (idfreq = 0; idfreq < WARBLE_PITCH_COUNT; idfreq++) {
 		fprintf(f, ", ");
-		fprintf(f, "%.1f Hz", cfg.frequencies[idfreq]);
+		fprintf(f, "%.1f", cfg.frequencies[idfreq]);
 	}
 	fprintf(f, "\n");
 
@@ -136,7 +136,7 @@ MU_TEST(testWriteSignal) {
 }
 
 MU_TEST(testFeedSignal1) {
-	double word_length = 0.0872; // pitch length in seconds
+	double word_length = 0.05; // pitch length in seconds
 	warble cfg;
 	int sample_rate = 44100;
 	double powerRMS = 500;
