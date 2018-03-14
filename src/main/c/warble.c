@@ -36,7 +36,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "warble_complex.h"
-#include "correct.h"
+#include "correct/reed-solomon.h"
 
 #define WARBLE_2PI 6.283185307179586
 #define PITCH_SIGNAL_TO_NOISE_TRIGGER 3 // Accept pitch if pitch power is less than 3dB lower than signal level
@@ -116,7 +116,7 @@ warble* warble_create() {
 void warble_init(warble* this, double sampleRate, double firstFrequency,
 	double frequencyMultiplication,
 	int16_t frequencyIncrement, double word_time,
-	int16_t payloadSize, int16_t* frequenciesIndexTriggers, int16_t frequenciesIndexTriggersCount)  {
+	int32_t payloadSize, int16_t* frequenciesIndexTriggers, int16_t frequenciesIndexTriggersCount)  {
 	this->sampleRate = sampleRate;
 	this->payloadSize = payloadSize;
 	int16_t distance = payloadSize + (int16_t)pow(2, round(log(payloadSize / PERCENT_CODE_ERROR) / log(2)));
@@ -129,8 +129,7 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 	this->triggerSampleIndex = -1;
 	//this->paritySize =  wordSize - 1 - payloadSize / 2;
 	this->parsed = malloc(sizeof(unsigned char) * (this->block_length) + 1);
-	this->parsed[this->block_length] = '\0';
-
+	memset(this->parsed, 0, sizeof(unsigned char) * (this->block_length) + 1);
 	this->frequencies = malloc(sizeof(double) * WARBLE_PITCH_COUNT);
 	int i;
 	// Precompute pitch frequencies
@@ -169,27 +168,20 @@ int warble_is_triggered(warble *warble, const double* signal,int signal_length, 
 	return splSignal - splPitch < PITCH_SIGNAL_TO_NOISE_TRIGGER;
 }
 
-unsigned char spectrumToChar(warble *warble, double* rms) {
-	int sortedIndex[3] = { -1, -1, -1 };
+int warble_get_highest_index(double* rms, const int from, const int to) {
+	int highest = from;
 	int i;
-	int j;
-	// Sort rms by descending order
-	for (i = 0; i<WARBLE_PITCH_COUNT; i++) {
-		for (j = 0; j<3; j++) {
-			if (sortedIndex[j] == -1 || rms[sortedIndex[j]] < rms[i]) {
-				// Move values
-				int k;
-				for (k = j; k < 2; k++) {
-					sortedIndex[k + 1] = sortedIndex[k];
-				}
-				sortedIndex[j] = i;
-				break;
-			}
+	for(i=from + 1; i < to; i++) {
+		if(rms[i] > rms[highest]) {
+			highest = i;
 		}
 	}
-	//if(20 * log10(rms[sortedIndex[1]]) - 20 * log10(rms[sortedIndex[2]]) > PITCH_SIGNAL_TO_NOISE_TRIGGER) {
-	int f0index = min(sortedIndex[0], sortedIndex[1]);
-	int f1index = max(sortedIndex[0], sortedIndex[1]) - WARBLE_PITCH_ROOT;
+	return highest;
+}
+
+unsigned char spectrumToChar(warble *warble, double* rms) {
+	int f0index = warble_get_highest_index(rms, 0, WARBLE_PITCH_ROOT);
+	int f1index = warble_get_highest_index(rms, WARBLE_PITCH_ROOT, WARBLE_PITCH_COUNT) - WARBLE_PITCH_ROOT;
 	return  (unsigned char)(f1index * WARBLE_PITCH_ROOT + f0index);
 }
 
@@ -255,18 +247,18 @@ warble_generate_pitch(double* signal_out, int32_t length, double sample_rate, do
 	}
 }
 
-void warble_reed_encode_salomon(warble *warble, unsigned char* msg, size_t msg_length, unsigned char* words) {
+void warble_reed_encode_solomon(warble *warble, unsigned char* msg, size_t msg_length, unsigned char* words) {
 	size_t min_distance = warble->block_length - warble->payloadSize;
 	correct_reed_solomon *rs = correct_reed_solomon_create(
 		correct_rs_primitive_polynomial_ccsds, 1, 1, min_distance);
 	int* indices = malloc(warble->block_length * sizeof(int));
 	size_t block_length = msg_length + min_distance;
 	size_t pad_length = warble->payloadSize - msg_length;
-	int res = correct_reed_solomon_encode(rs, msg, msg_length, words);
+	ssize_t res = correct_reed_solomon_encode(rs, msg, msg_length, words);
 	correct_reed_solomon_destroy(rs);
 }
 
-void warble_reed_decode_salomon(warble *warble, unsigned char* payload, unsigned char* words) {
+void warble_reed_decode_solomon(warble *warble, unsigned char* payload, unsigned char* words) {
 
 }
 

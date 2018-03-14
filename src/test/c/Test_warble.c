@@ -154,7 +154,7 @@ MU_TEST(testFeedSignal1) {
 	int blankBefore = (int)(44100 * 0.13);
 	int blankAfter = (int)(44100 * 0.2);
 
-	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (int16_t)strlen(payload), triggers, 2);
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (int32_t)strlen(payload), triggers, 2);
 
 	size_t signal_size = warble_generate_window_size(&cfg) + blankBefore + blankAfter;
 	double* signal = malloc(sizeof(double) * signal_size);
@@ -166,10 +166,11 @@ MU_TEST(testFeedSignal1) {
 	int i;
 	for(i=0; i < signal_size - cfg.window_length; i+=cfg.window_length) {
 		if (warble_feed(&cfg, &(signal[i]), i)) {
-			printf("%s", cfg.parsed);
+			break;
 		}
 	}
 	free(signal);
+	mu_assert_string_eq(payload, cfg.parsed);
 	warble_free(&cfg);
 }
 
@@ -188,5 +189,5 @@ int main(int argc, char** argv) {
 		_CrtDumpMemoryLeaks(); //Display memory leaks
 	#endif
 	#endif
-	return minunit_status == 1 ? -1 : 0;
+	return minunit_status == 1 || minunit_fail > 0 ? -1 : 0;
 }

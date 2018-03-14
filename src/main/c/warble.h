@@ -50,8 +50,8 @@ extern "C" {
 */
 typedef struct _warble {
 	// Inputs
-	int16_t payloadSize;            /**< Number of payload words */
-	int16_t block_length;           /**< Number of words (payload+forward correction codes) */
+	int32_t payloadSize;            /**< Number of payload words */
+	int32_t block_length;           /**< Number of words (payload+forward correction codes) */
 	int16_t frequenciesIndexTriggersCount;       /**< Number of pitch that trigger the sequence of words */
 	int16_t* frequenciesIndexTriggers;             /**< Word index that trigger the sequence of words */
 	double sampleRate;				/**< Sample rate of audio in Hz */
@@ -97,10 +97,10 @@ unsigned char spectrumToChar(warble *warble, double* rms);
  *	@param frequencyMultiplication; /**< Increment factor between each word, 0 if usage of frequencyIncrement
  *  @param frequencyIncrement;     /**< Increment between each word, 0 if usage of frequencyMultiplication 
  */
-void warble_init(warble* warble, double sampleRate, double firstFrequency,
+void warble_init(warble* this, double sampleRate, double firstFrequency,
 	double frequencyMultiplication,
 	int16_t frequencyIncrement, double word_time,
-	int16_t payloadSize, int16_t* frequenciesIndexTriggers, int16_t frequenciesIndexTriggersCount);
+	int32_t payloadSize, int16_t* frequenciesIndexTriggers, int16_t frequenciesIndexTriggersCount);
 
 /**
 * Free buffer in object
@@ -130,12 +130,12 @@ void warble_generate_signal(warble *warble,double powerPeak, unsigned char* word
 /*
  * Chuffle and encode using reed salomon algorithm
  */
-void warble_reed_encode_salomon(warble *warble, unsigned char* msg, size_t msg_length, unsigned char* words);
+void warble_reed_encode_solomon(warble *warble, unsigned char* msg, size_t msg_length, unsigned char* words);
 
 /*
  * decode and reassemble using reed salomon algorithm
  */
-void warble_reed_decode_salomon(warble *warble, unsigned char* payload, unsigned char* words);
+void warble_reed_decode_solomon(warble *warble, unsigned char* payload, unsigned char* words);
 
 /**
 * @param warble Object
