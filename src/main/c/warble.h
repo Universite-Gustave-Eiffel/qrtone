@@ -140,7 +140,7 @@ void warble_reed_encode_solomon(warble *warble, unsigned char* msg, unsigned cha
 /*
  * decode and reassemble using reed salomon algorithm
  */
-void warble_reed_decode_solomon(warble *warble, unsigned char* payload, unsigned char* block);
+void warble_reed_decode_solomon(warble *warble, unsigned char* words, unsigned char* msg);
 
 /**
 * @param warble Object

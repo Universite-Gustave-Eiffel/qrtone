@@ -174,7 +174,7 @@ MU_TEST(testFeedSignal1) {
 	warble_free(&cfg);
 }
 
-MU_TEST(testErrorCorrection) {
+MU_TEST(testWithSolomonShort) {
 	double word_length = 0.078; // pitch length in seconds
 	warble cfg;
 	int sample_rate = 44100;
@@ -182,6 +182,9 @@ MU_TEST(testErrorCorrection) {
 	double powerPeak = powerRMS * sqrt(2);
 	int16_t triggers[2] = { 9, 25 };
 	char payload[] = "!0BSduvwxyz";
+	char* decoded_payload = malloc(sizeof(unsigned char) * strlen(payload) + 1);
+	memset(decoded_payload, 0, sizeof(unsigned char) * strlen(payload) + 1);
+
 	int blankBefore = (int)(44100 * 0.13);
 	int blankAfter = (int)(44100 * 0.2);
 
@@ -206,8 +209,12 @@ MU_TEST(testErrorCorrection) {
 		}
 	}
 
-	mu_assert_string_eq(words, cfg.parsed);
+	// Decode parsed words
+	warble_reed_decode_solomon(&cfg, cfg.parsed, decoded_payload);
 
+	mu_assert_string_eq(payload, decoded_payload);
+
+	free(decoded_payload);
 	free(words);
 	free(signal);
 	warble_free(&cfg);
@@ -217,8 +224,8 @@ MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(test1khz);
 	MU_RUN_TEST(testGenerateSignal);
 	MU_RUN_TEST(testFeedSignal1);
-	MU_RUN_TEST(testWriteSignal);
-	MU_RUN_TEST(testErrorCorrection);
+	//MU_RUN_TEST(testWriteSignal);
+	MU_RUN_TEST(testWithSolomonShort);
 }
 
 int main(int argc, char** argv) {

@@ -117,7 +117,7 @@ warble* warble_create() {
 }
 
 int32_t warble_reed_solomon_distance(int32_t length) {
-	return max(4, min(32, pow(2, round(log(length / 3.) / log(2)))));
+	return (int32_t)max(4, min(32, pow(2, round(log(length / 3.) / log(2)))));
 }
 
 void warble_init(warble* this, double sampleRate, double firstFrequency,
@@ -266,13 +266,22 @@ warble_generate_pitch(double* signal_out, int32_t length, double sample_rate, do
 	}
 }
 
+void warble_swap_chars(unsigned char* input_string,int32_t* index, int32_t n) {
+	int i;
+	for (i = 0; i < n; i++) {
+		unsigned char word = input_string[i];
+		input_string[i] = input_string[index[i]];
+		input_string[index[i]] = word;
+	}
+}
+
 void warble_reed_encode_solomon(warble *warble, unsigned char* msg, unsigned char* words) {
 	// Split message if its size > WARBLE_RS_P
 	int msg_cursor;
 	int block_cursor = 0;
 	correct_reed_solomon *rs = correct_reed_solomon_create(
 		correct_rs_primitive_polynomial_ccsds, 1, 1, warble->distance);
-	for(int msg_cursor = 0; msg_cursor < warble->payloadSize; msg_cursor += warble->rs_message_length) {
+	for(msg_cursor = 0; msg_cursor < warble->payloadSize; msg_cursor += warble->rs_message_length) {
 		ssize_t res = correct_reed_solomon_encode(rs, &(msg[msg_cursor]), warble->rs_message_length, &(words[block_cursor]));
 		block_cursor += warble->rs_message_length + warble->distance;
 	}
@@ -284,18 +293,33 @@ void warble_reed_encode_solomon(warble *warble, unsigned char* msg, unsigned cha
 			correct_rs_primitive_polynomial_ccsds, 1, 1, warble->distance_last);
 		ssize_t res = correct_reed_solomon_encode(rs, &(msg[warble->payloadSize - remaining]), warble->rs_message_length, &(words[warble->block_length - remaining - warble->distance_last]));
 		// Interleave message in order to spread consecutive errors on multiple reed solomon messages (increase robustness)
-		int i;
-		for(int i = 0; i < warble->block_length; i++) {
-			unsigned char word = words[i];
-			words[i] = words[warble->shuffleIndex[i]];
-			words[warble->shuffleIndex[i]] = word;
-		}
+		warble_swap_chars(words, warble->shuffleIndex, warble->block_length);
 		correct_reed_solomon_destroy(rs);
 	}
 }
 
-void warble_reed_decode_solomon(warble *warble, unsigned char* payload, unsigned char* words) {
-
+void warble_reed_decode_solomon(warble *warble, unsigned char* words, unsigned char* msg) {
+	int msg_cursor;
+	int block_cursor = 0;
+	int remaining = warble->payloadSize % warble->rs_message_length;
+	if (remaining > 0) {
+		// Deinterleave message
+		warble_swap_chars(words, warble->shuffleIndex, warble->block_length);
+	}
+	correct_reed_solomon *rs = correct_reed_solomon_create(
+		correct_rs_primitive_polynomial_ccsds, 1, 1, warble->distance);
+	for (msg_cursor = 0; msg_cursor < warble->payloadSize; msg_cursor += warble->rs_message_length) {
+		ssize_t res = correct_reed_solomon_decode(rs, &(words[block_cursor]), warble->rs_message_length+ warble->distance, &(msg[msg_cursor]));
+		block_cursor += warble->rs_message_length + warble->distance;
+	}
+	correct_reed_solomon_destroy(rs);
+	// Forward error correction on the remaining message chars
+	if (remaining > 0) {
+		rs = correct_reed_solomon_create(
+			correct_rs_primitive_polynomial_ccsds, 1, 1, warble->distance_last);
+		ssize_t res = correct_reed_solomon_decode(rs, &(words[warble->block_length - remaining - warble->distance_last]), remaining + warble->distance_last, &(msg[warble->payloadSize - remaining]));
+		correct_reed_solomon_destroy(rs);
+	}
 }
 
 void warble_generate_signal(warble *warble,double power_peak, unsigned char* words, double* signal_out) {
