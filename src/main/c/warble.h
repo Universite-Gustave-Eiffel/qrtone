@@ -58,7 +58,7 @@ typedef struct _warble {
 	// Algorithm data
 	unsigned char* parsed;          /**< parsed words of length wordTriggerCount+payloadSize+paritySize */
 	int32_t* shuffleIndex;		    /**< Shuffle index, used to (de)shuffle words sent/received after/before reed solomon */
-	double* frequencies;            /**< Computed pitch frequencies length is 32 */
+	double* frequencies;            /**< Computed pitch frequencies length is WARBLE_PITCH_COUNT */
 	int64_t triggerSampleIndex;     /**< Sample index of first trigger */
 	double triggerSampleRMS;		/**< Highest RMS of first trigger */
 	int32_t word_length;			/** pitch length in samples*/
@@ -96,11 +96,12 @@ unsigned char spectrumToChar(warble *warble, double* rms);
  *  @param firstFrequency lowest frequency
  *	@param frequencyMultiplication; /**< Increment factor between each word, 0 if usage of frequencyIncrement
  *  @param frequencyIncrement;     /**< Increment between each word, 0 if usage of frequencyMultiplication 
+ *  @param message_size Payload size provided to warble_reed_encode_solomon. Maximum is 223. 
  */
 void warble_init(warble* this, double sampleRate, double firstFrequency,
 	double frequencyMultiplication,
 	int16_t frequencyIncrement, double word_time,
-	int32_t payloadSize, int16_t* frequenciesIndexTriggers, int16_t frequenciesIndexTriggersCount);
+	uint8_t message_size, int16_t* frequenciesIndexTriggers, int16_t frequenciesIndexTriggersCount);
 
 /**
 * Free buffer in object
@@ -130,12 +131,12 @@ void warble_generate_signal(warble *warble,double powerPeak, unsigned char* word
 /*
  * Chuffle and encode using reed salomon algorithm
  */
-void warble_reed_encode_solomon(warble *warble, unsigned char* msg, size_t msg_length, unsigned char* words);
+void warble_reed_encode_solomon(warble *warble, unsigned char* msg, unsigned char* block);
 
 /*
  * decode and reassemble using reed salomon algorithm
  */
-void warble_reed_decode_solomon(warble *warble, unsigned char* payload, unsigned char* words);
+void warble_reed_decode_solomon(warble *warble, unsigned char* payload, unsigned char* block);
 
 /**
 * @param warble Object

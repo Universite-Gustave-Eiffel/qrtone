@@ -1,19 +1,10 @@
 # openwarble
 Convert data to/from audio signals
 
-This library is based on Yin algorithm implementation by Michael Roy.
+This library is written in C99 under BSD 3 license.
 
-Yin algorithm.
+This library use the library [libcorrect](https://github.com/quiet/libcorrect) for forward error correction.
 
-Complete Yin algorithm as described by A. de Cheveigne and H. Kawahara in
-<a href="http://recherche.ircam.fr/equipes/pcm/cheveign/ps/2002_JASA_YIN_proof.pdf">
-YIN, a fundamental frequency estimator for speech and music</a>, 
-J. Acoust. Soc. Am. 111, 1917-1930.
-
-According to the author, this algorithm works best with low-pass 
-prefiltering at 1000 Hz, although it will function really well without.
-
-This particular implementation will function in real time with sample rates of 
-up to 20 kHz
+Signal processing use method *Sysel and Rajmic:Goertzel algorithm generalized to non-integer multiples of fundamental frequency. EURASIP Journal on Advances in Signal Processing 2012 2012:56.*
 
 The library is converted into a native Android library thanks to renjin GCC-Bridge (https://github.com/bedatadriven/renjin/tree/master/tools/gcc-bridge)

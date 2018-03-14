@@ -40,7 +40,6 @@
 
 #define WARBLE_2PI 6.283185307179586
 #define PITCH_SIGNAL_TO_NOISE_TRIGGER 3 // Accept pitch if pitch power is less than 3dB lower than signal level
-#define PERCENT_CODE_ERROR 12.0
 
 // Pseudo random generator
 int warble_rand(int64_t* next) {
@@ -108,6 +107,7 @@ double warble_compute_rms(const double* signal, int32_t s_length) {
 	return sqrt(sum / s_length);
 }
 
+// Used by Java binding
 warble* warble_create() {
 	warble* this = (warble*)malloc(sizeof(warble));
 	return this;
@@ -116,11 +116,12 @@ warble* warble_create() {
 void warble_init(warble* this, double sampleRate, double firstFrequency,
 	double frequencyMultiplication,
 	int16_t frequencyIncrement, double word_time,
-	int32_t payloadSize, int16_t* frequenciesIndexTriggers, int16_t frequenciesIndexTriggersCount)  {
+	uint8_t payloadSize, int16_t* frequenciesIndexTriggers, int16_t frequenciesIndexTriggersCount)  {
 	this->sampleRate = sampleRate;
 	this->payloadSize = payloadSize;
-	int16_t distance = payloadSize + (int16_t)pow(2, round(log(payloadSize / PERCENT_CODE_ERROR) / log(2)));
-	this->block_length = this->payloadSize + distance;
+	int32_t distance = max(4, min(32, pow(2, round(log(payloadSize / 3.) / log(2)))));
+	this->block_length = min(255, this->payloadSize + distance);
+	this->payloadSize = this->block_length - distance;
 	this->word_length = (int32_t)(sampleRate * word_time);
 	this->window_length = (int32_t)(this->word_length / 2);
 	this->frequenciesIndexTriggersCount = frequenciesIndexTriggersCount;
@@ -221,7 +222,7 @@ int16_t warble_feed(warble *warble, double* signal, int64_t sample_index) {
 				warble_generalized_goertzel(&(signal[windowStartDiff]), warble->window_length - windowStartDiff, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rms);
 
 				warble->parsed[wordIndex - warble->frequenciesIndexTriggersCount] = spectrumToChar(warble, rms);
-				if(wordIndex == warble->payloadSize + warble->frequenciesIndexTriggersCount - 1) {
+				if(wordIndex == warble->block_length + warble->frequenciesIndexTriggersCount - 1) {
 					warble->triggerSampleIndex = -1;
 					return 1;
 				}
@@ -236,7 +237,7 @@ size_t warble_feed_window_size(warble *warble) {
 }
 
 size_t warble_generate_window_size(warble *warble) {
-	return (warble->frequenciesIndexTriggersCount + warble->payloadSize) * warble->word_length;
+	return (warble->frequenciesIndexTriggersCount + warble->block_length) * warble->word_length;
 }
 
 warble_generate_pitch(double* signal_out, int32_t length, double sample_rate, double frequency, double power_peak) {
@@ -247,14 +248,12 @@ warble_generate_pitch(double* signal_out, int32_t length, double sample_rate, do
 	}
 }
 
-void warble_reed_encode_solomon(warble *warble, unsigned char* msg, size_t msg_length, unsigned char* words) {
+void warble_reed_encode_solomon(warble *warble, unsigned char* msg, unsigned char* words) {
 	size_t min_distance = warble->block_length - warble->payloadSize;
 	correct_reed_solomon *rs = correct_reed_solomon_create(
-		correct_rs_primitive_polynomial_ccsds, 1, 1, min_distance);
-	int* indices = malloc(warble->block_length * sizeof(int));
-	size_t block_length = msg_length + min_distance;
-	size_t pad_length = warble->payloadSize - msg_length;
-	ssize_t res = correct_reed_solomon_encode(rs, msg, msg_length, words);
+		correct_rs_primitive_polynomial_ccsds, 1, 1, min_distance);	
+	size_t block_length = warble->block_length + min_distance;
+	ssize_t res = correct_reed_solomon_encode(rs, msg, warble->payloadSize, words);
 	correct_reed_solomon_destroy(rs);
 }
 
@@ -273,7 +272,7 @@ void warble_generate_signal(warble *warble,double power_peak, unsigned char* wor
 
 	// Other pitchs
 
-	for(i=0; i < warble->payloadSize; i++) {
+	for(i=0; i < warble->block_length; i++) {
 		int col = words[i] % WARBLE_PITCH_ROOT;
 		int row = words[i] / WARBLE_PITCH_ROOT;
 		double freq1 = warble->frequencies[col];

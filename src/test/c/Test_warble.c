@@ -63,7 +63,7 @@ MU_TEST(testGenerateSignal) {
 	int16_t triggers[2] = {9, 25};
 	char payload[] = "parrot";
 
-	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (int16_t)strlen(payload), triggers, 2);
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (uint8_t)strlen(payload), triggers, 2);
 
 	size_t windowSize = warble_generate_window_size(&cfg);
 	double* signal = malloc(sizeof(double) * windowSize);
@@ -108,7 +108,7 @@ MU_TEST(testWriteSignal) {
 	int blankBefore = (int)(44100 * 0.55);
 	int blankAfter = (int)(44100 * 0.6);
 
-	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (int16_t)strlen(payload), triggers, 2);
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (uint8_t)strlen(payload), triggers, 2);
 
 	size_t signal_size = warble_generate_window_size(&cfg) + blankBefore + blankAfter;
 	double* signal = malloc(sizeof(double) * signal_size);
@@ -154,7 +154,7 @@ MU_TEST(testFeedSignal1) {
 	int blankBefore = (int)(44100 * 0.13);
 	int blankAfter = (int)(44100 * 0.2);
 
-	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (int32_t)strlen(payload), triggers, 2);
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (uint8_t)strlen(payload), triggers, 2);
 
 	size_t signal_size = warble_generate_window_size(&cfg) + blankBefore + blankAfter;
 	double* signal = malloc(sizeof(double) * signal_size);
@@ -174,11 +174,50 @@ MU_TEST(testFeedSignal1) {
 	warble_free(&cfg);
 }
 
+MU_TEST(testErrorCorrection) {
+	double word_length = 0.078; // pitch length in seconds
+	warble cfg;
+	int sample_rate = 44100;
+	double powerRMS = 500;
+	double powerPeak = powerRMS * sqrt(2);
+	int16_t triggers[2] = { 9, 25 };
+	char payload[] = "!0BSduvwxyz";
+	int blankBefore = (int)(44100 * 0.13);
+	int blankAfter = (int)(44100 * 0.2);
+
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (uint8_t)strlen(payload), triggers, 2);
+
+	size_t signal_size = warble_generate_window_size(&cfg) + blankBefore + blankAfter;
+	double* signal = malloc(sizeof(double) * signal_size);
+	memset(signal, 0, sizeof(double) * signal_size);
+
+	// Encode message
+	unsigned char* words = malloc(sizeof(unsigned char) * cfg.block_length);
+	memset(words, 0, sizeof(unsigned char) * cfg.block_length);
+	warble_reed_encode_solomon(&cfg, payload, words);
+
+	// Replaces zeroes with pitchs
+	warble_generate_signal(&cfg, powerPeak, words, &(signal[blankBefore]));
+
+	int i;
+	for (i = 0; i < signal_size - cfg.window_length; i += cfg.window_length) {
+		if (warble_feed(&cfg, &(signal[i]), i)) {
+			break;
+		}
+	}
+
+	free(words);
+	free(signal);
+	mu_assert_string_eq(payload, cfg.parsed);
+	warble_free(&cfg);
+}
+
 MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(test1khz);
 	MU_RUN_TEST(testGenerateSignal);
 	MU_RUN_TEST(testFeedSignal1);
 	MU_RUN_TEST(testWriteSignal);
+	MU_RUN_TEST(testErrorCorrection);
 }
 
 int main(int argc, char** argv) {
