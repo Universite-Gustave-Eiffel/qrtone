@@ -148,6 +148,10 @@ void warble_reed_decode_solomon(warble *warble, unsigned char* words, unsigned c
 */
 void warble_GetPayload(warble *warble, unsigned char * payload);
 
+void warble_swap_chars(unsigned char* input_string, int32_t* index, size_t n);
+
+void warble_fisher_yates_shuffle_index(int n, int* index);
+
 #ifdef __cplusplus
 }
 #endif

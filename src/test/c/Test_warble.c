@@ -205,12 +205,73 @@ MU_TEST(testWithSolomonShort) {
 	int i;
 	for (i = 0; i < signal_size - cfg.window_length; i += cfg.window_length) {
 		if (warble_feed(&cfg, &(signal[i]), i)) {
+			// Decode parsed words
+			warble_reed_decode_solomon(&cfg, cfg.parsed, decoded_payload);
 			break;
 		}
 	}
 
-	// Decode parsed words
-	warble_reed_decode_solomon(&cfg, cfg.parsed, decoded_payload);
+
+	mu_assert_string_eq(payload, decoded_payload);
+
+	free(decoded_payload);
+	free(words);
+	free(signal);
+	warble_free(&cfg);
+}
+MU_TEST(testInterleave) {
+	char expected[] = "dermatoglyphics";
+	char payload[] = "dermatoglyphics";
+	// Compute index shuffling of messages
+	int shuffleIndex[15];
+	int i;
+	for (i = 0; i < 15; i++) {
+		shuffleIndex[i] = i;
+	}
+	warble_fisher_yates_shuffle_index(15, shuffleIndex);
+	warble_swap_chars(payload, shuffleIndex, strlen(payload));
+	warble_swap_chars(payload, shuffleIndex, strlen(payload));
+	mu_assert_string_eq(expected, payload);
+}
+
+
+MU_TEST(testWithSolomonLong) {
+	double word_length = 0.05; // pitch length in seconds
+	warble cfg;
+	int sample_rate = 44100;
+	double powerRMS = 500;
+	double powerPeak = powerRMS * sqrt(2);
+	int16_t triggers[2] = { 9, 25 };
+	char payload[] = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse volutpat.";
+	char* decoded_payload = malloc(sizeof(unsigned char) * strlen(payload) + 1);
+	memset(decoded_payload, 0, sizeof(unsigned char) * strlen(payload) + 1);
+
+	int blankBefore = (int)(44100 * 0.13);
+	int blankAfter = (int)(44100 * 0.2);
+
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (int32_t)strlen(payload), triggers, 2);
+
+	size_t signal_size = warble_generate_window_size(&cfg) + blankBefore + blankAfter;
+	double* signal = malloc(sizeof(double) * signal_size);
+	memset(signal, 0, sizeof(double) * signal_size);
+
+	// Encode message
+	unsigned char* words = malloc(sizeof(unsigned char) * cfg.block_length + 1);
+	memset(words, 0, sizeof(unsigned char) * cfg.block_length + 1);
+	warble_reed_encode_solomon(&cfg, payload, words);
+
+	// Replaces zeroes with pitchs
+	warble_generate_signal(&cfg, powerPeak, words, &(signal[blankBefore]));
+
+	int i;
+	for (i = 0; i < signal_size - cfg.window_length; i += cfg.window_length) {
+		if (warble_feed(&cfg, &(signal[i]), i)) {
+			// Decode parsed words
+			warble_reed_decode_solomon(&cfg, cfg.parsed, decoded_payload);
+			break;
+		}
+	}
+
 
 	mu_assert_string_eq(payload, decoded_payload);
 
@@ -226,6 +287,8 @@ MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(testFeedSignal1);
 	//MU_RUN_TEST(testWriteSignal);
 	MU_RUN_TEST(testWithSolomonShort);
+	//MU_RUN_TEST(testWithSolomonLong);
+	MU_RUN_TEST(testInterleave);
 }
 
 int main(int argc, char** argv) {
