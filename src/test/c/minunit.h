@@ -157,7 +157,6 @@ static void (*minunit_teardown)(void) = NULL;
 	if (!(test)) {\
 		snprintf(minunit_last_message, MINUNIT_MESSAGE_LEN, "%s failed:\n\t%s:%d: %s", __func__, __FILE__, __LINE__, message);\
 		minunit_status = 1;\
-		return;\
 	} else {\
 		printf(".");\
 	}\
@@ -172,7 +171,6 @@ static void (*minunit_teardown)(void) = NULL;
 	if (minunit_tmp_e != minunit_tmp_r) {\
 		snprintf(minunit_last_message, MINUNIT_MESSAGE_LEN, "%s failed:\n\t%s:%d: %d expected but was %d", __func__, __FILE__, __LINE__, minunit_tmp_e, minunit_tmp_r);\
 		minunit_status = 1;\
-		return;\
 	} else {\
 		printf(".");\
 	}\
@@ -188,7 +186,6 @@ static void (*minunit_teardown)(void) = NULL;
 		int minunit_significant_figures = (int)(1 - log10(epsilon));\
 		snprintf(minunit_last_message, MINUNIT_MESSAGE_LEN, "%s failed:\n\t%s:%d: %.*g expected but was %.*g", __func__, __FILE__, __LINE__, minunit_significant_figures, minunit_tmp_e, minunit_significant_figures, minunit_tmp_r);\
 		minunit_status = 1;\
-		return;\
 	} else {\
 		printf(".");\
 	}\
@@ -207,7 +204,6 @@ static void (*minunit_teardown)(void) = NULL;
 	if(strcmp(minunit_tmp_e, minunit_tmp_r)) {\
 		snprintf(minunit_last_message, MINUNIT_MESSAGE_LEN, "%s failed:\n\t%s:%d: '%s' expected but was '%s'", __func__, __FILE__, __LINE__, minunit_tmp_e, minunit_tmp_r);\
 		minunit_status = 1;\
-		return;\
 	} else {\
 		printf(".");\
 	}\

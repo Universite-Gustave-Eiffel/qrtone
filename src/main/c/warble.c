@@ -217,7 +217,7 @@ int16_t warble_feed(warble *warble, double* signal, int64_t sample_index) {
 		}
 	} else {
 		int wordIndex = (int)((sample_index - warble->triggerSampleIndex + warble->window_length / 2) / (double)warble->word_length);
-		if(wordIndex > warble->payloadSize + warble->frequenciesIndexTriggersCount) {
+		if(wordIndex > warble->block_length + warble->frequenciesIndexTriggersCount) {
 			warble->triggerSampleIndex = -1;
 			return 0; // we have an issue here
 		}
@@ -283,8 +283,15 @@ void warble_reed_encode_solomon(warble *warble, unsigned char* msg, unsigned cha
 		rs = correct_reed_solomon_create(
 			correct_rs_primitive_polynomial_ccsds, 1, 1, warble->distance_last);
 		ssize_t res = correct_reed_solomon_encode(rs, &(msg[warble->payloadSize - remaining]), warble->rs_message_length, &(words[warble->block_length - remaining - warble->distance_last]));
+		// Interleave message in order to spread consecutive errors on multiple reed solomon messages (increase robustness)
+		int i;
+		for(int i = 0; i < warble->block_length; i++) {
+			unsigned char word = words[i];
+			words[i] = words[warble->shuffleIndex[i]];
+			words[warble->shuffleIndex[i]] = word;
+		}
+		correct_reed_solomon_destroy(rs);
 	}
-	correct_reed_solomon_destroy(rs);
 }
 
 void warble_reed_decode_solomon(warble *warble, unsigned char* payload, unsigned char* words) {

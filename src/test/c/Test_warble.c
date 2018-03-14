@@ -185,15 +185,15 @@ MU_TEST(testErrorCorrection) {
 	int blankBefore = (int)(44100 * 0.13);
 	int blankAfter = (int)(44100 * 0.2);
 
-	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, 78, triggers, 2);
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (int32_t)strlen(payload), triggers, 2);
 
 	size_t signal_size = warble_generate_window_size(&cfg) + blankBefore + blankAfter;
 	double* signal = malloc(sizeof(double) * signal_size);
 	memset(signal, 0, sizeof(double) * signal_size);
 
 	// Encode message
-	unsigned char* words = malloc(sizeof(unsigned char) * cfg.block_length);
-	memset(words, 0, sizeof(unsigned char) * cfg.block_length);
+	unsigned char* words = malloc(sizeof(unsigned char) * cfg.block_length + 1);
+	memset(words, 0, sizeof(unsigned char) * cfg.block_length + 1);
 	warble_reed_encode_solomon(&cfg, payload, words);
 
 	// Replaces zeroes with pitchs
@@ -206,17 +206,18 @@ MU_TEST(testErrorCorrection) {
 		}
 	}
 
+	mu_assert_string_eq(words, cfg.parsed);
+
 	free(words);
 	free(signal);
-	mu_assert_string_eq(payload, cfg.parsed);
 	warble_free(&cfg);
 }
 
 MU_TEST_SUITE(test_suite) {
-	//MU_RUN_TEST(test1khz);
-	//MU_RUN_TEST(testGenerateSignal);
-	//MU_RUN_TEST(testFeedSignal1);
-	//MU_RUN_TEST(testWriteSignal);
+	MU_RUN_TEST(test1khz);
+	MU_RUN_TEST(testGenerateSignal);
+	MU_RUN_TEST(testFeedSignal1);
+	MU_RUN_TEST(testWriteSignal);
 	MU_RUN_TEST(testErrorCorrection);
 }
 
