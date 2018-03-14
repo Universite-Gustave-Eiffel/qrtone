@@ -40,6 +40,9 @@
 
 #define WARBLE_2PI 6.283185307179586
 #define PITCH_SIGNAL_TO_NOISE_TRIGGER 3 // Accept pitch if pitch power is less than 3dB lower than signal level
+// In order to fix at least 25% of error, the maximum message length attached to a reed solomon(255,32) code is 64 Bytes for a 32 distance
+#define WARBLE_RS_P 64
+#define WARBLE_RS_DISTANCE 32
 
 // Pseudo random generator
 int warble_rand(int64_t* next) {
@@ -113,17 +116,32 @@ warble* warble_create() {
 	return this;
 }
 
+int32_t warble_reed_solomon_distance(int32_t length) {
+	return max(4, min(32, pow(2, round(log(length / 3.) / log(2)))));
+}
+
 void warble_init(warble* this, double sampleRate, double firstFrequency,
 	double frequencyMultiplication,
 	int16_t frequencyIncrement, double word_time,
-	uint8_t payloadSize, int16_t* frequenciesIndexTriggers, int16_t frequenciesIndexTriggersCount)  {
+	int32_t payloadSize, int16_t* frequenciesIndexTriggers, int16_t frequenciesIndexTriggersCount)  {
 	this->sampleRate = sampleRate;
 	this->payloadSize = payloadSize;
-	int32_t distance = max(4, min(32, pow(2, round(log(payloadSize / 3.) / log(2)))));
-	this->block_length = min(255, this->payloadSize + distance);
-	this->payloadSize = this->block_length - distance;
+	this->distance = warble_reed_solomon_distance(this->payloadSize);
+	if(this->payloadSize > WARBLE_RS_P && this->distance % WARBLE_RS_P > 0) {
+		// The last cutted message is smaller than WARBLE_RS_P
+		// So we adapt the last cutted fec in order to reduce the global length
+		this->distance_last = warble_reed_solomon_distance(this->distance % WARBLE_RS_P);
+		int remain_chars = this->payloadSize % WARBLE_RS_P;
+		this->block_length = (WARBLE_RS_P + this->distance) * (this->payloadSize / WARBLE_RS_P) + remain_chars + this->distance_last;
+		this->rs_message_length = WARBLE_RS_P;
+	} else {
+		// Cutted message length is the same. Or it is not cutted
+		this->distance_last = this->distance;
+		this->block_length = (this->payloadSize + this->distance) * max(1, this->payloadSize / WARBLE_RS_P);
+		this->rs_message_length = this->payloadSize > WARBLE_RS_P ? WARBLE_RS_P : this->payloadSize;
+	}
 	this->word_length = (int32_t)(sampleRate * word_time);
-	this->window_length = (int32_t)(this->word_length / 2);
+	this->window_length = (int32_t)((sampleRate * word_time) / 2.);
 	this->frequenciesIndexTriggersCount = frequenciesIndexTriggersCount;
 	this->frequenciesIndexTriggers = malloc(sizeof(int16_t) * frequenciesIndexTriggersCount);
 	memcpy(this->frequenciesIndexTriggers, frequenciesIndexTriggers, sizeof(int16_t) * frequenciesIndexTriggersCount);
@@ -249,11 +267,23 @@ warble_generate_pitch(double* signal_out, int32_t length, double sample_rate, do
 }
 
 void warble_reed_encode_solomon(warble *warble, unsigned char* msg, unsigned char* words) {
-	size_t min_distance = warble->block_length - warble->payloadSize;
+	// Split message if its size > WARBLE_RS_P
+	int msg_cursor;
+	int block_cursor = 0;
 	correct_reed_solomon *rs = correct_reed_solomon_create(
-		correct_rs_primitive_polynomial_ccsds, 1, 1, min_distance);	
-	size_t block_length = warble->block_length + min_distance;
-	ssize_t res = correct_reed_solomon_encode(rs, msg, warble->payloadSize, words);
+		correct_rs_primitive_polynomial_ccsds, 1, 1, warble->distance);
+	for(int msg_cursor = 0; msg_cursor < warble->payloadSize; msg_cursor += warble->rs_message_length) {
+		ssize_t res = correct_reed_solomon_encode(rs, &(msg[msg_cursor]), warble->rs_message_length, &(words[block_cursor]));
+		block_cursor += warble->rs_message_length + warble->distance;
+	}
+	correct_reed_solomon_destroy(rs);
+	// Forward error correction on the remaining message chars
+	int remaining = warble->payloadSize % warble->rs_message_length;
+	if(remaining > 0) {
+		rs = correct_reed_solomon_create(
+			correct_rs_primitive_polynomial_ccsds, 1, 1, warble->distance_last);
+		ssize_t res = correct_reed_solomon_encode(rs, &(msg[warble->payloadSize - remaining]), warble->rs_message_length, &(words[warble->block_length - remaining - warble->distance_last]));
+	}
 	correct_reed_solomon_destroy(rs);
 }
 

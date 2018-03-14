@@ -51,11 +51,15 @@ extern "C" {
 typedef struct _warble {
 	// Inputs
 	int32_t payloadSize;            /**< Number of payload words */
-	int32_t block_length;           /**< Number of words (payload+forward correction codes) */
 	int16_t frequenciesIndexTriggersCount;       /**< Number of pitch that trigger the sequence of words */
 	int16_t* frequenciesIndexTriggers;             /**< Word index that trigger the sequence of words */
 	double sampleRate;				/**< Sample rate of audio in Hz */
 	// Algorithm data
+	int32_t block_length;           /**< Number of words (payload+forward correction codes) */
+	int32_t distance;               /**< Distance for reed-solomon error code */
+	int32_t rs_message_length;      /**< Length of message attached to distance*/
+	int32_t distance_last;          /**< Distance for reed-solomon error code on the last cutted message piece*/
+
 	unsigned char* parsed;          /**< parsed words of length wordTriggerCount+payloadSize+paritySize */
 	int32_t* shuffleIndex;		    /**< Shuffle index, used to (de)shuffle words sent/received after/before reed solomon */
 	double* frequencies;            /**< Computed pitch frequencies length is WARBLE_PITCH_COUNT */
@@ -96,12 +100,12 @@ unsigned char spectrumToChar(warble *warble, double* rms);
  *  @param firstFrequency lowest frequency
  *	@param frequencyMultiplication; /**< Increment factor between each word, 0 if usage of frequencyIncrement
  *  @param frequencyIncrement;     /**< Increment between each word, 0 if usage of frequencyMultiplication 
- *  @param message_size Payload size provided to warble_reed_encode_solomon. Maximum is 223. 
+ *  @param message_size Payload size provided to warble_reed_encode_solomon.
  */
 void warble_init(warble* this, double sampleRate, double firstFrequency,
 	double frequencyMultiplication,
 	int16_t frequencyIncrement, double word_time,
-	uint8_t message_size, int16_t* frequenciesIndexTriggers, int16_t frequenciesIndexTriggersCount);
+	int32_t message_size, int16_t* frequenciesIndexTriggers, int16_t frequenciesIndexTriggersCount);
 
 /**
 * Free buffer in object
