@@ -91,7 +91,7 @@ MU_TEST(testGenerateSignal) {
 
 
 MU_TEST(testWriteSignal) {
-	FILE *f = fopen("freq.csv", "w");
+	FILE *f = fopen("audioTest_44100_16bitsPCM.raw", "wb");
 	if (f == NULL)
 	{
 		printf("Error opening file!\n");
@@ -104,7 +104,11 @@ MU_TEST(testWriteSignal) {
 	double powerRMS = 500;
 	double powerPeak = powerRMS * sqrt(2);
 	int16_t triggers[2] = { 9, 25 };
-	char payload[] = "HelloTheWorld";
+	// Send Ipfs adress
+	// import base58
+	// payload = map(ord, base58.b58decode("QmXjkFQjnD8i8ntmwehoAHBfJEApETx8ebScyVzAHqgjpD"))
+	char payload[] = {18, 32, 139, 163, 206, 2, 52, 26, 139, 93, 119, 147, 39, 46, 108, 4, 31, 36, 156,
+		95, 247, 186, 174, 163, 181, 224, 193, 42, 212, 156, 50, 83, 138, 114};
 	int blankBefore = (int)(44100 * 0.55);
 	int blankAfter = (int)(44100 * 0.6);
 
@@ -116,27 +120,15 @@ MU_TEST(testWriteSignal) {
 
 	// Replaces zeroes with pitchs
 	warble_generate_signal(&cfg, powerPeak, payload, &(signal[blankBefore]));
-	int idfreq;
-	fprintf(f, "t");
-	for (idfreq = 0; idfreq < WARBLE_PITCH_COUNT; idfreq++) {
-		fprintf(f, ", ");
-		fprintf(f, "%.1f", cfg.frequencies[idfreq]);
-	}
-	fprintf(f, "\n");
 
-	int i;
-	for (i = 0; i < signal_size - cfg.window_length; i += cfg.window_length) {
-		// Debug
-		double debug_rms[WARBLE_PITCH_COUNT];
-		warble_generalized_goertzel(&(signal[i]), cfg.window_length, cfg.sampleRate, cfg.frequencies, WARBLE_PITCH_COUNT, debug_rms);
-		int idfreq;
-		fprintf(f, "%.2f", i / (double)cfg.sampleRate);
-		for (idfreq = 0; idfreq < WARBLE_PITCH_COUNT; idfreq++) {
-			fprintf(f, ", ");
-			fprintf(f, "%.2f", debug_rms[idfreq]);
-		}
-		fprintf(f, "\n");
+	// Write signal
+	int s;
+	double factor = 32767. / (powerPeak * 4);
+	for(s = 0; s < signal_size; s++) {
+		int16_t sample = (int16_t)(signal[s] * factor);
+		fwrite(&sample, sizeof(int16_t), 1 , f);
 	}
+
 	free(signal);
 	warble_free(&cfg);
 
@@ -165,7 +157,7 @@ MU_TEST(testFeedSignal1) {
 
 	int i;
 	for(i=0; i < signal_size - cfg.window_length; i+=cfg.window_length) {
-		if (warble_feed(&cfg, &(signal[i]), i)) {
+		if (warble_feed(&cfg, &(signal[i]), i) == WARBLE_FEED_MESSAGE_COMPLETE) {
 			break;
 		}
 	}
@@ -204,7 +196,7 @@ MU_TEST(testWithSolomonShort) {
 
 	int i;
 	for (i = 0; i < signal_size - cfg.window_length; i += cfg.window_length) {
-		if (warble_feed(&cfg, &(signal[i]), i)) {
+		if (warble_feed(&cfg, &(signal[i]), i) == WARBLE_FEED_MESSAGE_COMPLETE) {
 			// Decode parsed words
 			warble_reed_decode_solomon(&cfg, cfg.parsed, decoded_payload);
 			break;
@@ -228,7 +220,7 @@ MU_TEST(testInterleave) {
 	for (i = 0; i < 30; i++) {
 		shuffleIndex[i] = i;
 	}
-	warble_fisher_yates_shuffle_index(strlen(payload), shuffleIndex);
+	warble_fisher_yates_shuffle_index((int)strlen(payload), shuffleIndex);
 	warble_swap_chars(payload, shuffleIndex, strlen(payload));
 	warble_unswap_chars(payload, shuffleIndex, strlen(payload));
 	mu_assert_string_eq(expected, payload);
@@ -265,7 +257,7 @@ MU_TEST(testWithSolomonLong) {
 
 	int i;
 	for (i = 0; i < signal_size - cfg.window_length; i += cfg.window_length) {
-		if (warble_feed(&cfg, &(signal[i]), i)) {
+		if (warble_feed(&cfg, &(signal[i]), i) == WARBLE_FEED_MESSAGE_COMPLETE) {
 			// Decode parsed words
 			mu_assert_string_eq(words, cfg.parsed);
 			warble_reed_decode_solomon(&cfg, cfg.parsed, decoded_payload);
@@ -357,7 +349,7 @@ MU_TEST(testWithSolomonErrorInSignal) {
 
 	int i;
 	for (i = 0; i < signal_size - cfg.window_length; i += cfg.window_length) {
-		if (warble_feed(&cfg, &(signal[i]), i)) {
+		if (warble_feed(&cfg, &(signal[i]), i) == WARBLE_FEED_MESSAGE_COMPLETE) {
 			// Decode and fix parsed words
 			mu_assert(warble_reed_decode_solomon(&cfg, cfg.parsed, decoded_payload) >= 0, "Can't fix error with reed solomon");
 			break;
@@ -373,16 +365,76 @@ MU_TEST(testWithSolomonErrorInSignal) {
 	warble_free(&cfg);
 }
 
+MU_TEST(testDecodingRealAudio1) {
+
+	char expected_payload[] = { 18, 32, 139, 163, 206, 2, 52, 26, 139, 93, 119, 147, 39, 46, 108, 4, 31, 36, 156,
+		95, 247, 186, 174, 163, 181, 224, 193, 42, 212, 156, 50, 83, 138, 114 };
+	FILE *f = fopen("audioTest_44100_16bitsPCM_0.0872s_1720.raw", "rb");
+	mu_check(f != NULL);
+
+	// obtain file size:
+	fseek(f, 0, SEEK_END);
+	size_t file_length = ftell(f);
+	rewind(f);
+
+	size_t buffer_length = sizeof(int16_t) * 1024;
+	char buffer[sizeof(int16_t) * 1024];
+	// Allocate memory to contain the signal
+	size_t signal_size = (file_length / sizeof(int16_t));
+	double* signal = malloc(sizeof(double) * signal_size);
+	size_t i;
+	size_t s = 0;
+	for(i = 0; i < file_length;) {
+		size_t res = fread(buffer, sizeof(char), min(buffer_length, file_length - i), f);
+		mu_check(res % sizeof(int16_t) == 0);
+		i += res;
+		int cursor;
+		for(cursor = 0; cursor < res; cursor+=sizeof(int16_t)) {
+			int16_t spl;
+			memcpy(&spl, buffer, sizeof(int16_t));
+			signal[s++] = spl;
+		}
+	}
+	fclose(f);
+
+	// Decode signal into payload
+
+
+	double word_length = 0.05; // pitch length in seconds
+	warble cfg;
+	int sample_rate = 44100;
+	int payload_len = 34;
+	int16_t triggers[2] = { 9, 25 };
+	char* decoded_payload = malloc(sizeof(unsigned char) * payload_len + 1);
+	memset(decoded_payload, 0, sizeof(unsigned char) * payload_len + 1);
+
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (int32_t)payload_len, triggers, 2);
+
+	for (i = 0; i < signal_size - cfg.window_length; i += cfg.window_length) {
+		if (warble_feed(&cfg, &(signal[i]), i) == WARBLE_FEED_MESSAGE_COMPLETE) {
+			// Decode and fix parsed words
+			mu_assert(warble_reed_decode_solomon(&cfg, cfg.parsed, decoded_payload) >= 0, "Can't fix error with reed solomon");
+			break;
+		}
+	}
+	
+	mu_assert_string_eq(expected_payload, decoded_payload);
+
+	free(decoded_payload);
+	free(signal);
+}
+
 MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(test1khz);
 	MU_RUN_TEST(testGenerateSignal);
 	MU_RUN_TEST(testFeedSignal1);
-	//MU_RUN_TEST(testWriteSignal);
+	//MU_RUN_TEST(testWriteSignal); // debug purpose
 	MU_RUN_TEST(testWithSolomonShort);
 	MU_RUN_TEST(testWithSolomonLong);
 	MU_RUN_TEST(testInterleave);
 	MU_RUN_TEST(testWithSolomonError);
 	MU_RUN_TEST(testWithSolomonErrorInSignal);
+	MU_RUN_TEST(testDecodingRealAudio1);
 }
 
 int main(int argc, char** argv) {

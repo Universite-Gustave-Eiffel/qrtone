@@ -44,6 +44,8 @@ extern "C" {
 #define WARBLE_PITCH_COUNT 32  // Number of used frequency bands
 #define WARBLE_PITCH_ROOT 16   // column and rows that make a char
 
+enum WARBLE_FEED_RESULT { WARBLE_FEED_ERROR = -1, WARBLE_FEED_IDLE = 0, WARBLE_FEED_MESSAGE_COMPLETE = 1, WARBLE_FEED_DETECT_PITCH = 2 };
+
 /**
 * @struct  Warble
 * @breif	Object to encapsulate the parameters for the generation and recognition of pitch sequence.
@@ -76,12 +78,12 @@ typedef struct _warble {
 * Sysel and Rajmic:Goertzel algorithm generalized to non-integer multiples of fundamental frequency. EURASIP Journal on Advances in Signal Processing 2012 2012:56.
 * @param signal Audio signal
 * @param s_length Audio signal array size
-* @param sampleRate Sampling rate in Hz
-* @param freqs Array of frequency search in Hz
-* @param f_length Size of freqs
-* @param[out] outFreqsPower Rms power, must be allocated with the same size of freqs
+* @param sample_rate Sampling rate in Hz
+* @param frequencies Array of frequency search in Hz
+* @param f_length Size of frequencies
+* @param[out] rms Rms power, must be allocated with the same size of frequencies
 */
-void warble_generalized_goertzel(const double* signal, int32_t s_length, double sampleRate, const double* freqs, int32_t f_length, double* outFreqsPower);
+void warble_generalized_goertzel(const double* signal, int32_t s_length, double sample_rate, const double* frequencies, int32_t f_length, double* rms);
 
 /*
  * Compute RMS of the provided signal
@@ -96,16 +98,20 @@ double warble_compute_rms(const double* signal, int32_t s_length);
 unsigned char spectrumToChar(warble *warble, double* rms);
 
 /*
- * Initialize warble configuration object
- *  @param firstFrequency lowest frequency
- *	@param frequencyMultiplication; /**< Increment factor between each word, 0 if usage of frequencyIncrement
- *  @param frequencyIncrement;     /**< Increment between each word, 0 if usage of frequencyMultiplication 
- *  @param message_size Payload size provided to warble_reed_encode_solomon.
+ *  Initialize warble configuration object
+ *  @param sample_rate Sampling rate of the signal
+ *  @param first_frequency lowest frequency
+ *	@param frequency_multiplication Increment factor between each word, 0 if usage of frequency_increment
+ *  @param frequency_increment Increment between each word, 0 if usage of frequency_multiplication 
+ *  @param word_time Pitch time length. Higher value is more robust but decrease bandwidth. Default is 0.05
+ *  @param message_size Payload size in char.
+ *  @param frequencies_index_triggers Frequency index (0-n) that triggers a series of pitch
+ *  @param frequencies_index_triggers_length size of array frequencies_index_triggers
  */
-void warble_init(warble* this, double sampleRate, double firstFrequency,
-	double frequencyMultiplication,
-	int16_t frequencyIncrement, double word_time,
-	int32_t message_size, int16_t* frequenciesIndexTriggers, int16_t frequenciesIndexTriggersCount);
+void warble_init(warble* this, double sample_rate, double first_frequency,
+	double frequency_multiplication,
+	int16_t frequency_increment, double word_time,
+	int32_t message_size, int16_t* frequencies_index_triggers, int16_t frequencies_index_triggers_length);
 
 /**
 * Free buffer in object
@@ -116,9 +122,11 @@ void warble_free(warble *warble);
 /**
 * Analyse the provided spectrum
 * @param warble Object
+* @param signal Audio signal with cfg.sampleRate and the length of cfg.window_length
+* @param sample_index Audio sample index of signal[0]. So that sample_index / cfg.sampleRate = time elapsed since beginning of feed. 
 * @return 1 if the message can be collected using warble_GetPayload
 */
-int16_t warble_feed(warble *warble, double* signal, int64_t sample_index);
+enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int64_t sample_index);
 
 /**
 * Return the expected window size output of warble_generate_signal
@@ -133,25 +141,20 @@ size_t warble_generate_window_size(warble *warble);
 void warble_generate_signal(warble *warble,double powerPeak, unsigned char* words, double* signal_out);
 
 /*
- * Chuffle and encode using reed salomon algorithm
+ * Encode and interleave using reed solomon algorithm
  */
 void warble_reed_encode_solomon(warble *warble, unsigned char* msg, unsigned char* block);
 
 /*
- * decode and reassemble using reed salomon algorithm
+ * deinterleave and decode using reed solomon algorithm
  * @return A positive number if decoded succeed
  */
 int warble_reed_decode_solomon(warble *warble, unsigned char* words, unsigned char* msg);
 
-/**
-* @param warble Object
-* @param payload
-*/
-void warble_GetPayload(warble *warble, unsigned char * payload);
-
-void warble_swap_chars(unsigned char* input_string, int32_t* index, size_t n);
+void warble_swap_chars(char* input_string, int32_t* index, size_t n);
 
 void warble_unswap_chars(char* input_string, int32_t* index, size_t n);
+
 /**
  * Generate random numbers for the fisher yates shuffling
  */

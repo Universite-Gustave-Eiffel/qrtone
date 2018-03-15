@@ -40,6 +40,7 @@
 
 #define WARBLE_2PI 6.283185307179586
 #define PITCH_SIGNAL_TO_NOISE_TRIGGER 3 // Accept pitch if pitch power is less than 3dB lower than signal level
+
 // In order to fix at least 20% of error, the maximum message length attached to a reed solomon(255,32) code is 10 Bytes for a 8 distance (can correct up to 2 Bytes)
 #define WARBLE_RS_P 10
 #define WARBLE_RS_DISTANCE 8
@@ -200,7 +201,7 @@ unsigned char spectrumToChar(warble *warble, double* rms) {
 	return  (unsigned char)(f1index * WARBLE_PITCH_ROOT + f0index);
 }
 
-int16_t warble_feed(warble *warble, double* signal, int64_t sample_index) {
+enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int64_t sample_index) {
 	if(warble->triggerSampleIndex < 0 || sample_index - warble->triggerSampleIndex <= warble->word_length) {
 		// Looking for start of pitch
 		double triggerRMS;
@@ -209,13 +210,14 @@ int16_t warble_feed(warble *warble, double* signal, int64_t sample_index) {
 			if(warble->triggerSampleIndex < 0 || warble->triggerSampleRMS < triggerRMS) {
 				warble->triggerSampleIndex = sample_index;
 				warble->triggerSampleRMS = triggerRMS;
+				return WARBLE_FEED_DETECT_PITCH;
 			}
 		}
 	} else {
 		int wordIndex = (int)((sample_index - warble->triggerSampleIndex + warble->window_length / 2) / (double)warble->word_length);
 		if(wordIndex > warble->block_length + warble->frequenciesIndexTriggersCount) {
 			warble->triggerSampleIndex = -1;
-			return 0; // we have an issue here
+			return WARBLE_FEED_ERROR; // we have an issue here
 		}
 
 		int64_t startPitch = warble->triggerSampleIndex + warble->word_length * wordIndex;
@@ -230,6 +232,7 @@ int16_t warble_feed(warble *warble, double* signal, int64_t sample_index) {
 					// Fail to recognize expected pitch
 					// Quit pitch, and wait for a new fist trigger
 					warble->triggerSampleIndex = -1;
+					return WARBLE_FEED_ERROR;
 				}		
 			} else {
 				double rms[WARBLE_PITCH_COUNT];
@@ -238,16 +241,16 @@ int16_t warble_feed(warble *warble, double* signal, int64_t sample_index) {
 				warble->parsed[wordIndex - warble->frequenciesIndexTriggersCount] = spectrumToChar(warble, rms);
 				if(wordIndex == warble->block_length + warble->frequenciesIndexTriggersCount - 1) {
 					warble->triggerSampleIndex = -1;
-					return 1;
+					return WARBLE_FEED_MESSAGE_COMPLETE;
 				}
 			}
 		}	
 	}
-	return 0;
+	return WARBLE_FEED_IDLE;
 }
 
 size_t warble_feed_window_size(warble *warble) {
-	return 0;
+	return warble->window_length;
 }
 
 size_t warble_generate_window_size(warble *warble) {
@@ -263,7 +266,7 @@ warble_generate_pitch(double* signal_out, int32_t length, double sample_rate, do
 }
 
 void warble_swap_chars(char* input_string, int32_t* index, size_t n) {
-	int i;
+	size_t i;
 	for (i = n - 1; i > 0; i--)
 	{
 		int v = index[n - 1 - i];
@@ -274,7 +277,7 @@ void warble_swap_chars(char* input_string, int32_t* index, size_t n) {
 }
 
 void warble_unswap_chars(char* input_string, int32_t* index, size_t n) {
-	int i;
+	size_t i;
 	for (i = 1; i < n; i++) {
 		int v = index[n - i - 1];
 		char tmp = input_string[i];
@@ -360,11 +363,4 @@ void warble_generate_signal(warble *warble,double power_peak, unsigned char* wor
 		warble_generate_pitch(&(signal_out[s]), warble->word_length, warble->sampleRate, freq2, power_peak);
 		s += warble->word_length;
 	}
-}
-
-void warble_GetPayload(warble *warble, unsigned char * payload) {
-	// Use Reed-Solomon Forward Error Correction
-
-	// Copy corrected payload
-	
 }
