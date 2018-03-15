@@ -150,6 +150,10 @@ void warble_GetPayload(warble *warble, unsigned char * payload);
 
 void warble_swap_chars(unsigned char* input_string, int32_t* index, size_t n);
 
+void warble_unswap_chars(char* input_string, int32_t* index, size_t n);
+/**
+ * Generate random numbers for the fisher yates shuffling
+ */
 void warble_fisher_yates_shuffle_index(int n, int* index);
 
 #ifdef __cplusplus

@@ -53,13 +53,9 @@ int warble_rand(int64_t* next) {
 // randomly swap specified integer
 void warble_fisher_yates_shuffle_index(int n, int* index) {
 	int i;
-	int cache;
 	int64_t rnd_cache = n;
-	for(i = n - 1; i > 0; i--) {
-		int j = warble_rand(&rnd_cache) % (i + 1);
-		cache = index[j];
-		index[j] = index[i];
-		index[i] = cache;
+	for (i = n - 1; i > 0; i--) {
+		index[n - 1 - i] = warble_rand(&rnd_cache) % (i + 1);
 	}
 }
 
@@ -117,7 +113,7 @@ warble* warble_create() {
 }
 
 int32_t warble_reed_solomon_distance(int32_t length) {
-	return (int32_t)max(4, min(32, pow(2, round(log(length / 3.) / log(2)))));
+	return (int32_t)max(4, min(WARBLE_RS_DISTANCE, pow(2, round(log(length / 3.) / log(2)))));
 }
 
 void warble_init(warble* this, double sampleRate, double firstFrequency,
@@ -266,14 +262,24 @@ warble_generate_pitch(double* signal_out, int32_t length, double sample_rate, do
 	}
 }
 
-void warble_swap_chars(unsigned char* input_string,int32_t* index, size_t n) {
+void warble_swap_chars(char* input_string, int32_t* index, size_t n) {
 	int i;
-	for (i = 0; i < n; i++) {
-		if(index[i] > i) {
-			unsigned char word = input_string[i];
-			input_string[i] = input_string[index[i]];
-			input_string[index[i]] = word;
-		}
+	for (i = n - 1; i > 0; i--)
+	{
+		int v = index[n - 1 - i];
+		char tmp = input_string[i];
+		input_string[i] = input_string[v];
+		input_string[v] = tmp;
+	}
+}
+
+void warble_unswap_chars(char* input_string, int32_t* index, size_t n) {
+	int i;
+	for (i = 1; i < n; i++) {
+		int v = index[n - i - 1];
+		char tmp = input_string[i];
+		input_string[i] = input_string[v];
+		input_string[v] = tmp;
 	}
 }
 
@@ -309,11 +315,11 @@ void warble_reed_decode_solomon(warble *warble, unsigned char* words, unsigned c
 	int remaining = warble->payloadSize % warble->rs_message_length;
 	if (warble->payloadSize > warble->rs_message_length) {
 		// Deinterleave message
-		warble_swap_chars(words, warble->shuffleIndex, warble->block_length);
+		warble_unswap_chars(words, warble->shuffleIndex, warble->block_length);
 	}
 	correct_reed_solomon *rs = correct_reed_solomon_create(
 		correct_rs_primitive_polynomial_ccsds, 1, 1, warble->distance);
-	for (msg_cursor = 0; msg_cursor < warble->payloadSize; msg_cursor += warble->rs_message_length) {
+	for (msg_cursor = 0; msg_cursor < warble->payloadSize - remaining; msg_cursor += warble->rs_message_length) {
 		ssize_t res = correct_reed_solomon_decode(rs, &(words[block_cursor]), warble->rs_message_length+ warble->distance, &(msg[msg_cursor]));
 		block_cursor += warble->rs_message_length + warble->distance;
 	}

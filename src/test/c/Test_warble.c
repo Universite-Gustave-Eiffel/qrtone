@@ -220,17 +220,17 @@ MU_TEST(testWithSolomonShort) {
 	warble_free(&cfg);
 }
 MU_TEST(testInterleave) {
-	char expected[] = "dermatoglyphics";
-	char payload[] = "dermatoglyphics";
+	char expected[] = "dermatoglyphicsdermatoglyphics";
+	char payload[] = "dermatoglyphicsdermatoglyphics";
 	// Compute index shuffling of messages
-	int shuffleIndex[15];
+	int shuffleIndex[30];
 	int i;
-	for (i = 0; i < 15; i++) {
+	for (i = 0; i < 30; i++) {
 		shuffleIndex[i] = i;
 	}
-	warble_fisher_yates_shuffle_index(15, shuffleIndex);
+	warble_fisher_yates_shuffle_index(strlen(payload), shuffleIndex);
 	warble_swap_chars(payload, shuffleIndex, strlen(payload));
-	warble_swap_chars(payload, shuffleIndex, strlen(payload));
+	warble_unswap_chars(payload, shuffleIndex, strlen(payload));
 	mu_assert_string_eq(expected, payload);
 }
 
@@ -260,6 +260,9 @@ MU_TEST(testWithSolomonLong) {
 	memset(words, 0, sizeof(unsigned char) * cfg.block_length + 1);
 	warble_reed_encode_solomon(&cfg, payload, words);
 
+	//warble_swap_chars(words, cfg.shuffleIndex, cfg.block_length);
+
+
 	// Replaces zeroes with pitchs
 	warble_generate_signal(&cfg, powerPeak, words, &(signal[blankBefore]));
 
@@ -267,6 +270,7 @@ MU_TEST(testWithSolomonLong) {
 	for (i = 0; i < signal_size - cfg.window_length; i += cfg.window_length) {
 		if (warble_feed(&cfg, &(signal[i]), i)) {
 			// Decode parsed words
+			mu_assert_string_eq(words, cfg.parsed);
 			warble_reed_decode_solomon(&cfg, cfg.parsed, decoded_payload);
 			break;
 		}
@@ -287,7 +291,7 @@ MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(testFeedSignal1);
 	//MU_RUN_TEST(testWriteSignal);
 	MU_RUN_TEST(testWithSolomonShort);
-	//MU_RUN_TEST(testWithSolomonLong);
+	MU_RUN_TEST(testWithSolomonLong);
 	MU_RUN_TEST(testInterleave);
 }
 
