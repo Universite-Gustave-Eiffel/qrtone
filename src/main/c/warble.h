@@ -162,6 +162,8 @@ void warble_fisher_yates_shuffle_index(int n, int* index);
 
 int warble_rand(int64_t* next);
 
+void warble_char_to_frequencies(warble *warble, char c, double* f0, double* f1);
+
 #ifdef __cplusplus
 }
 #endif

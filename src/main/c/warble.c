@@ -243,6 +243,7 @@ enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int64_t samp
 					warble->triggerSampleIndex = -1;
 					return WARBLE_FEED_MESSAGE_COMPLETE;
 				}
+				return WARBLE_FEED_DETECT_PITCH;
 			}
 		}	
 	}
@@ -261,7 +262,9 @@ warble_generate_pitch(double* signal_out, int32_t length, double sample_rate, do
 	int32_t i;
 	double t_step = 1 / sample_rate;
 	for(i=0; i < length; i++) {
-		signal_out[i] += sin(i * t_step * WARBLE_2PI * frequency) * power_peak;
+		// Hann windowing function
+		const double window = 0.5 * (1 - cos((2 * M_PI * i) / (length - 1)));
+		signal_out[i] += sin(i * t_step * WARBLE_2PI * frequency) * power_peak * window;
 	}
 }
 
@@ -343,6 +346,11 @@ int warble_reed_decode_solomon(warble *warble, unsigned char* words, unsigned ch
 	return res;
 }
 
+void warble_char_to_frequencies(warble *warble, uint8_t c, double* f0, double* f1) {
+	*f0 = warble->frequencies[c % WARBLE_PITCH_ROOT];
+	*f1 = warble->frequencies[WARBLE_PITCH_ROOT + c / WARBLE_PITCH_ROOT];
+}
+
 void warble_generate_signal(warble *warble,double power_peak, unsigned char* words, double* signal_out) {
 	int s = 0;
 	int i;
@@ -355,10 +363,8 @@ void warble_generate_signal(warble *warble,double power_peak, unsigned char* wor
 	// Other pitchs
 
 	for(i=0; i < warble->block_length; i++) {
-		int col = words[i] % WARBLE_PITCH_ROOT;
-		int row = words[i] / WARBLE_PITCH_ROOT;
-		double freq1 = warble->frequencies[col];
-		double freq2 = warble->frequencies[WARBLE_PITCH_ROOT + row];
+		double freq1,freq2;
+		warble_char_to_frequencies(warble, words[i], &freq1, &freq2);
 		warble_generate_pitch(&(signal_out[s]), warble->word_length, warble->sampleRate, freq1, power_peak);
 		warble_generate_pitch(&(signal_out[s]), warble->word_length, warble->sampleRate, freq2, power_peak);
 		s += warble->word_length;
