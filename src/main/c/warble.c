@@ -40,9 +40,9 @@
 
 #define WARBLE_2PI 6.283185307179586
 #define PITCH_SIGNAL_TO_NOISE_TRIGGER 3 // Accept pitch if pitch power is less than 3dB lower than signal level
-// In order to fix at least 25% of error, the maximum message length attached to a reed solomon(255,32) code is 64 Bytes for a 32 distance
-#define WARBLE_RS_P 64
-#define WARBLE_RS_DISTANCE 32
+// In order to fix at least 20% of error, the maximum message length attached to a reed solomon(255,32) code is 10 Bytes for a 8 distance (can correct up to 2 Bytes)
+#define WARBLE_RS_P 10
+#define WARBLE_RS_DISTANCE 8
 
 // Pseudo random generator
 int warble_rand(int64_t* next) {
@@ -309,7 +309,8 @@ void warble_reed_encode_solomon(warble *warble, unsigned char* msg, unsigned cha
 	}
 }
 
-void warble_reed_decode_solomon(warble *warble, unsigned char* words, unsigned char* msg) {
+int warble_reed_decode_solomon(warble *warble, unsigned char* words, unsigned char* msg) {
+	int res;
 	int msg_cursor;
 	int block_cursor = 0;
 	int remaining = warble->payloadSize % warble->rs_message_length;
@@ -320,7 +321,11 @@ void warble_reed_decode_solomon(warble *warble, unsigned char* words, unsigned c
 	correct_reed_solomon *rs = correct_reed_solomon_create(
 		correct_rs_primitive_polynomial_ccsds, 1, 1, warble->distance);
 	for (msg_cursor = 0; msg_cursor < warble->payloadSize - remaining; msg_cursor += warble->rs_message_length) {
-		ssize_t res = correct_reed_solomon_decode(rs, &(words[block_cursor]), warble->rs_message_length+ warble->distance, &(msg[msg_cursor]));
+		res = (int)correct_reed_solomon_decode(rs, &(words[block_cursor]), warble->rs_message_length+ warble->distance, &(msg[msg_cursor]));
+		if(res < 0) {
+			correct_reed_solomon_destroy(rs);
+			return res;
+		}
 		block_cursor += warble->rs_message_length + warble->distance;
 	}
 	correct_reed_solomon_destroy(rs);
@@ -328,9 +333,11 @@ void warble_reed_decode_solomon(warble *warble, unsigned char* words, unsigned c
 	if (remaining > 0) {
 		rs = correct_reed_solomon_create(
 			correct_rs_primitive_polynomial_ccsds, 1, 1, warble->distance_last);
-		ssize_t res = correct_reed_solomon_decode(rs, &(words[warble->block_length - remaining - warble->distance_last]), remaining + warble->distance_last, &(msg[warble->payloadSize - remaining]));
+		res = (int)correct_reed_solomon_decode(rs, &(words[warble->block_length - remaining - warble->distance_last]), remaining + warble->distance_last, &(msg[warble->payloadSize - remaining]));
 		correct_reed_solomon_destroy(rs);
+		return res;
 	}
+	return res;
 }
 
 void warble_generate_signal(warble *warble,double power_peak, unsigned char* words, double* signal_out) {

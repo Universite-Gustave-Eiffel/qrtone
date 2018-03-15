@@ -260,9 +260,6 @@ MU_TEST(testWithSolomonLong) {
 	memset(words, 0, sizeof(unsigned char) * cfg.block_length + 1);
 	warble_reed_encode_solomon(&cfg, payload, words);
 
-	//warble_swap_chars(words, cfg.shuffleIndex, cfg.block_length);
-
-
 	// Replaces zeroes with pitchs
 	warble_generate_signal(&cfg, powerPeak, words, &(signal[blankBefore]));
 
@@ -285,6 +282,97 @@ MU_TEST(testWithSolomonLong) {
 	warble_free(&cfg);
 }
 
+MU_TEST(testWithSolomonError) {
+	double word_length = 0.05; // pitch length in seconds
+	warble cfg;
+	int sample_rate = 44100;
+	int16_t triggers[2] = { 9, 25 };
+	char payload[] = "CONCENTRATIONNAIRE";
+	char* decoded_payload = malloc(sizeof(unsigned char) * strlen(payload) + 1);
+	memset(decoded_payload, 0, sizeof(unsigned char) * strlen(payload) + 1);
+
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (int32_t)strlen(payload), triggers, 2);
+	
+	// Encode message
+	unsigned char* words = malloc(sizeof(unsigned char) * cfg.block_length + 1);
+	memset(words, 0, sizeof(unsigned char) * cfg.block_length + 1);
+	warble_reed_encode_solomon(&cfg, payload, words);
+
+	// Erase 4 words
+	int i;
+	int64_t seed = 1337;
+	for(i = 0; i < 4; i++) {
+		words[warble_rand(&seed) % cfg.block_length] = (unsigned char)(warble_rand(&seed) % 255);
+	}
+
+	mu_assert(warble_reed_decode_solomon(&cfg, words, decoded_payload) >= 0, "Can't fix error with reed solomon");
+
+	mu_assert_string_eq(payload, decoded_payload);
+
+	free(decoded_payload);
+	free(words);
+	warble_free(&cfg);
+}
+
+MU_TEST(testWithSolomonErrorInSignal) {
+	double word_length = 0.05; // pitch length in seconds
+	warble cfg;
+	int sample_rate = 44100;
+	double powerRMS = 500;
+	double powerPeak = powerRMS * sqrt(2);
+	int16_t triggers[2] = { 9, 25 };
+	char payload[] = "dermatoglyphics";
+	char* decoded_payload = malloc(sizeof(unsigned char) * strlen(payload) + 1);
+	memset(decoded_payload, 0, sizeof(unsigned char) * strlen(payload) + 1);
+
+	int blankBefore = (int)(44100 * 0.13);
+	int blankAfter = (int)(44100 * 0.2);
+
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (int32_t)strlen(payload), triggers, 2);
+
+	size_t signal_size = warble_generate_window_size(&cfg) + blankBefore + blankAfter;
+	double* signal = malloc(sizeof(double) * signal_size);
+	memset(signal, 0, sizeof(double) * signal_size);
+
+	// Encode message
+	unsigned char* words = malloc(sizeof(unsigned char) * cfg.block_length + 1);
+	memset(words, 0, sizeof(unsigned char) * cfg.block_length + 1);
+	warble_reed_encode_solomon(&cfg, payload, words);
+
+	// Replaces zeroes with pitchs
+	warble_generate_signal(&cfg, powerPeak, words, &(signal[blankBefore]));
+
+	// Replace some samples with noise
+	int e;
+	int64_t seed = 1337;
+	int offset_error = cfg.frequenciesIndexTriggersCount * cfg.word_length + blankBefore;
+	for(e = 0; e < 4; e++) {
+		int start = offset_error + (int)((warble_rand(&seed) / 32768.) * (signal_size - offset_error - cfg.word_length));
+		int s;
+		//printf("Erase signal from %d to %d (%d max)\n", start, start + cfg.word_length, signal_size);
+		for(s = start; s < start + cfg.word_length; s++) {
+			signal[s] = (warble_rand(&seed) / 32768.) * powerPeak;
+		}
+	}
+
+	int i;
+	for (i = 0; i < signal_size - cfg.window_length; i += cfg.window_length) {
+		if (warble_feed(&cfg, &(signal[i]), i)) {
+			// Decode and fix parsed words
+			mu_assert(warble_reed_decode_solomon(&cfg, cfg.parsed, decoded_payload) >= 0, "Can't fix error with reed solomon");
+			break;
+		}
+	}
+
+
+	mu_assert_string_eq(payload, decoded_payload);
+
+	free(decoded_payload);
+	free(words);
+	free(signal);
+	warble_free(&cfg);
+}
+
 MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(test1khz);
 	MU_RUN_TEST(testGenerateSignal);
@@ -293,6 +381,8 @@ MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(testWithSolomonShort);
 	MU_RUN_TEST(testWithSolomonLong);
 	MU_RUN_TEST(testInterleave);
+	MU_RUN_TEST(testWithSolomonError);
+	MU_RUN_TEST(testWithSolomonErrorInSignal);
 }
 
 int main(int argc, char** argv) {

@@ -139,8 +139,9 @@ void warble_reed_encode_solomon(warble *warble, unsigned char* msg, unsigned cha
 
 /*
  * decode and reassemble using reed salomon algorithm
+ * @return A positive number if decoded succeed
  */
-void warble_reed_decode_solomon(warble *warble, unsigned char* words, unsigned char* msg);
+int warble_reed_decode_solomon(warble *warble, unsigned char* words, unsigned char* msg);
 
 /**
 * @param warble Object
@@ -155,6 +156,8 @@ void warble_unswap_chars(char* input_string, int32_t* index, size_t n);
  * Generate random numbers for the fisher yates shuffling
  */
 void warble_fisher_yates_shuffle_index(int n, int* index);
+
+int warble_rand(int64_t* next);
 
 #ifdef __cplusplus
 }
