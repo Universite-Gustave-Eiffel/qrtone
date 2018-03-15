@@ -391,7 +391,7 @@ MU_TEST(testDecodingRealAudio1) {
 		int cursor;
 		for(cursor = 0; cursor < res; cursor+=sizeof(int16_t)) {
 			int16_t spl;
-			memcpy(&spl, buffer, sizeof(int16_t));
+			memcpy(&spl, &(buffer[cursor]), sizeof(int16_t));
 			signal[s++] = spl;
 		}
 	}
@@ -422,18 +422,19 @@ MU_TEST(testDecodingRealAudio1) {
 
 	free(decoded_payload);
 	free(signal);
+	warble_free(&cfg);
 }
 
 MU_TEST_SUITE(test_suite) {
-	MU_RUN_TEST(test1khz);
-	MU_RUN_TEST(testGenerateSignal);
-	MU_RUN_TEST(testFeedSignal1);
+	//MU_RUN_TEST(test1khz);
+	//MU_RUN_TEST(testGenerateSignal);
+	//MU_RUN_TEST(testFeedSignal1);
 	//MU_RUN_TEST(testWriteSignal); // debug purpose
-	MU_RUN_TEST(testWithSolomonShort);
-	MU_RUN_TEST(testWithSolomonLong);
-	MU_RUN_TEST(testInterleave);
-	MU_RUN_TEST(testWithSolomonError);
-	MU_RUN_TEST(testWithSolomonErrorInSignal);
+	//MU_RUN_TEST(testWithSolomonShort);
+	//MU_RUN_TEST(testWithSolomonLong);
+	//MU_RUN_TEST(testInterleave);
+	//MU_RUN_TEST(testWithSolomonError);
+	//MU_RUN_TEST(testWithSolomonErrorInSignal);
 	MU_RUN_TEST(testDecodingRealAudio1);
 }
 
