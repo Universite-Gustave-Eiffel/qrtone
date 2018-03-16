@@ -76,16 +76,12 @@ MU_TEST(testGenerateSignal) {
 	// Analyze first trigger
 	warble_generalized_goertzel(signal, cfg.word_length, cfg.sampleRate, cfg.frequencies, WARBLE_PITCH_COUNT, rms);
 
-	double signal_rms = warble_compute_rms(signal, cfg.word_length);
-
-	mu_assert_double_eq(signal_rms, rms[triggers[0]], 0.3);
+	mu_assert_int_eq(triggers[0], warble_get_highest_index(rms, 0, WARBLE_PITCH_ROOT));
 
 	// Analyze second trigger
 	warble_generalized_goertzel(&(signal[cfg.word_length]), cfg.word_length, cfg.sampleRate, cfg.frequencies, WARBLE_PITCH_COUNT, rms);
 
-	signal_rms = warble_compute_rms(&(signal[cfg.word_length]), cfg.word_length);
-
-	mu_assert_double_eq(signal_rms, rms[triggers[1]], 0.3);
+	mu_assert_int_eq(triggers[1], warble_get_highest_index(rms, WARBLE_PITCH_ROOT, WARBLE_PITCH_COUNT));
 
 	free(signal);
 	warble_free(&cfg);
@@ -424,50 +420,40 @@ MU_TEST(testDecodingRealAudio1) {
 	memset(words, 0, sizeof(unsigned char) * cfg.block_length + 1);
 	warble_reed_encode_solomon(&cfg, expected_payload, words);
 
-
-	printf("\nExpected:\n");
 	int j;
-	double f0, f1;
-	for (j = 0; j<cfg.block_length; j++) {
-		warble_char_to_frequencies(&cfg, words[j], &f0, &f1);
-		printf("%.1f, %.1f\n", f0, f1);
-	}
-
-	printf("\nGot:\n");
+	double fexp0, fexp1, f0, f1;
 	for (i = 0; i < signal_size - cfg.window_length; i += cfg.window_length) {
 		int res = warble_feed(&cfg, &(signal[i]), i);
-		if(res == WARBLE_FEED_DETECT_PITCH) {
-			printf("Got pitch at %.3f\n", i / cfg.sampleRate);
-		}
 		if (res == WARBLE_FEED_MESSAGE_COMPLETE) {
 			// End, check frequencies
 			for(j=0; j<cfg.block_length;j++) {
+				warble_char_to_frequencies(&cfg, words[j], &fexp0, &fexp1);
 				warble_char_to_frequencies(&cfg, cfg.parsed[j], &f0, &f1);
-				printf("%.1f, %.1f\n", f0, f1);
+				mu_assert_double_eq(fexp0, f0, 0.1);
+				mu_assert_double_eq(fexp1, f1, 0.1);
 			}
 			// Decode and fix parsed words
 			mu_assert(warble_reed_decode_solomon(&cfg, cfg.parsed, decoded_payload) >= 0, "Can't fix error with reed solomon");
 			break;
 		}
 	}
-	
-	
 
 	free(decoded_payload);
 	free(signal);
+	free(words);
 	warble_free(&cfg);
 }
 
 MU_TEST_SUITE(test_suite) {
-	//MU_RUN_TEST(test1khz);
-	//MU_RUN_TEST(testGenerateSignal);
-	//MU_RUN_TEST(testFeedSignal1);
+	MU_RUN_TEST(test1khz);
+	MU_RUN_TEST(testGenerateSignal);
+	MU_RUN_TEST(testFeedSignal1);
 	//MU_RUN_TEST(testWriteSignal); // debug purpose
-	//MU_RUN_TEST(testWithSolomonShort);
-	//MU_RUN_TEST(testWithSolomonLong);
-	//MU_RUN_TEST(testInterleave);
-	//MU_RUN_TEST(testWithSolomonError);
-	//MU_RUN_TEST(testWithSolomonErrorInSignal);
+	MU_RUN_TEST(testWithSolomonShort);
+	MU_RUN_TEST(testWithSolomonLong);
+	MU_RUN_TEST(testInterleave);
+	MU_RUN_TEST(testWithSolomonError);
+	MU_RUN_TEST(testWithSolomonErrorInSignal);
 	MU_RUN_TEST(testDecodingRealAudio1);
 }
 
