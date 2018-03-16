@@ -3,12 +3,12 @@
  * audioData.h */
 #ifdef _DEBUG
 #define _CRTDBG_MAP_ALLOC
-#include <stdlib.h>
 #ifdef _WIN32
 #include <crtdbg.h>
 #endif
 #endif
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <math.h>

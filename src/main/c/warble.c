@@ -261,7 +261,7 @@ int32_t warble_generate_window_size(warble *warble) {
 	return (warble->frequenciesIndexTriggersCount + warble->block_length) * warble->word_length;
 }
 
-warble_generate_pitch(double* signal_out, int32_t length, double sample_rate, double frequency, double power_peak) {
+void warble_generate_pitch(double* signal_out, int32_t length, double sample_rate, double frequency, double power_peak) {
 	int32_t i;
 	double t_step = 1 / sample_rate;
 	for(i=0; i < length; i++) {

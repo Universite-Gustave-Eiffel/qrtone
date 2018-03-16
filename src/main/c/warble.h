@@ -163,7 +163,7 @@ void warble_fisher_yates_shuffle_index(int n, int* index);
 
 int warble_rand(int64_t* next);
 
-void warble_char_to_frequencies(warble *warble, char c, double* f0, double* f1);
+void warble_char_to_frequencies(warble *warble, uint8_t c, double* f0, double* f1);
 
 int warble_get_highest_index(double* rms, const int from, const int to);
 

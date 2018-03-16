@@ -1,5 +1,14 @@
 cmake_minimum_required (VERSION 3.0)
 
+include (CheckIncludeFile)
+include (CheckFunctionExists)
+include (CheckLibraryExists)
+
+
+check_function_exists (memset HAVE_MEMSET)
+check_function_exists (memmove HAVE_MEMMOVE)
+check_library_exists (c malloc "" HAVE_LIBC)
+
 include_directories (main/c/)
 include_directories (main/c/libcorrect/include)
 
@@ -7,13 +16,12 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_USE_MATH_DEFINES")
 
 add_library(openwarble main/c/warble.c main/c/warble_complex.c)
 
-target_link_libraries (openwarble correct)
+target_link_libraries (openwarble correct m)
 
 #------------#
 #    TEST 1
 #------------#
 
-# Data files
 set(TEST_DATA_DIR "${PROJECT_BINARY_DIR}/TestAudio")
 
 file(COPY test/resources/c/audioTest_44100_16bitsPCM_0.0872s_1760.raw 
