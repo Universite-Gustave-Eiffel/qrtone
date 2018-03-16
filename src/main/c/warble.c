@@ -194,6 +194,11 @@ int warble_get_highest_index(double* rms, const int from, const int to) {
 	return highest;
 }
 
+void warble_clean_parse(warble* warble) {
+	warble->triggerSampleIndexBegin = -1;
+	warble->triggerSampleRMS = -1;
+}
+
 unsigned char spectrumToChar(warble *warble, double* rms) {
 	int f0index = warble_get_highest_index(rms, 0, WARBLE_PITCH_ROOT);
 	int f1index = warble_get_highest_index(rms, WARBLE_PITCH_ROOT, WARBLE_PITCH_COUNT) - WARBLE_PITCH_ROOT;
@@ -201,7 +206,9 @@ unsigned char spectrumToChar(warble *warble, double* rms) {
 }
 
 enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int64_t sample_index) {
-	if(warble->triggerSampleIndexBegin < 0 || sample_index - warble->triggerSampleIndexBegin <= warble->word_length) {
+	// If we are still on the first trigger time
+	int wordIndex = warble->triggerSampleIndexBegin < 0 ? -1 : (int)((sample_index - warble->triggerSampleIndexBegin + (warble->window_length / 2)) / (double)warble->word_length);
+	if(wordIndex < 0 || wordIndex == 0) {
 		// Looking for start of pitch
 		double triggerRMS;
 		if(warble_is_triggered(warble, signal, warble->window_length, 0, &triggerRMS)) {
@@ -216,34 +223,30 @@ enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int64_t samp
 			}
 		}
 	} else {
-		int wordIndex = (int)((sample_index - warble->triggerSampleIndexBegin) / (double)warble->word_length);
 		if(wordIndex > warble->block_length + warble->frequenciesIndexTriggersCount) {
-			warble->triggerSampleIndexBegin = -1;
+			warble_clean_parse(warble);
 			return WARBLE_FEED_ERROR; // we have an issue here
 		}
+		// Target pitch contain the pitch peak
+		int64_t targetPitch = warble->triggerSampleIndex + warble->word_length * wordIndex + (warble->window_length / 2);
 
-		int64_t startPitch = warble->triggerSampleIndex + warble->word_length * wordIndex;
-		int64_t endPitch = startPitch + warble->window_length;
-
-		int windowStartDiff = (int)(max(0, startPitch - sample_index));
-
-		if(sample_index < endPitch && windowStartDiff < warble->window_length && sample_index + warble->window_length <= endPitch) {
+		// If the peak is contain in this window
+		if(targetPitch >= sample_index && targetPitch < sample_index + warble->window_length) {
+			double rms[WARBLE_PITCH_COUNT];
 			if(wordIndex < warble->frequenciesIndexTriggersCount) {
 				// Still in trigger pitch
-				if (!warble_is_triggered(warble, &(signal[windowStartDiff]), warble->window_length - windowStartDiff, wordIndex, NULL)) {
+				warble_generalized_goertzel(signal, warble->window_length, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rms);
+				if (warble_get_highest_index(rms, WARBLE_PITCH_ROOT, WARBLE_PITCH_COUNT) != warble->frequenciesIndexTriggers[wordIndex]) {
 					// Fail to recognize expected pitch
 					// Quit pitch, and wait for a new fist trigger
-					warble->triggerSampleIndexBegin = -1;
+					warble_clean_parse(warble);
 					return WARBLE_FEED_ERROR;
 				}		
 			} else {
-				double rms[WARBLE_PITCH_COUNT];
-				warble_generalized_goertzel(&(signal[windowStartDiff]), warble->window_length - windowStartDiff, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rms);
-
+				warble_generalized_goertzel(signal, warble->window_length, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rms);
 				warble->parsed[wordIndex - warble->frequenciesIndexTriggersCount] = spectrumToChar(warble, rms);
 				if(wordIndex == warble->block_length + warble->frequenciesIndexTriggersCount - 1) {
-					warble->triggerSampleIndex = -1;
-					warble->triggerSampleIndexBegin = -1;
+					warble_clean_parse(warble);
 					return WARBLE_FEED_MESSAGE_COMPLETE;
 				}
 				return WARBLE_FEED_DETECT_PITCH;

@@ -377,7 +377,7 @@ MU_TEST(testWithSolomonErrorInSignal) {
 
 MU_TEST(testDecodingRealAudio1) {
 
-	char expected_payload[] = { 18, 32, 139, 163, 206, 2, 52, 26, 139, 93, 119, 147, 39, 46, 108, 4, 31, 36, 156,
+	uint8_t expected_payload[] = { 18, 32, 139, 163, 206, 2, 52, 26, 139, 93, 119, 147, 39, 46, 108, 4, 31, 36, 156,
 		95, 247, 186, 174, 163, 181, 224, 193, 42, 212, 156, 50, 83, 138, 114 };
 	FILE *f = fopen("audioTest_44100_16bitsPCM_0.0872s_1760.raw", "rb");
 	mu_check(f != NULL);
@@ -415,7 +415,7 @@ MU_TEST(testDecodingRealAudio1) {
 	int sample_rate = 44100;
 	int payload_len = sizeof(expected_payload);
 	int16_t triggers[2] = { 9, 25 };
-	int8_t* decoded_payload = malloc(sizeof(unsigned char) * payload_len + 1);
+	uint8_t* decoded_payload = malloc(sizeof(unsigned char) * payload_len + 1);
 	memset(decoded_payload, 0, sizeof(unsigned char) * payload_len + 1);
 
 	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (int32_t)payload_len, triggers, 2);
@@ -427,9 +427,10 @@ MU_TEST(testDecodingRealAudio1) {
 	warble_reed_encode_solomon(&cfg, expected_payload, words);
 
 	int j;
-	double fexp0, fexp1, f0, f1;
+	double fexp0, fexp1, f0, f1; 
+	int res;
 	for (i = 0; i < signal_size - cfg.window_length; i += cfg.window_length) {
-		int res = warble_feed(&cfg, &(signal[i]), i);
+		res = warble_feed(&cfg, &(signal[i]), i);
 		if (res == WARBLE_FEED_MESSAGE_COMPLETE) {
 			// End, check frequencies
 			for(j=0; j<cfg.block_length;j++) {
@@ -444,6 +445,13 @@ MU_TEST(testDecodingRealAudio1) {
 		}
 	}
 
+	mu_assert_int_eq(WARBLE_FEED_MESSAGE_COMPLETE, res);
+
+	for (j = 0; j<cfg.payloadSize; j++) {
+		mu_assert_int_eq(expected_payload[j], decoded_payload[j]);
+	}
+
+
 	free(decoded_payload);
 	free(signal);
 	free(words);
@@ -455,7 +463,7 @@ MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(test1khz);
 	MU_RUN_TEST(testGenerateSignal);
 	MU_RUN_TEST(testFeedSignal1);
-	//MU_RUN_TEST(testWriteSignal); // debug purpose
+	////MU_RUN_TEST(testWriteSignal); // debug purpose
 	MU_RUN_TEST(testWithSolomonShort);
 	MU_RUN_TEST(testWithSolomonLong);
 	MU_RUN_TEST(testInterleave);
