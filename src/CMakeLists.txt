@@ -16,7 +16,7 @@ target_link_libraries (openwarble correct)
 # Data files
 set(TEST_DATA_DIR "${PROJECT_BINARY_DIR}/TestAudio")
 
-file(COPY test/resources/c/audioTest_44100_16bitsPCM_0.0872s_1720.raw 
+file(COPY test/resources/c/audioTest_44100_16bitsPCM_0.0872s_1760.raw 
     DESTINATION ${TEST_DATA_DIR})
 
 # Test executable and folder

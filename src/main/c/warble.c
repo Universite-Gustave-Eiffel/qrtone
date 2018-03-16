@@ -146,7 +146,6 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 	//this->paritySize =  wordSize - 1 - payloadSize / 2;
 	this->parsed = malloc(sizeof(unsigned char) * (this->block_length) + 1);
 	memset(this->parsed, 0, sizeof(unsigned char) * (this->block_length) + 1);
-	this->frequencies = malloc(sizeof(double) * WARBLE_PITCH_COUNT);
 	int i;
 	// Precompute pitch frequencies
 	for(i = 0; i < WARBLE_PITCH_COUNT; i++) {
@@ -167,7 +166,6 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 void warble_free(warble *warble) {
 	free(warble->frequenciesIndexTriggers);
     free(warble->parsed);
-	free(warble->frequencies);
 	free(warble->shuffleIndex);
 }
 
@@ -263,6 +261,7 @@ warble_generate_pitch(double* signal_out, int32_t length, double sample_rate, do
 	double t_step = 1 / sample_rate;
 	for(i=0; i < length; i++) {
 		// Hann windowing function
+		// TODO https://en.wikipedia.org/wiki/Window_function#Flat_top_window
 		const double window = 0.5 * (1 - cos((2 * M_PI * i) / (length - 1)));
 		signal_out[i] += sin(i * t_step * WARBLE_2PI * frequency) * power_peak * window;
 	}

@@ -64,7 +64,7 @@ typedef struct _warble {
 
 	unsigned char* parsed;          /**< parsed words of length wordTriggerCount+payloadSize+paritySize */
 	int32_t* shuffleIndex;		    /**< Shuffle index, used to (de)shuffle words sent/received after/before reed solomon */
-	double* frequencies;            /**< Computed pitch frequencies length is WARBLE_PITCH_COUNT */
+	double frequencies[WARBLE_PITCH_COUNT];            /**< Computed pitch frequencies length is WARBLE_PITCH_COUNT */
 	int64_t triggerSampleIndex;     /**< Sample index of first trigger */
 	double triggerSampleRMS;		/**< Highest RMS of first trigger */
 	int32_t word_length;			/** pitch length in samples*/

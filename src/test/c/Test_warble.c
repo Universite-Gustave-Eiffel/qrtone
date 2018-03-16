@@ -49,9 +49,7 @@ MU_TEST(test1khz) {
 
 	double signal_rms = warble_compute_rms(audio, SAMPLES);
 
-	mu_assert_double_eq(powerRMS, out[0], 0.1);
-
-	mu_assert_double_eq(powerRMS, signal_rms, 0.1);
+	mu_assert_double_eq(signal_rms, out[0], 0.1);
 }
 
 MU_TEST(testGenerateSignal) {
@@ -78,12 +76,16 @@ MU_TEST(testGenerateSignal) {
 	// Analyze first trigger
 	warble_generalized_goertzel(signal, cfg.word_length, cfg.sampleRate, cfg.frequencies, WARBLE_PITCH_COUNT, rms);
 
-	mu_assert_double_eq(powerRMS, rms[triggers[0]], 0.3);
+	double signal_rms = warble_compute_rms(signal, cfg.word_length);
+
+	mu_assert_double_eq(signal_rms, rms[triggers[0]], 0.3);
 
 	// Analyze second trigger
 	warble_generalized_goertzel(&(signal[cfg.word_length]), cfg.word_length, cfg.sampleRate, cfg.frequencies, WARBLE_PITCH_COUNT, rms);
 
-	mu_assert_double_eq(powerRMS, rms[triggers[1]], 0.3);
+	signal_rms = warble_compute_rms(&(signal[cfg.word_length]), cfg.word_length);
+
+	mu_assert_double_eq(signal_rms, rms[triggers[1]], 0.3);
 
 	free(signal);
 	warble_free(&cfg);
@@ -112,7 +114,7 @@ MU_TEST(testWriteSignal) {
 	int blankBefore = (int)(44100 * 0.55);
 	int blankAfter = (int)(44100 * 0.6);
 
-	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (uint8_t)strlen(payload), triggers, 2);
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (uint8_t)sizeof(payload), triggers, 2);
 
 	size_t signal_size = warble_generate_window_size(&cfg) + blankBefore + blankAfter;
 	double* signal = malloc(sizeof(double) * signal_size);
@@ -375,7 +377,7 @@ MU_TEST(testDecodingRealAudio1) {
 
 	char expected_payload[] = { 18, 32, 139, 163, 206, 2, 52, 26, 139, 93, 119, 147, 39, 46, 108, 4, 31, 36, 156,
 		95, 247, 186, 174, 163, 181, 224, 193, 42, 212, 156, 50, 83, 138, 114 };
-	FILE *f = fopen("audioTest_44100_16bitsPCM_0.0872s_1720.raw", "rb");
+	FILE *f = fopen("audioTest_44100_16bitsPCM_0.0872s_1760.raw", "rb");
 	mu_check(f != NULL);
 
 	// obtain file size:
@@ -406,10 +408,10 @@ MU_TEST(testDecodingRealAudio1) {
 	// Decode signal into payload
 
 
-	double word_length = 0.05; // pitch length in seconds
+	double word_length = 0.0872; // pitch length in seconds
 	warble cfg;
 	int sample_rate = 44100;
-	int payload_len = 34;
+	int payload_len = sizeof(expected_payload);
 	int16_t triggers[2] = { 9, 25 };
 	int8_t* decoded_payload = malloc(sizeof(unsigned char) * payload_len + 1);
 	memset(decoded_payload, 0, sizeof(unsigned char) * payload_len + 1);
@@ -449,7 +451,7 @@ MU_TEST(testDecodingRealAudio1) {
 		}
 	}
 	
-	mu_assert_string_eq(expected_payload, decoded_payload);
+	
 
 	free(decoded_payload);
 	free(signal);
@@ -460,13 +462,13 @@ MU_TEST_SUITE(test_suite) {
 	//MU_RUN_TEST(test1khz);
 	//MU_RUN_TEST(testGenerateSignal);
 	//MU_RUN_TEST(testFeedSignal1);
-	MU_RUN_TEST(testWriteSignal); // debug purpose
+	//MU_RUN_TEST(testWriteSignal); // debug purpose
 	//MU_RUN_TEST(testWithSolomonShort);
 	//MU_RUN_TEST(testWithSolomonLong);
 	//MU_RUN_TEST(testInterleave);
 	//MU_RUN_TEST(testWithSolomonError);
 	//MU_RUN_TEST(testWithSolomonErrorInSignal);
-	//MU_RUN_TEST(testDecodingRealAudio1);
+	MU_RUN_TEST(testDecodingRealAudio1);
 }
 
 int main(int argc, char** argv) {
