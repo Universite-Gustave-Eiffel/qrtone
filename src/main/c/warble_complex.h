@@ -9,10 +9,16 @@ typedef struct _warblecomplex
 	double i;
 } warblecomplex;
 
-#define NEW_CX(R,I) (warblecomplex) { R, I }
-#define CX_ADD(c1,c2) NEW_CX(c1.r + c2.r, c1.i + c2.i)
-#define CX_SUB(c1,c2) NEW_CX(c1.r - c2.r, c1.i - c2.i)
-#define CX_MUL(c1,c2) NEW_CX(c1.r * c2.r - c1.i * c2.i, c1.r * c2.i + c1.i * c2.r)
-#define CX_EXP(c1) NEW_CX(cos(c1.r), -sin(c1.r))
+
+
+struct _warblecomplex NEW_CX(double r, double i);
+
+struct _warblecomplex CX_ADD(const warblecomplex c1, const warblecomplex c2);
+
+struct _warblecomplex CX_SUB(const warblecomplex c1, const warblecomplex c2);
+
+struct _warblecomplex CX_MUL(const warblecomplex c1, const warblecomplex c2);
+
+struct _warblecomplex CX_EXP(const warblecomplex c1);
 
 #endif

@@ -253,11 +253,11 @@ enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int64_t samp
 	return WARBLE_FEED_IDLE;
 }
 
-size_t warble_feed_window_size(warble *warble) {
+int32_t warble_feed_window_size(warble *warble) {
 	return warble->window_length;
 }
 
-size_t warble_generate_window_size(warble *warble) {
+int32_t warble_generate_window_size(warble *warble) {
 	return (warble->frequenciesIndexTriggersCount + warble->block_length) * warble->word_length;
 }
 
@@ -272,8 +272,8 @@ warble_generate_pitch(double* signal_out, int32_t length, double sample_rate, do
 	}
 }
 
-void warble_swap_chars(char* input_string, int32_t* index, size_t n) {
-	size_t i;
+void warble_swap_chars(char* input_string, int32_t* index, int32_t n) {
+	int32_t i;
 	for (i = n - 1; i > 0; i--)
 	{
 		int v = index[n - 1 - i];
@@ -283,8 +283,8 @@ void warble_swap_chars(char* input_string, int32_t* index, size_t n) {
 	}
 }
 
-void warble_unswap_chars(char* input_string, int32_t* index, size_t n) {
-	size_t i;
+void warble_unswap_chars(char* input_string, int32_t* index, int32_t n) {
+	int32_t i;
 	for (i = 1; i < n; i++) {
 		int v = index[n - i - 1];
 		char tmp = input_string[i];
@@ -302,7 +302,7 @@ void warble_reed_encode_solomon(warble *warble, unsigned char* msg, unsigned cha
 	correct_reed_solomon *rs = correct_reed_solomon_create(
 		correct_rs_primitive_polynomial_ccsds, 1, 1, warble->distance);
 	for(msg_cursor = 0; msg_cursor < warble->payloadSize - remaining; msg_cursor += warble->rs_message_length) {
-		ssize_t res = correct_reed_solomon_encode(rs, &(msg[msg_cursor]), warble->rs_message_length, &(words[block_cursor]));
+		int32_t res = (int32_t)correct_reed_solomon_encode(rs, &(msg[msg_cursor]), warble->rs_message_length, &(words[block_cursor]));
 		block_cursor += warble->rs_message_length + warble->distance;
 	}
 	correct_reed_solomon_destroy(rs);
@@ -310,7 +310,7 @@ void warble_reed_encode_solomon(warble *warble, unsigned char* msg, unsigned cha
 	if(remaining > 0) {
 		rs = correct_reed_solomon_create(
 			correct_rs_primitive_polynomial_ccsds, 1, 1, warble->distance_last);
-		ssize_t res = correct_reed_solomon_encode(rs, &(msg[warble->payloadSize - remaining]), remaining, &(words[warble->block_length - remaining - warble->distance_last]));
+		int32_t res = (int32_t)correct_reed_solomon_encode(rs, &(msg[warble->payloadSize - remaining]), remaining, &(words[warble->block_length - remaining - warble->distance_last]));
 		correct_reed_solomon_destroy(rs);
 	}
 	if(warble->payloadSize > warble->rs_message_length) {
@@ -320,7 +320,7 @@ void warble_reed_encode_solomon(warble *warble, unsigned char* msg, unsigned cha
 }
 
 int warble_reed_decode_solomon(warble *warble, unsigned char* words, unsigned char* msg) {
-	int res;
+	int32_t res;
 	int msg_cursor;
 	int block_cursor = 0;
 	int remaining = warble->payloadSize % warble->rs_message_length;
@@ -343,7 +343,7 @@ int warble_reed_decode_solomon(warble *warble, unsigned char* words, unsigned ch
 	if (remaining > 0) {
 		rs = correct_reed_solomon_create(
 			correct_rs_primitive_polynomial_ccsds, 1, 1, warble->distance_last);
-		res = (int)correct_reed_solomon_decode(rs, &(words[warble->block_length - remaining - warble->distance_last]), remaining + warble->distance_last, &(msg[warble->payloadSize - remaining]));
+		res = (int32_t)correct_reed_solomon_decode(rs, &(words[warble->block_length - remaining - warble->distance_last]), remaining + warble->distance_last, &(msg[warble->payloadSize - remaining]));
 		correct_reed_solomon_destroy(rs);
 		return res;
 	}

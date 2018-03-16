@@ -61,10 +61,19 @@
                     <!-- Sets the package name of all generated classes -->
                     <packageName>org.noise_planet.openwarble</packageName>
                     
-                    <cFlags>
-                       <flag>-DCHECK_OVERFLOW</flag>
-                       <flag>-Dkiss_fft_scalar=double</flag>
-                    </cFlags>
+                    <!-- only compile sources need for the library, not unit tests or other fec codes -->
+                    <sourceFiles>
+                      <sourceFile>src/main/c/warble.c</sourceFile>
+                      <sourceFile>src/main/c/warble_complex.c</sourceFile>
+                      <sourceFile>src/main/c/libcorrect/src/reed-solomon/reed-solomon.c</sourceFile>
+                      <sourceFile>src/main/c/libcorrect/src/reed-solomon/encode.c</sourceFile>
+                      <sourceFile>src/main/c/libcorrect/src/reed-solomon/decode.c</sourceFile>
+                      <sourceFile>src/main/c/libcorrect/src/reed-solomon/polynomial.c</sourceFile>
+                    </sourceFiles>
+                    <includeDirectories>
+                        <includeDirectory>src/main/c</includeDirectory>
+                        <includeDirectory>src/main/c/libcorrect/include</includeDirectory>
+                    </includeDirectories>
                 </configuration>
                 <executions>
                     <execution>

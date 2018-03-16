@@ -133,7 +133,7 @@ enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int64_t samp
 * Return the expected window size output of warble_generate_signal
 * @param warble Object
 */
-size_t warble_generate_window_size(warble *warble);
+int32_t warble_generate_window_size(warble *warble);
 
 /**
  * Generate an audio signal for the provided words and configuration
@@ -152,9 +152,9 @@ void warble_reed_encode_solomon(warble *warble, unsigned char* msg, unsigned cha
  */
 int warble_reed_decode_solomon(warble *warble, unsigned char* words, unsigned char* msg);
 
-void warble_swap_chars(char* input_string, int32_t* index, size_t n);
+void warble_swap_chars(char* input_string, int32_t* index, int32_t n);
 
-void warble_unswap_chars(char* input_string, int32_t* index, size_t n);
+void warble_unswap_chars(char* input_string, int32_t* index, int32_t n);
 
 /**
  * Generate random numbers for the fisher yates shuffling

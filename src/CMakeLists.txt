@@ -5,7 +5,7 @@ include_directories (main/c/libcorrect/include)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_USE_MATH_DEFINES")
 
-add_library(openwarble main/c/warble.c)
+add_library(openwarble main/c/warble.c main/c/warble_complex.c)
 
 target_link_libraries (openwarble correct)
 
