@@ -158,15 +158,21 @@ MU_TEST(testFeedSignal1) {
 
 	// Replaces zeroes with pitchs
 	warble_generate_signal(&cfg, powerPeak, payload, &(signal[blankBefore]));
-
-	int i;
-	for(i=0; i < signal_size - cfg.window_length; i+=cfg.window_length) {
-		if (warble_feed(&cfg, &(signal[i]), i) == WARBLE_FEED_MESSAGE_COMPLETE) {
+	int offset;
+	// Check with all possible offset in the wave (detect window index errors)
+	for(offset = 0; offset < cfg.window_length; offset++) {
+		int i;
+		for(i=offset; i < signal_size - cfg.window_length; i+=cfg.window_length) {
+			if (warble_feed(&cfg, &(signal[i]), i) == WARBLE_FEED_MESSAGE_COMPLETE) {
+				break;
+			}
+		}
+		mu_assert_string_eq(payload, cfg.parsed);
+		if(strlen(cfg.parsed) == 0) {
 			break;
 		}
 	}
 	free(signal);
-	mu_assert_string_eq(payload, cfg.parsed);
 	warble_free(&cfg);
 }
 
@@ -445,6 +451,7 @@ MU_TEST(testDecodingRealAudio1) {
 }
 
 MU_TEST_SUITE(test_suite) {
+	
 	MU_RUN_TEST(test1khz);
 	MU_RUN_TEST(testGenerateSignal);
 	MU_RUN_TEST(testFeedSignal1);
