@@ -4,10 +4,26 @@ include (CheckIncludeFile)
 include (CheckFunctionExists)
 include (CheckLibraryExists)
 
-
-check_function_exists (memset HAVE_MEMSET)
-check_function_exists (memmove HAVE_MEMMOVE)
-check_library_exists (c malloc "" HAVE_LIBC)
+if(MSVC)
+set(LIBM "")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W4")
+else(MSVC)
+set(LIBM "m")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wpedantic -Wall")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g3 -O0 -march=native -fsanitize=address")
+    #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-no_pie,")
+else()
+  if("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang")
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2")
+    else()
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2")
+  endif()
+  if(CMAKE_BUILD_TYPE STREQUAL "Profiling")
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -g3")
+  endif()
+endif()
+endif(MSVC)
 
 include_directories (main/c/)
 include_directories (main/c/libcorrect/include)
@@ -16,7 +32,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_USE_MATH_DEFINES")
 
 add_library(openwarble main/c/warble.c main/c/warble_complex.c)
 
-target_link_libraries (openwarble correct m)
+target_link_libraries (openwarble correct_static m)
 
 #------------#
 #    TEST 1
@@ -24,7 +40,7 @@ target_link_libraries (openwarble correct m)
 
 set(TEST_DATA_DIR "${PROJECT_BINARY_DIR}/TestAudio")
 
-file(COPY test/resources/c/audioTest_44100_16bitsPCM_0.0872s_1760.raw 
+file(COPY test/resources/c/audioTest_44100_16bitsPCM_0.0872s_1760.raw
     DESTINATION ${TEST_DATA_DIR})
 
 # Test executable and folder
@@ -35,7 +51,7 @@ set(WARBLE_TESTS
 add_executable(Test_WARBLE ${WARBLE_TESTS})
 
 target_link_libraries (Test_WARBLE
-    openwarble correct)
+openwarble correct_static)
 
 set_property(TARGET Test_WARBLE PROPERTY FOLDER "tests")
 

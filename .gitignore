@@ -13,5 +13,7 @@ ubuntu-xenial-16.04-cloudimg-console.log
 .vagrant/
 .idea/
 *.iml
+.kdev4
+*.kdev4
 # Avoid ignoring Maven wrapper jar file (.jar files are usually ignored)
 !/.mvn/wrapper/maven-wrapper.jar

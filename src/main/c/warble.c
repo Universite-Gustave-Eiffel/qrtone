@@ -69,7 +69,6 @@ void warble_generalized_goertzel(const double* signal, int32_t s_length,double s
 		// for a single frequency :
 		// precompute the constants
 		double pik_term = 2 * M_PI *(freqs[id_freq] * samplingRateFactor) / (s_length);
-		double cc_real = cos(pik_term);
 		double cos_pik_term2 = cos(pik_term) * 2;
 		warblecomplex cc = CX_EXP(NEW_CX(pik_term, 0));
 		// state variables
@@ -122,6 +121,8 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 	int16_t frequencyIncrement, double word_time,
 	int32_t payloadSize, int16_t* frequenciesIndexTriggers, int16_t frequenciesIndexTriggersCount)  {
 	this->sampleRate = sampleRate;
+    this->triggerSampleIndex = -1;
+    this->triggerSampleIndexBegin = -1;
 	this->payloadSize = payloadSize;
 	this->distance = warble_reed_solomon_distance(this->payloadSize);
 	if(this->payloadSize > WARBLE_RS_P && this->distance % WARBLE_RS_P > 0) {
@@ -241,7 +242,7 @@ enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int64_t samp
 					// Quit pitch, and wait for a new fist trigger
 					warble_clean_parse(warble);
 					return WARBLE_FEED_ERROR;
-				}		
+				}
 			} else {
 				warble_generalized_goertzel(signal, warble->window_length, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rms);
 				warble->parsed[wordIndex - warble->frequenciesIndexTriggersCount] = spectrumToChar(warble, rms);
@@ -251,7 +252,7 @@ enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int64_t samp
 				}
 				return WARBLE_FEED_DETECT_PITCH;
 			}
-		}	
+		}
 	}
 	return WARBLE_FEED_IDLE;
 }
@@ -275,7 +276,7 @@ void warble_generate_pitch(double* signal_out, int32_t length, double sample_rat
 	}
 }
 
-void warble_swap_chars(char* input_string, int32_t* index, int32_t n) {
+void warble_swap_chars(unsigned char* input_string, int32_t* index, int32_t n) {
 	int32_t i;
 	for (i = n - 1; i > 0; i--)
 	{
@@ -286,7 +287,7 @@ void warble_swap_chars(char* input_string, int32_t* index, int32_t n) {
 	}
 }
 
-void warble_unswap_chars(char* input_string, int32_t* index, int32_t n) {
+void warble_unswap_chars(unsigned char* input_string, int32_t* index, int32_t n) {
 	int32_t i;
 	for (i = 1; i < n; i++) {
 		int v = index[n - i - 1];
@@ -297,7 +298,7 @@ void warble_unswap_chars(char* input_string, int32_t* index, int32_t n) {
 }
 
 
-void warble_reed_encode_solomon(warble *warble, unsigned char* msg, unsigned char* words) {
+void warble_reed_encode_solomon(warble *warble, unsigned char* msg, unsigned char* block) {
 	// Split message if its size > WARBLE_RS_P
 	int msg_cursor;
 	int block_cursor = 0;
@@ -305,7 +306,7 @@ void warble_reed_encode_solomon(warble *warble, unsigned char* msg, unsigned cha
 	correct_reed_solomon *rs = correct_reed_solomon_create(
 		correct_rs_primitive_polynomial_ccsds, 1, 1, warble->distance);
 	for(msg_cursor = 0; msg_cursor < warble->payloadSize - remaining; msg_cursor += warble->rs_message_length) {
-		int32_t res = (int32_t)correct_reed_solomon_encode(rs, &(msg[msg_cursor]), warble->rs_message_length, &(words[block_cursor]));
+		correct_reed_solomon_encode(rs, &(msg[msg_cursor]), warble->rs_message_length, &(block[block_cursor]));
 		block_cursor += warble->rs_message_length + warble->distance;
 	}
 	correct_reed_solomon_destroy(rs);
@@ -313,17 +314,17 @@ void warble_reed_encode_solomon(warble *warble, unsigned char* msg, unsigned cha
 	if(remaining > 0) {
 		rs = correct_reed_solomon_create(
 			correct_rs_primitive_polynomial_ccsds, 1, 1, warble->distance_last);
-		int32_t res = (int32_t)correct_reed_solomon_encode(rs, &(msg[warble->payloadSize - remaining]), remaining, &(words[warble->block_length - remaining - warble->distance_last]));
+		correct_reed_solomon_encode(rs, &(msg[warble->payloadSize - remaining]), remaining, &(block[warble->block_length - remaining - warble->distance_last]));
 		correct_reed_solomon_destroy(rs);
 	}
 	if(warble->payloadSize > warble->rs_message_length) {
 		// Interleave message in order to spread consecutive errors on multiple reed solomon messages (increase robustness)
-		warble_swap_chars(words, warble->shuffleIndex, warble->block_length);
+		warble_swap_chars(block, warble->shuffleIndex, warble->block_length);
 	}
 }
 
 int warble_reed_decode_solomon(warble *warble, unsigned char* words, unsigned char* msg) {
-	int32_t res;
+	int32_t res=0;
 	int msg_cursor;
 	int block_cursor = 0;
 	int remaining = warble->payloadSize % warble->rs_message_length;

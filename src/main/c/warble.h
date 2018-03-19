@@ -37,7 +37,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-	
+
 #include <stdint.h>
 
 
@@ -103,7 +103,7 @@ unsigned char spectrumToChar(warble *warble, double* rms);
  *  @param sample_rate Sampling rate of the signal
  *  @param first_frequency lowest frequency
  *	@param frequency_multiplication Increment factor between each word, 0 if usage of frequency_increment
- *  @param frequency_increment Increment between each word, 0 if usage of frequency_multiplication 
+ *  @param frequency_increment Increment between each word, 0 if usage of frequency_multiplication
  *  @param word_time Pitch time length. Higher value is more robust but decrease bandwidth. Default is 0.05
  *  @param message_size Payload size in char.
  *  @param frequencies_index_triggers Frequency index (0-n) that triggers a series of pitch
@@ -124,7 +124,7 @@ void warble_free(warble *warble);
 * Analyse the provided spectrum
 * @param warble Object
 * @param signal Audio signal with cfg.sampleRate and the length of cfg.window_length
-* @param sample_index Audio sample index of signal[0]. So that sample_index / cfg.sampleRate = time elapsed since beginning of feed. 
+* @param sample_index Audio sample index of signal[0]. So that sample_index / cfg.sampleRate = time elapsed since beginning of feed.
 * @return 1 if the message can be collected using warble_GetPayload
 */
 enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int64_t sample_index);
@@ -152,9 +152,9 @@ void warble_reed_encode_solomon(warble *warble, unsigned char* msg, unsigned cha
  */
 int warble_reed_decode_solomon(warble *warble, unsigned char* words, unsigned char* msg);
 
-void warble_swap_chars(char* input_string, int32_t* index, int32_t n);
+void warble_swap_chars(unsigned char* input_string, int32_t* index, int32_t n);
 
-void warble_unswap_chars(char* input_string, int32_t* index, int32_t n);
+void warble_unswap_chars(unsigned char* input_string, int32_t* index, int32_t n);
 
 /**
  * Generate random numbers for the fisher yates shuffling
