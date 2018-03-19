@@ -144,7 +144,6 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 	this->frequenciesIndexTriggersCount = frequenciesIndexTriggersCount;
 	this->frequenciesIndexTriggers = malloc(sizeof(int16_t) * frequenciesIndexTriggersCount);
 	memcpy(this->frequenciesIndexTriggers, frequenciesIndexTriggers, sizeof(int16_t) * frequenciesIndexTriggersCount);
-	this->triggerSampleIndex = -1;
 	//this->paritySize =  wordSize - 1 - payloadSize / 2;
 	this->parsed = malloc(sizeof(unsigned char) * (this->block_length) + 1);
 	memset(this->parsed, 0, sizeof(unsigned char) * (this->block_length) + 1);
