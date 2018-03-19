@@ -15,4 +15,10 @@ The data is converted into a sequence of tones. The first tone is a pure sinusoi
 
 If the receiver misses a frequency due to loud background noise or reverberation, the data is reconstructed using a forward error correction algorithm. The fec is a RS(10, 8) shortcut from an RS(255,223). In addition, a single sequence of locations can contain multiple interleaved payloads and correction codes. Interleaving spreads an error to other correction codes, so the correction is much more robust.
 
+Here a spectrogram of a sequence:
+
+![OpenWarble spectrogram](src/test/resources/c/noise.png)
+
+*Top source signal, bottom recorded audio in real situation.*
+
 The library is converted into a native Android library thanks to renjin GCC-Bridge (https://github.com/bedatadriven/renjin/tree/master/tools/gcc-bridge)
