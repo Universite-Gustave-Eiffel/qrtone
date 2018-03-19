@@ -70,6 +70,9 @@
                       <sourceFile>src/main/c/libcorrect/src/reed-solomon/decode.c</sourceFile>
                       <sourceFile>src/main/c/libcorrect/src/reed-solomon/polynomial.c</sourceFile>
                     </sourceFiles>
+                    <cFlags>
+                        <flag>-std=c99</flag>
+                    </cFlags>
                     <includeDirectories>
                         <includeDirectory>src/main/c</includeDirectory>
                         <includeDirectory>src/main/c/libcorrect/include</includeDirectory>
