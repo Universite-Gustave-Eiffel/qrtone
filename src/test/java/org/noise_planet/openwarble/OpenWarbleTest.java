@@ -34,9 +34,7 @@
 package org.noise_planet.openwarble;
 
 import org.junit.Test;
-import org.renjin.gcc.runtime.DoublePtr;
-import org.renjin.gcc.runtime.IntPtr;
-import org.renjin.gcc.runtime.Ptr;
+import org.renjin.gcc.runtime.*;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -81,7 +79,7 @@ public class OpenWarbleTest {
 
   @Test
   public void coreRecording1Test() throws IOException {
-    int expected_payload[] = { 18, 32, 139, 163, 206, 2, 52, 26, 139, 93, 119, 147, 39, 46, 108, 4, 31, 36, 156,
+    char expected_payload[] = { 18, 32, 139, 163, 206, 2, 52, 26, 139, 93, 119, 147, 39, 46, 108, 4, 31, 36, 156,
             95, 247, 186, 174, 163, 181, 224, 193, 42, 212, 156, 50, 83, 138, 114 };
     double samplingRate = 44100;
     double word_length = 0.0872; // pitch length in seconds
@@ -93,8 +91,12 @@ public class OpenWarbleTest {
       signal[i] = signal_short[i];
     }
     Ptr cfg = warble.warble_create();
+
     warble.warble_init(cfg, samplingRate, 1760, MULT, (short)0, word_length, expected_payload.length, new IntPtr(new int[]{9, 25}), (short)2);
 
+    // Encode test message
+    byte[] words = new byte[warble.warble_cfg_get_block_length(cfg)];
+    warble.warble_reed_encode_solomon(cfg, new CharPtr(expected_payload), new BytePtr(words));
   }
 
 }
