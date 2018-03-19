@@ -43,6 +43,9 @@ import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
 import java.util.Arrays;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+
 public class OpenWarbleTest {
   // Frequency factor, related to piano key
   // https://en.wikipedia.org/wiki/Piano_key_frequencies
@@ -97,6 +100,25 @@ public class OpenWarbleTest {
     // Encode test message
     byte[] words = new byte[warble.warble_cfg_get_block_length(cfg)];
     warble.warble_reed_encode_solomon(cfg, new CharPtr(expected_payload), new BytePtr(words));
+
+    int window_length = warble.warble_cfg_get_window_length(cfg);
+    int res;
+    for(int i=0; i < signal.length - window_length; i+= window_length) {
+      res = warble.warble_feed(cfg, new DoublePtr(Arrays.copyOfRange(signal, i, i + window_length)), i);
+      assertNotEquals(-1, res);
+      if(res == 1) {
+        // Feed complete
+        // Check parsed frequencies from signal with frequencies computed from expected payload
+        for(int j=0; j<words.length;j++) {
+          double[] frequencies = new double[4];
+          warble.warble_char_to_frequencies(cfg, words[j], new DoublePtr(frequencies, 0), new DoublePtr(frequencies, 1));
+          byte parsed = warble.warble_cfg_get_parsed(cfg).getByte(j);
+          warble.warble_char_to_frequencies(cfg, parsed, new DoublePtr(frequencies, 2), new DoublePtr(frequencies, 3));
+          assertEquals(frequencies[0], frequencies[2], 0.1);
+          assertEquals(frequencies[1], frequencies[3], 0.1);
+        }
+      }
+    }
   }
 
 }
