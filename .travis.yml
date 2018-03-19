@@ -9,4 +9,4 @@ script:
     - cd build
     - cmake ..
     - make
-- make test CTEST_OUTPUT_ON_FAILURE=TRUE
+    - make test CTEST_OUTPUT_ON_FAILURE=TRUE
