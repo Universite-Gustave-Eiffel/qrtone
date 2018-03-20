@@ -17,7 +17,7 @@ If the receiver misses a frequency due to loud background noise or reverberation
 
 Here a spectrogram of a sequence:
 
-![OpenWarble spectrogram](src/test/resources/c/noise.png)
+![OpenWarble spectrogram](libwarble/test/resources/c/noise.png)
 
 *Top source signal, bottom recorded audio in real situation.*
 
