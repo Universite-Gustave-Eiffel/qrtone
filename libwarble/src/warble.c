@@ -145,8 +145,8 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 	this->frequenciesIndexTriggers = malloc(sizeof(int32_t) * frequenciesIndexTriggersCount);
 	memcpy(this->frequenciesIndexTriggers, frequenciesIndexTriggers, sizeof(int32_t) * frequenciesIndexTriggersCount);
 	//this->paritySize =  wordSize - 1 - payloadSize / 2;
-	this->parsed = malloc(sizeof(unsigned char) * (this->block_length) + 1);
-	memset(this->parsed, 0, sizeof(unsigned char) * (this->block_length) + 1);
+	this->parsed = malloc(sizeof(int8_t) * (this->block_length) + 1);
+	memset(this->parsed, 0, sizeof(int8_t) * (this->block_length) + 1);
 	int i;
 	// Precompute pitch frequencies
 	for(i = 0; i < WARBLE_PITCH_COUNT; i++) {
@@ -199,10 +199,10 @@ void warble_clean_parse(warble* warble) {
 	warble->triggerSampleRMS = -1;
 }
 
-unsigned char spectrumToChar(warble *warble, double* rms) {
+int8_t spectrumToChar(warble *warble, double* rms) {
 	int f0index = warble_get_highest_index(rms, 0, WARBLE_PITCH_ROOT);
 	int f1index = warble_get_highest_index(rms, WARBLE_PITCH_ROOT, WARBLE_PITCH_COUNT) - WARBLE_PITCH_ROOT;
-	return  (unsigned char)(f1index * WARBLE_PITCH_ROOT + f0index);
+	return  (int8_t)(f1index * WARBLE_PITCH_ROOT + f0index);
 }
 
 enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int64_t sample_index) {
@@ -275,7 +275,7 @@ void warble_generate_pitch(double* signal_out, int32_t length, double sample_rat
 	}
 }
 
-void warble_swap_chars(unsigned char* input_string, int32_t* index, int32_t n) {
+void warble_swap_chars(int8_t* input_string, int32_t* index, int32_t n) {
 	int32_t i;
 	for (i = n - 1; i > 0; i--)
 	{
@@ -286,18 +286,18 @@ void warble_swap_chars(unsigned char* input_string, int32_t* index, int32_t n) {
 	}
 }
 
-void warble_unswap_chars(unsigned char* input_string, int32_t* index, int32_t n) {
+void warble_unswap_chars(int8_t* input_string, int32_t* index, int32_t n) {
 	int32_t i;
 	for (i = 1; i < n; i++) {
 		int v = index[n - i - 1];
-		char tmp = input_string[i];
+		int8_t tmp = input_string[i];
 		input_string[i] = input_string[v];
 		input_string[v] = tmp;
 	}
 }
 
 
-void warble_reed_encode_solomon(warble *warble, unsigned char* msg, unsigned char* block) {
+void warble_reed_encode_solomon(warble *warble, int8_t* msg, int8_t* block) {
 	// Split message if its size > WARBLE_RS_P
 	int msg_cursor;
 	int block_cursor = 0;
@@ -322,7 +322,7 @@ void warble_reed_encode_solomon(warble *warble, unsigned char* msg, unsigned cha
 	}
 }
 
-int warble_reed_decode_solomon(warble *warble, unsigned char* words, unsigned char* msg) {
+int warble_reed_decode_solomon(warble *warble, int8_t* words, int8_t* msg) {
 	int32_t res=0;
 	int msg_cursor;
 	int block_cursor = 0;
@@ -358,7 +358,7 @@ void warble_char_to_frequencies(warble *warble, uint8_t c, double* f0, double* f
 	*f1 = warble->frequencies[WARBLE_PITCH_ROOT + c / WARBLE_PITCH_ROOT];
 }
 
-void warble_generate_signal(warble *warble,double power_peak, unsigned char* words, double* signal_out) {
+void warble_generate_signal(warble *warble,double power_peak, int8_t* words, double* signal_out) {
 	int s = 0;
 	int i;
 	// Triggers signal
@@ -407,7 +407,7 @@ int32_t warble_cfg_get_rs_message_length(warble *warble) {
 int32_t warble_cfg_get_distance_last(warble *warble) {
     return warble->distance_last;
 }
-unsigned char* warble_cfg_get_parsed(warble *warble) {
+int8_t* warble_cfg_get_parsed(warble *warble) {
     return warble->parsed;
 }
 int32_t* warble_cfg_get_shuffleIndex(warble *warble) {
