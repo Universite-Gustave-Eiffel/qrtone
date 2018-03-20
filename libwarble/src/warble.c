@@ -118,8 +118,8 @@ int32_t warble_reed_solomon_distance(int32_t length) {
 
 void warble_init(warble* this, double sampleRate, double firstFrequency,
 	double frequencyMultiplication,
-	int16_t frequencyIncrement, double word_time,
-	int32_t payloadSize, int16_t* frequenciesIndexTriggers, int16_t frequenciesIndexTriggersCount)  {
+	int32_t frequencyIncrement, double word_time,
+	int32_t payloadSize, int32_t* frequenciesIndexTriggers, int32_t frequenciesIndexTriggersCount)  {
 	this->sampleRate = sampleRate;
     this->triggerSampleIndex = -1;
     this->triggerSampleIndexBegin = -1;
@@ -142,8 +142,8 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 	// Increase probability to have a window begining at 1/3 of the pitch (capture the lob peak)
 	this->window_length = (int32_t)((sampleRate * (word_time / 3.)));
 	this->frequenciesIndexTriggersCount = frequenciesIndexTriggersCount;
-	this->frequenciesIndexTriggers = malloc(sizeof(int16_t) * frequenciesIndexTriggersCount);
-	memcpy(this->frequenciesIndexTriggers, frequenciesIndexTriggers, sizeof(int16_t) * frequenciesIndexTriggersCount);
+	this->frequenciesIndexTriggers = malloc(sizeof(int32_t) * frequenciesIndexTriggersCount);
+	memcpy(this->frequenciesIndexTriggers, frequenciesIndexTriggers, sizeof(int32_t) * frequenciesIndexTriggersCount);
 	//this->paritySize =  wordSize - 1 - payloadSize / 2;
 	this->parsed = malloc(sizeof(unsigned char) * (this->block_length) + 1);
 	memset(this->parsed, 0, sizeof(unsigned char) * (this->block_length) + 1);
@@ -383,11 +383,11 @@ int32_t warble_cfg_get_payloadSize(warble *warble) {
     return warble->payloadSize;
 }
 
-int16_t warble_cfg_get_frequenciesIndexTriggersCount(warble *warble) {
+int32_t warble_cfg_get_frequenciesIndexTriggersCount(warble *warble) {
     return warble->frequenciesIndexTriggersCount;
 }
 
-int16_t* warble_cfg_get_frequenciesIndexTriggers(warble *warble) {
+int32_t* warble_cfg_get_frequenciesIndexTriggers(warble *warble) {
     return warble->frequenciesIndexTriggers;
 }
 

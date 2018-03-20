@@ -89,7 +89,7 @@ MU_TEST(testGenerateSignal) {
 	int sample_rate = 44100;
 	double powerRMS = 500;
 	double powerPeak = powerRMS * sqrt(2);
-	int16_t triggers[2] = {9, 25};
+	int32_t triggers[2] = {9, 25};
 	unsigned char payload[] = "parrot";
 
 	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, sizeof(payload), triggers, 2);
@@ -137,7 +137,7 @@ MU_TEST(testWriteSignal) {
 	int sample_rate = 44100;
 	double powerRMS = 500;
 	double powerPeak = powerRMS * sqrt(2);
-	int16_t triggers[2] = { 9, 25 };
+	int32_t triggers[2] = { 9, 25 };
 	// Send Ipfs adress
 	// import base58
 	// payload = map(ord, base58.b58decode("QmXjkFQjnD8i8ntmwehoAHBfJEApETx8ebScyVzAHqgjpD"))
@@ -181,7 +181,7 @@ MU_TEST(testFeedSignal1) {
 	int sample_rate = 44100;
 	double powerRMS = 500;
 	double powerPeak = powerRMS * sqrt(2);
-	int16_t triggers[2] = { 9, 25 };
+	int32_t triggers[2] = { 9, 25 };
 	unsigned char payload[] = "!0BSduvwxyz";
 	int blankBefore = (int)(44100 * 0.13);
 	int blankAfter = (int)(44100 * 0.2);
@@ -226,7 +226,7 @@ MU_TEST(testWithSolomonShort) {
 	int sample_rate = 44100;
 	double powerRMS = 500;
 	double powerPeak = powerRMS * sqrt(2);
-	int16_t triggers[2] = { 9, 25 };
+	int32_t triggers[2] = { 9, 25 };
 	unsigned char payload[] = "!0BSduvwxyz";
 	unsigned char* decoded_payload = malloc(sizeof(payload));
 	memset(decoded_payload, 0, sizeof(payload));
@@ -287,7 +287,7 @@ MU_TEST(testWithSolomonLong) {
 	int sample_rate = 44100;
 	double powerRMS = 500;
 	double powerPeak = powerRMS * sqrt(2);
-	int16_t triggers[2] = { 9, 25 };
+	int32_t triggers[2] = { 9, 25 };
 	unsigned char payload[] = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse volutpat.";
 	unsigned char* decoded_payload = malloc(sizeof(payload));
 	memset(decoded_payload, 0, sizeof(payload));
@@ -332,7 +332,7 @@ MU_TEST(testWithSolomonError) {
 	double word_length = 0.05; // pitch length in seconds
 	warble cfg;
 	int sample_rate = 44100;
-	int16_t triggers[2] = { 9, 25 };
+	int32_t triggers[2] = { 9, 25 };
 	unsigned char payload[] = "CONCENTRATIONNAIRE";
 	unsigned char* decoded_payload = malloc(sizeof(payload));
 	memset(decoded_payload, 0, sizeof(payload));
@@ -366,7 +366,7 @@ MU_TEST(testWithSolomonErrorInSignal) {
 	int sample_rate = 44100;
 	double powerRMS = 500;
 	double powerPeak = powerRMS * sqrt(2);
-	int16_t triggers[2] = { 9, 25 };
+	int32_t triggers[2] = { 9, 25 };
 	unsigned char payload[] = "dermatoglyphics";
 	unsigned char* decoded_payload = malloc(sizeof(payload));
 	memset(decoded_payload, 0, sizeof(sizeof(payload)));
@@ -457,12 +457,12 @@ MU_TEST(testDecodingRealAudio1) {
 	double word_length = 0.0872; // pitch length in seconds
 	warble cfg;
 	int sample_rate = 44100;
-	int payload_len = sizeof(expected_payload);
-	int16_t triggers[2] = { 9, 25 };
+	int32_t payload_len = sizeof(expected_payload);
+	int32_t triggers[2] = { 9, 25 };
 	uint8_t* decoded_payload = malloc(sizeof(unsigned char) * payload_len + 1);
 	memset(decoded_payload, 0, sizeof(unsigned char) * payload_len + 1);
 
-	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (int32_t)payload_len, triggers, 2);
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, payload_len, triggers, 2);
 
 
 	// Encode test message

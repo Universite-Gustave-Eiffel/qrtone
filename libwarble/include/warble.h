@@ -53,8 +53,8 @@ enum WARBLE_FEED_RESULT { WARBLE_FEED_ERROR = -1, WARBLE_FEED_IDLE = 0, WARBLE_F
 typedef struct _warble {
 	// Inputs
 	int32_t payloadSize;            /**< Number of payload words */
-	int16_t frequenciesIndexTriggersCount;       /**< Number of pitch that trigger the sequence of words */
-	int16_t* frequenciesIndexTriggers;             /**< Word index that trigger the sequence of words */
+	int32_t frequenciesIndexTriggersCount;       /**< Number of pitch that trigger the sequence of words */
+	int32_t* frequenciesIndexTriggers;             /**< Word index that trigger the sequence of words */
 	double sampleRate;				/**< Sample rate of audio in Hz */
 	// Algorithm data
 	int32_t block_length;           /**< Number of words (payload+forward correction codes) */
@@ -111,8 +111,8 @@ unsigned char spectrumToChar(warble *warble, double* rms);
  */
 void warble_init(warble* this, double sample_rate, double first_frequency,
 	double frequency_multiplication,
-	int16_t frequency_increment, double word_time,
-	int32_t message_size, int16_t* frequencies_index_triggers, int16_t frequencies_index_triggers_length);
+	int32_t frequency_increment, double word_time,
+	int32_t message_size, int32_t* frequencies_index_triggers, int32_t frequencies_index_triggers_length);
 
 /**
 * Free buffer in object
