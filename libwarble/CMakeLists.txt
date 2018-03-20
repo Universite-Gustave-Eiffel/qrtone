@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.0)
+cmake_minimum_required (VERSION 2.8)
 
 include (CheckIncludeFile)
 include (CheckFunctionExists)
@@ -25,21 +25,20 @@ else()
 endif()
 endif(MSVC)
 
-include_directories (main/c/)
-include_directories (main/c/libcorrect/include)
+include_directories (include)
+include_directories (../libcorrect/include)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_USE_MATH_DEFINES")
 
-add_library(openwarble main/c/warble.c main/c/warble_complex.c)
+add_library(openwarble src/warble.c src/warble_complex.c)
 
-target_link_libraries (openwarble correct_static m)
+target_link_libraries (openwarble correct_static ${LIBM})
 
 #------------#
 #    TEST 1
 #------------#
 
 set(TEST_DATA_DIR "${PROJECT_BINARY_DIR}/TestAudio")
-
 file(COPY test/resources/c/audioTest_44100_16bitsPCM_0.0872s_1760.raw
     DESTINATION ${TEST_DATA_DIR})
 

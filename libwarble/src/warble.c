@@ -377,3 +377,60 @@ void warble_generate_signal(warble *warble,double power_peak, unsigned char* wor
 		s += warble->word_length;
 	}
 }
+// For java bindings
+
+int32_t warble_cfg_get_payloadSize(warble *warble) {
+    return warble->payloadSize;
+}
+
+int16_t warble_cfg_get_frequenciesIndexTriggersCount(warble *warble) {
+    return warble->frequenciesIndexTriggersCount;
+}
+
+int16_t* warble_cfg_get_frequenciesIndexTriggers(warble *warble) {
+    return warble->frequenciesIndexTriggers;
+}
+
+double warble_cfg_get_sampleRate(warble *warble) {
+    return warble->sampleRate;
+}
+int32_t warble_cfg_get_block_length(warble *warble) {
+    return warble->block_length;
+}
+
+int32_t warble_cfg_get_distance(warble *warble) {
+    return warble->distance;
+}
+int32_t warble_cfg_get_rs_message_length(warble *warble) {
+    return warble->rs_message_length;
+}
+int32_t warble_cfg_get_distance_last(warble *warble) {
+    return warble->distance_last;
+}
+unsigned char* warble_cfg_get_parsed(warble *warble) {
+    return warble->parsed;
+}
+int32_t* warble_cfg_get_shuffleIndex(warble *warble) {
+    return warble->shuffleIndex;
+}
+double* warble_cfg_get_frequencies(warble *warble) {
+    return warble->frequencies;
+}
+
+int64_t warble_cfg_get_triggerSampleIndex(warble *warble) {
+    return warble->triggerSampleIndex;
+}
+int64_t warble_cfg_get_triggerSampleIndexBegin(warble *warble) {
+    return warble->triggerSampleIndexBegin;
+}
+double warble_cfg_get_triggerSampleRMS(warble *warble) {
+    return warble->triggerSampleRMS;
+}
+
+int32_t warble_cfg_get_word_length(warble *warble) {
+    return warble->word_length;
+}
+
+int32_t warble_cfg_get_window_length(warble *warble) {
+    return warble->window_length;
+}
