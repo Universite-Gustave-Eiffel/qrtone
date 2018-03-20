@@ -138,11 +138,14 @@ MU_TEST(testWriteSignal) {
 	double powerRMS = 500;
 	double powerPeak = powerRMS * sqrt(2);
 	int32_t triggers[2] = { 9, 25 };
-	// Send Ipfs adress
+	// Send Ipfs address
+	// Python code:
 	// import base58
-	// payload = map(ord, base58.b58decode("QmXjkFQjnD8i8ntmwehoAHBfJEApETx8ebScyVzAHqgjpD"))
-	uint8_t payload[] = {18, 32, 139, 163, 206, 2, 52, 26, 139, 93, 119, 147, 39, 46, 108, 4, 31, 36, 156,
-		95, 247, 186, 174, 163, 181, 224, 193, 42, 212, 156, 50, 83, 138, 114};
+	// import struct
+	// s = struct.Struct('b').unpack
+	// payload = map((lambda v : s(v)[0], base58.b58decode("QmXjkFQjnD8i8ntmwehoAHBfJEApETx8ebScyVzAHqgjpD"))
+	int8_t payload[] = {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36,
+		-100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
 	int blankBefore = (int)(44100 * 0.55);
 	int blankAfter = (int)(44100 * 0.6);
 
@@ -421,8 +424,8 @@ MU_TEST(testWithSolomonErrorInSignal) {
 
 MU_TEST(testDecodingRealAudio1) {
 
-	uint8_t expected_payload[] = { 18, 32, 139, 163, 206, 2, 52, 26, 139, 93, 119, 147, 39, 46, 108, 4, 31, 36, 156,
-		95, 247, 186, 174, 163, 181, 224, 193, 42, 212, 156, 50, 83, 138, 114 };
+	int8_t expected_payload[] = { 18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36,
+		-100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114 };
 	FILE *f = fopen("audioTest_44100_16bitsPCM_0.0872s_1760.raw", "rb");
 	mu_check(f != NULL);
 
@@ -459,7 +462,7 @@ MU_TEST(testDecodingRealAudio1) {
 	int sample_rate = 44100;
 	int32_t payload_len = sizeof(expected_payload);
 	int32_t triggers[2] = { 9, 25 };
-	uint8_t* decoded_payload = malloc(sizeof(int8_t) * payload_len + 1);
+	int8_t* decoded_payload = malloc(sizeof(int8_t) * payload_len + 1);
 	memset(decoded_payload, 0, sizeof(int8_t) * payload_len + 1);
 
 	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, payload_len, triggers, 2);
@@ -468,7 +471,7 @@ MU_TEST(testDecodingRealAudio1) {
 	// Encode test message
 	int8_t* words = malloc(sizeof(int8_t) * cfg.block_length + 1);
 	memset(words, 0, sizeof(int8_t) * cfg.block_length + 1);
-	warble_reed_encode_solomon(&cfg, expected_payload, (int8_t*)words);
+	warble_reed_encode_solomon(&cfg, expected_payload, words);
 
 	int j;
 	double fexp0, fexp1, f0, f1;
