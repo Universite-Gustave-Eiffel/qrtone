@@ -10,3 +10,5 @@ script:
     - cmake ..
     - make
     - make test CTEST_OUTPUT_ON_FAILURE=TRUE
+    - cd ..
+    - mvn install
