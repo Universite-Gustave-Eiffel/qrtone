@@ -101,7 +101,6 @@ public void testGccBridge() {
     long[] next = new long[]{1};
     for(int i = 0; i < payload; i++) {
       message[i] = (byte)(warble.warble_rand(new LongPtr(next)) & 255);
-      System.out.println(String.format("message[%d]=%d", i, message[i] & 255));
     }
     byte[] words = new byte[distance + payload];
     byte[] result = new byte[message.length];
@@ -111,6 +110,12 @@ public void testGccBridge() {
 
     encode.correct_reed_solomon_encode(rs, new BytePtr(message),  message.length, new BytePtr(words));
 
+    // Add errors
+    for(int i=0; i < distance / 2; i++) {
+      words[warble.warble_rand(new LongPtr(next)) % words.length] = (byte)(warble.warble_rand(new LongPtr(next)) & 255);
+    }
+
+
     assertNotEquals(-1, decode.correct_reed_solomon_decode(rs, new BytePtr(words), words.length, new BytePtr(result)));
 
     assertArrayEquals(message, Arrays.copyOfRange(result,0, payload));
@@ -118,6 +123,7 @@ public void testGccBridge() {
 
 
 
+  @Test
   public void coreRecording1Test() throws IOException {
     // Receive Ipfs address
     // Python code:
@@ -144,7 +150,7 @@ public void testGccBridge() {
     byte[] words = new byte[warble.warble_cfg_get_block_length(cfg)];
     warble.warble_reed_encode_solomon(cfg, new BytePtr(expected_payload), new BytePtr(words));
 
-    byte[] decoded_payload = new byte[words.length];
+    byte[] decoded_payload = new byte[expected_payload.length];
 
     int window_length = warble.warble_cfg_get_window_length(cfg);
     int res;
@@ -163,9 +169,8 @@ public void testGccBridge() {
           assertEquals(frequencies[0], frequencies[2], 0.1);
           assertEquals(frequencies[1], frequencies[3], 0.1);
         }
-
-        //BytePtr dest = new BytePtr(decoded_payload);
-        //warble.warble_reed_decode_solomon(cfg, warble.warble_cfg_get_parsed(cfg), dest);
+        BytePtr dest = new BytePtr(decoded_payload);
+        warble.warble_reed_decode_solomon(cfg, warble.warble_cfg_get_parsed(cfg), dest);
       }
     }
     assertArrayEquals(expected_payload, decoded_payload);
