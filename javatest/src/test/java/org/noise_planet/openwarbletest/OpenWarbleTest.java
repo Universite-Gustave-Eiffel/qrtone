@@ -31,7 +31,7 @@
  *
  */
 
-package org.noise_planet.openwarble;
+package org.noise_planet.openwarbletest;
 
 import org.junit.Test;
 import org.renjin.gcc.runtime.*;
@@ -42,9 +42,16 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
 import java.util.Arrays;
+import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import org.noise_planet.openwarble.warble;
+import org.noise_planet.openwarble.reed_solomon;
+import org.noise_planet.openwarble.encode;
+import org.noise_planet.openwarble.decode;
 
 public class OpenWarbleTest {
   // Frequency factor, related to piano key
@@ -80,10 +87,46 @@ public class OpenWarbleTest {
     return fullArray;
   }
 
-  @Test
+public void testGccBridge() {
+  byte[] dest = {0};
+  char[] orig = {255};
+  warble.test_gccbridge(new BytePtr(dest), new CharPtr(orig));
+}
+
+@Test
+  public void testReedSolomon() {
+    int distance = 8;
+    int payload = 10;
+    byte[] message = new byte[payload];
+    long[] next = new long[]{1};
+    for(int i = 0; i < payload; i++) {
+      message[i] = (byte)(warble.warble_rand(new LongPtr(next)) & 255);
+      System.out.println(String.format("message[%d]=%d", i, message[i] & 255));
+    }
+    byte[] words = new byte[distance + payload];
+    byte[] result = new byte[message.length];
+
+    Ptr rs = reed_solomon.correct_reed_solomon_create(
+            warble.correct_rs_primitive_polynomial_ccsds, (byte)1, (byte)1, distance);
+
+    encode.correct_reed_solomon_encode(rs, new BytePtr(message),  message.length, new BytePtr(words));
+
+    assertNotEquals(-1, decode.correct_reed_solomon_decode(rs, new BytePtr(words), words.length, new BytePtr(result)));
+
+    assertArrayEquals(message, Arrays.copyOfRange(result,0, payload));
+  }
+
+
+
   public void coreRecording1Test() throws IOException {
-    char expected_payload[] = { 18, 32, 139, 163, 206, 2, 52, 26, 139, 93, 119, 147, 39, 46, 108, 4, 31, 36, 156,
-            95, 247, 186, 174, 163, 181, 224, 193, 42, 212, 156, 50, 83, 138, 114 };
+    // Receive Ipfs address
+    // Python code:
+    // import base58
+    // import struct
+    // s = struct.Struct('b').unpack
+    // payload = map((lambda v : s(v)[0], base58.b58decode("QmXjkFQjnD8i8ntmwehoAHBfJEApETx8ebScyVzAHqgjpD"))
+    byte expected_payload[] = { 18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36,
+            -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114 };
     double samplingRate = 44100;
     double word_length = 0.0872; // pitch length in seconds
     InputStream inputStream = OpenWarbleTest.class.getResourceAsStream("audioTest_44100_16bitsPCM_0.0872s_1760.raw");
@@ -95,11 +138,13 @@ public class OpenWarbleTest {
     }
     Ptr cfg = warble.warble_create();
 
-    warble.warble_init(cfg, samplingRate, 1760, MULT, (short)0, word_length, expected_payload.length, new IntPtr(new int[]{9, 25}), (short)2);
+    warble.warble_init(cfg, samplingRate, 1760, MULT, 0, word_length, expected_payload.length, new IntPtr(new int[]{9, 25}), 2);
 
     // Encode test message
     byte[] words = new byte[warble.warble_cfg_get_block_length(cfg)];
-    warble.warble_reed_encode_solomon(cfg, new CharPtr(expected_payload), new BytePtr(words));
+    warble.warble_reed_encode_solomon(cfg, new BytePtr(expected_payload), new BytePtr(words));
+
+    byte[] decoded_payload = new byte[words.length];
 
     int window_length = warble.warble_cfg_get_window_length(cfg);
     int res;
@@ -109,6 +154,7 @@ public class OpenWarbleTest {
       if(res == 1) {
         // Feed complete
         // Check parsed frequencies from signal with frequencies computed from expected payload
+
         for(int j=0; j<words.length;j++) {
           double[] frequencies = new double[4];
           warble.warble_char_to_frequencies(cfg, words[j], new DoublePtr(frequencies, 0), new DoublePtr(frequencies, 1));
@@ -117,8 +163,12 @@ public class OpenWarbleTest {
           assertEquals(frequencies[0], frequencies[2], 0.1);
           assertEquals(frequencies[1], frequencies[3], 0.1);
         }
+
+        //BytePtr dest = new BytePtr(decoded_payload);
+        //warble.warble_reed_decode_solomon(cfg, warble.warble_cfg_get_parsed(cfg), dest);
       }
     }
+    assertArrayEquals(expected_payload, decoded_payload);
   }
 
 }

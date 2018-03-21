@@ -202,7 +202,7 @@ void warble_clean_parse(warble* warble) {
 int8_t spectrumToChar(warble *warble, double* rms) {
 	int f0index = warble_get_highest_index(rms, 0, WARBLE_PITCH_ROOT);
 	int f1index = warble_get_highest_index(rms, WARBLE_PITCH_ROOT, WARBLE_PITCH_COUNT) - WARBLE_PITCH_ROOT;
-	return  (int8_t)(f1index * WARBLE_PITCH_ROOT + f0index);
+	return  (int8_t)((f1index * WARBLE_PITCH_ROOT + f0index));
 }
 
 enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int64_t sample_index) {
@@ -323,7 +323,7 @@ void warble_reed_encode_solomon(warble *warble, int8_t* msg, int8_t* block) {
 }
 
 int warble_reed_decode_solomon(warble *warble, int8_t* words, int8_t* msg) {
-	int32_t res=0;
+	int32_t res = 0;
 	int msg_cursor;
 	int block_cursor = 0;
 	int remaining = warble->payloadSize % warble->rs_message_length;
@@ -334,8 +334,8 @@ int warble_reed_decode_solomon(warble *warble, int8_t* words, int8_t* msg) {
 	correct_reed_solomon *rs = correct_reed_solomon_create(
 		correct_rs_primitive_polynomial_ccsds, 1, 1, warble->distance);
 	for (msg_cursor = 0; msg_cursor < warble->payloadSize - remaining; msg_cursor += warble->rs_message_length) {
-		res = (int)correct_reed_solomon_decode(rs, &(words[block_cursor]), warble->rs_message_length+ warble->distance, &(msg[msg_cursor]));
-		if(res < 0) {
+		res = (int)correct_reed_solomon_decode(rs, &(words[block_cursor]), warble->rs_message_length + warble->distance, &(msg[msg_cursor]));
+		if (res < 0) {
 			correct_reed_solomon_destroy(rs);
 			return res;
 		}
@@ -353,9 +353,9 @@ int warble_reed_decode_solomon(warble *warble, int8_t* words, int8_t* msg) {
 	return res;
 }
 
-void warble_char_to_frequencies(warble *warble, uint8_t c, double* f0, double* f1) {
-	*f0 = warble->frequencies[c % WARBLE_PITCH_ROOT];
-	*f1 = warble->frequencies[WARBLE_PITCH_ROOT + c / WARBLE_PITCH_ROOT];
+void warble_char_to_frequencies(warble *warble, int8_t c, double* f0, double* f1) {
+	*f0 = warble->frequencies[(c & 255) % WARBLE_PITCH_ROOT];
+	*f1 = warble->frequencies[WARBLE_PITCH_ROOT + (c & 255) / WARBLE_PITCH_ROOT];
 }
 
 void warble_generate_signal(warble *warble,double power_peak, int8_t* words, double* signal_out) {
@@ -433,4 +433,13 @@ int32_t warble_cfg_get_word_length(warble *warble) {
 
 int32_t warble_cfg_get_window_length(warble *warble) {
     return warble->window_length;
+}
+
+void test_gccbridge(uint8_t* dest,uint16_t* orig) {
+	uint16_t element = 1;
+	uint16_t i;
+	uint16_t mul = 2;
+	for (i = 1; i < 512; i++) {
+		element = element << 1;
+	}
 }

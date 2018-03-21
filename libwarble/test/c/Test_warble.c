@@ -49,6 +49,7 @@
 #include "warble.h"
 #include "warble_complex.h"
 #include "minunit.h"
+#include "correct/reed-solomon.h"
 
 #define SAMPLES 4410
 
@@ -422,6 +423,23 @@ MU_TEST(testWithSolomonErrorInSignal) {
 	warble_free(&cfg);
 }
 
+MU_TEST(testReedSolomon) {
+	uint8_t block[18];
+	uint8_t message[10];
+	uint8_t message_decoded[10];
+	int i;
+	int64_t next = 1;
+	for(i = 0; i < sizeof(message); i++) {
+		message[i] = warble_rand(&next) & 255;
+		printf("message[%d]=%d\n", i, message[i]);
+	}
+	correct_reed_solomon *rs = correct_reed_solomon_create(
+		correct_rs_primitive_polynomial_ccsds, 1, 1, sizeof(block) - sizeof(message));
+	correct_reed_solomon_encode(rs, message, sizeof(message), block);
+	correct_reed_solomon_decode(rs, block, sizeof(block), message_decoded);
+	correct_reed_solomon_destroy(rs);
+}
+
 MU_TEST(testDecodingRealAudio1) {
 
 	int8_t expected_payload[] = { 18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36,
@@ -505,18 +523,28 @@ MU_TEST(testDecodingRealAudio1) {
 	warble_free(&cfg);
 }
 
+MU_TEST(testGccBridge) {
+	uint8_t dest;
+	uint16_t orig = 255;
+	dest = (uint8_t)orig;
+	printf("dest=%d\n", dest);
+	printf("dest==0 ? %d\n", dest == 0);
+}
+
 MU_TEST_SUITE(test_suite) {
 
-	MU_RUN_TEST(test1khz);
-	MU_RUN_TEST(testGenerateSignal);
-	MU_RUN_TEST(testFeedSignal1);
-	//MU_RUN_TEST(testWriteSignal); // debug purpose
-	MU_RUN_TEST(testWithSolomonShort);
-	MU_RUN_TEST(testWithSolomonLong);
-	MU_RUN_TEST(testInterleave);
-	MU_RUN_TEST(testWithSolomonError);
-	MU_RUN_TEST(testWithSolomonErrorInSignal);
-	MU_RUN_TEST(testDecodingRealAudio1);
+	//MU_RUN_TEST(test1khz);
+	//MU_RUN_TEST(testGenerateSignal);
+	//MU_RUN_TEST(testFeedSignal1);
+	////MU_RUN_TEST(testWriteSignal); // debug purpose
+	//MU_RUN_TEST(testWithSolomonShort);
+	//MU_RUN_TEST(testWithSolomonLong);
+	//MU_RUN_TEST(testInterleave);
+	//MU_RUN_TEST(testWithSolomonError);
+	//MU_RUN_TEST(testWithSolomonErrorInSignal);
+	//MU_RUN_TEST(testDecodingRealAudio1);
+	MU_RUN_TEST(testReedSolomon);
+	//MU_RUN_TEST(testGccBridge);
 }
 
 int main(int argc, char** argv) {
