@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="210mm"
+   height="297mm"
+   viewBox="0 0 744.09448819 1052.3622047"
+   id="svg2"
+   version="1.1"
+   inkscape:version="0.91 r13725"
+   sodipodi:docname="icon.svg">
+  <defs
+     id="defs4" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.35"
+     inkscape:cx="-283.57143"
+     inkscape:cy="520"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:window-width="1446"
+     inkscape:window-height="863"
+     inkscape:window-x="234"
+     inkscape:window-y="156"
+     inkscape:window-maximized="0" />
+  <g
+     inkscape:label="Calque 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <g
+       id="g4771"
+       transform="translate(-348.57143,-440)">
+      <path
+         id="path10"
+         d="m 673.6279,477.81696 c -2.54,0.39 -6.25,3.12 -8.4,5.86 -3.91,5.08 -3.91,6.84 -3.91,379.84 l 0,374.96004 -7.23,-5.86 c -36.13,-28.51 -84.76,-37.89 -132.41,-25.78 -65.23,16.6 -112.29,71.67 -112.29,131.43 0,51.56 33.2,94.13 87.88,112.69 19.53,6.64 59.56,7.62 82.8,2.15 52.92,-12.69 93.15,-47.26 109.95,-94.91 l 5.47,-15.62 0.59,-287.67 c 0.2,-157.99004 1.17,-287.47004 2.15,-287.47004 0.78,0 16.01,6.25 33.59,13.67 97.65,42.18 152.92,84.17 181.23,138.66 12.89,24.8 19.14,47.07 22.85,83.78004 1.56,15.43 6.64,21.68 17.38,21.68 9.18,0 14.26,-5.28 29.29,-29.29004 63.86,-103.31 64.06,-203.3 0.59,-289.42 -6.44,-8.98 -21.68,-25.97 -33.59,-37.89 -41.01,-40.82 -78.9,-66.79 -146.47,-100.58 -25.78,-13.08 -52.92,-27.54 -60.15,-32.42 -16.4,-10.74 -33.79,-27.73 -44.14,-43.16 -5.47,-7.81 -10.16,-12.3 -14.26,-13.87 -3.52,-1.17 -6.25,-1.95 -6.44,-1.95 -0.19,0.2 -2.14,0.78 -4.48,1.17 z m 104.09,116.98 c 24.8,12.3 52.34,26.75 61.32,32.03 42.57,25.97 90.23,67.38 114.44,99.6 26.75,35.54 39.65,69.13 41.21,108.39 1.56,36.32 -5.27,68.74 -21.68,103.5 l -8.2,17.58 -4.49,-14.65 c -17.77,-58.2 -60.74,-108.97 -125.77,-148.23 -22.85,-13.67 -64.84,-34.37 -104.29,-50.97 l -33.78,-14.26 0,-91.4 0,-91.4 18.16,13.67 c 12.89,9.78 30.66,19.93 63.08,36.14 z m -182.21,646.61004 c 46.28,13.67 73.82,56.44 63.08,98.04 -4.69,18.16 -12.11,30.66 -27.54,46.28 -23.24,23.44 -47.65,33.98 -82.02,35.54 -34.37,1.37 -57.42,-6.25 -79.09,-26.36 -44.53,-41.21 -28.32,-111.12 33.2,-142.95 23.04,-11.91 42.38,-16.21 66.98,-14.65 8.4,0.59 19.92,2.34 25.39,4.1 z"
+         inkscape:connector-curvature="0" />
+      <rect
+         id="barcode0_bar9"
+         y="530.75269"
+         x="703.79236"
+         height="228.73135"
+         width="23.58209"
+         style="fill:#000000" />
+      <rect
+         id="barcode0_bar11"
+         y="571.0069"
+         x="762.74756"
+         height="207.54491"
+         width="11.791045"
+         style="fill:#000000" />
+      <rect
+         id="barcode0_bar13"
+         y="581.60016"
+         x="786.32965"
+         height="220.25679"
+         width="23.58209"
+         style="fill:#000000" />
+      <rect
+         id="barcode0_bar15"
+         y="607.02386"
+         x="821.70282"
+         height="216.0195"
+         width="35.373135"
+         style="fill:#000000" />
+      <rect
+         id="barcode0_bar17"
+         y="645.15942"
+         x="868.867"
+         height="218.13814"
+         width="47.164181"
+         style="fill:#000000" />
+      <rect
+         id="barcode0_bar19"
+         y="668.46454"
+         x="927.8222"
+         height="264.74832"
+         width="11.791045"
+         style="fill:#000000" />
+      <rect
+         id="barcode0_bar21"
+         y="712.95605"
+         x="951.4043"
+         height="265.85632"
+         width="11.791045"
+         style="fill:#000000" />
+      <rect
+         id="barcode0_bar23"
+         y="725.66791"
+         x="974.98639"
+         height="253.14447"
+         width="11.791045"
+         style="fill:#000000" />
+      <rect
+         id="barcode0_bar25"
+         y="759.56622"
+         x="998.56848"
+         height="124.91779"
+         width="11.791045"
+         style="fill:#000000" />
+    </g>
+  </g>
+</svg>
