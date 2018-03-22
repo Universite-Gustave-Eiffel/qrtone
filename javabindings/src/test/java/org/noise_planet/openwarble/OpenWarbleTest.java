@@ -34,7 +34,6 @@
 package org.noise_planet.openwarble;
 
 import org.junit.Test;
-import org.renjin.gcc.runtime.*;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -48,12 +47,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 
 public class OpenWarbleTest {
-  // Frequency factor, related to piano key
-  // https://en.wikipedia.org/wiki/Piano_key_frequencies
-  private static final double MULT = 1.0594630943591;
 
   public static short[] convertBytesToShort(byte[] buffer, int length, ByteOrder byteOrder) {
     ShortBuffer byteBuffer = ByteBuffer.wrap(buffer, 0, length).order(byteOrder).asShortBuffer();
