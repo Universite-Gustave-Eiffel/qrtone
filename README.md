@@ -1,6 +1,7 @@
 # OpenWarble
 <img src="./icon.svg" width="10%" height="10%">
-[![Build Status](https://travis-ci.org/nicolas-f/openwarble.svg?branch=master)](https://travis-ci.org/nicolas-f/openwarble)
+
+![Build Status](https://travis-ci.org/nicolas-f/openwarble.svg?branch=master)](https://travis-ci.org/nicolas-f/openwarble)
 
 Broadcast your data using sound pitches.
 
