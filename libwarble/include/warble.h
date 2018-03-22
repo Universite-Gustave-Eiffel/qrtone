@@ -53,8 +53,8 @@ enum WARBLE_FEED_RESULT { WARBLE_FEED_ERROR = -1, WARBLE_FEED_IDLE = 0, WARBLE_F
 typedef struct _warble {
 	// Inputs
 	int32_t payloadSize;            /**< Number of payload words */
-	int16_t frequenciesIndexTriggersCount;       /**< Number of pitch that trigger the sequence of words */
-	int16_t* frequenciesIndexTriggers;             /**< Word index that trigger the sequence of words */
+	int32_t frequenciesIndexTriggersCount;       /**< Number of pitch that trigger the sequence of words */
+	int32_t* frequenciesIndexTriggers;             /**< Word index that trigger the sequence of words */
 	double sampleRate;				/**< Sample rate of audio in Hz */
 	// Algorithm data
 	int32_t block_length;           /**< Number of words (payload+forward correction codes) */
@@ -62,7 +62,7 @@ typedef struct _warble {
 	int32_t rs_message_length;      /**< Length of message attached to distance*/
 	int32_t distance_last;          /**< Distance for reed-solomon error code on the last cutted message piece*/
 
-	unsigned char* parsed;          /**< parsed words of length wordTriggerCount+payloadSize+paritySize */
+	int8_t* parsed;                 /**< parsed words of length wordTriggerCount+payloadSize+paritySize */
 	int32_t* shuffleIndex;		    /**< Shuffle index, used to (de)shuffle words sent/received after/before reed solomon */
 	double frequencies[WARBLE_PITCH_COUNT];            /**< Computed pitch frequencies length is WARBLE_PITCH_COUNT */
 	int64_t triggerSampleIndex;     /**< Best Sample index of first trigger */
@@ -96,7 +96,7 @@ double warble_compute_rms(const double* signal, int32_t s_length);
  * @param warble configuration
  * @param rms root mean square values of warble->frequencies
  */
-unsigned char spectrumToChar(warble *warble, double* rms);
+int8_t spectrumToChar(warble *warble, double* rms);
 
 /*
  *  Initialize warble configuration object
@@ -111,8 +111,8 @@ unsigned char spectrumToChar(warble *warble, double* rms);
  */
 void warble_init(warble* this, double sample_rate, double first_frequency,
 	double frequency_multiplication,
-	int16_t frequency_increment, double word_time,
-	int32_t message_size, int16_t* frequencies_index_triggers, int16_t frequencies_index_triggers_length);
+	int32_t frequency_increment, double word_time,
+	int32_t message_size, int32_t* frequencies_index_triggers, int32_t frequencies_index_triggers_length);
 
 /**
 * Free buffer in object
@@ -139,22 +139,22 @@ int32_t warble_generate_window_size(warble *warble);
  * Generate an audio signal for the provided words and configuration
 * @param warble Object
  */
-void warble_generate_signal(warble *warble,double powerPeak, unsigned char* words, double* signal_out);
+void warble_generate_signal(warble *warble,double powerPeak, int8_t* words, double* signal_out);
 
 /*
  * Encode and interleave using reed solomon algorithm
  */
-void warble_reed_encode_solomon(warble *warble, unsigned char* msg, unsigned char* block);
+void warble_reed_encode_solomon(warble *warble, int8_t* msg, int8_t* block);
 
 /*
  * deinterleave and decode using reed solomon algorithm
  * @return A positive number if decoded succeed
  */
-int warble_reed_decode_solomon(warble *warble, unsigned char* words, unsigned char* msg);
+int warble_reed_decode_solomon(warble *warble, int8_t* words, int8_t* msg);
 
-void warble_swap_chars(unsigned char* input_string, int32_t* index, int32_t n);
+void warble_swap_chars(int8_t* input_string, int32_t* index, int32_t n);
 
-void warble_unswap_chars(unsigned char* input_string, int32_t* index, int32_t n);
+void warble_unswap_chars(int8_t* input_string, int32_t* index, int32_t n);
 
 /**
  * Generate random numbers for the fisher yates shuffling
@@ -163,7 +163,7 @@ void warble_fisher_yates_shuffle_index(int n, int* index);
 
 int warble_rand(int64_t* next);
 
-void warble_char_to_frequencies(warble *warble, uint8_t c, double* f0, double* f1);
+void warble_char_to_frequencies(warble *warble, int8_t c, double* f0, double* f1);
 
 int warble_get_highest_index(double* rms, const int from, const int to);
 
