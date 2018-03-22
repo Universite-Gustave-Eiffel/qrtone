@@ -81,7 +81,9 @@ public class OpenWarble {
    */
   public double[] generateSignal(byte[] payload, double powerPeak) {
     double[] signal = new double[messageSampleLength];
-    warble.warble_generate_signal(cfg, powerPeak, new BytePtr(payload), new DoublePtr(signal));
+    byte[] block = new byte[warble.warble_cfg_get_block_length(cfg)];
+    warble.warble_reed_encode_solomon(cfg, new BytePtr(payload), new BytePtr(block));
+    warble.warble_generate_signal(cfg, powerPeak, new BytePtr(block), new DoublePtr(signal));
     return signal;
   }
 
