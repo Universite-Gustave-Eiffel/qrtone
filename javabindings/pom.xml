@@ -11,6 +11,10 @@
         <relativePath>../</relativePath>
     </parent>
 
+  <properties>
+    <maven.compiler.source>1.7</maven.compiler.source>
+    <maven.compiler.target>1.7</maven.compiler.target>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>org.renjin</groupId>
@@ -32,7 +36,21 @@
 
 
     <build>
-        <plugins>
+        <plugins>        
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <version>3.0.1</version>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+                <phase>package</phase>
+              </execution>
+            </executions>
+          </plugin>
             <plugin>
                 <groupId>org.renjin</groupId>
                 <artifactId>gcc-bridge-maven-plugin</artifactId>
@@ -63,7 +81,7 @@
                         <goals>
                             <goal>compile</goal>
                         </goals>
-                        <phase>generate-sources</phase>
+                        <phase>process-resources</phase>
                     </execution>
                 </executions>
             </plugin>
