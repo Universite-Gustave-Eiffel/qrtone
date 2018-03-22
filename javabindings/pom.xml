@@ -63,7 +63,7 @@
                         <goals>
                             <goal>compile</goal>
                         </goals>
-                        <phase>compile</phase>
+                        <phase>generate-sources</phase>
                     </execution>
                 </executions>
             </plugin>
