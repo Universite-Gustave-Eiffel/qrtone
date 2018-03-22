@@ -16,6 +16,20 @@ matrix:
       osx_image: xcode8
       env:
         - MATRIX_EVAL="CC=gcc-4.7 && CXX=g++-4.7"
+
+before_install:
+  - if [ $TRAVIS_OS_NAME == "linux" ]; then
+      export CC="gcc-4.7";
+      export CXX="g++-4.7";
+      export LINK="gcc-4.7";
+      export LINKXX="g++-4.7";
+    fi
+  - nvm --version
+  - node --version
+  - npm --version
+  - gcc --version
+  - g++ --version
+        
 script:
     - mkdir build
     - cd build
