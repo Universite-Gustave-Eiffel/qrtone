@@ -434,12 +434,3 @@ int32_t warble_cfg_get_word_length(warble *warble) {
 int32_t warble_cfg_get_window_length(warble *warble) {
     return warble->window_length;
 }
-
-void test_gccbridge(uint8_t* dest,uint16_t* orig) {
-	uint16_t element = 1;
-	uint16_t i;
-	uint16_t mul = 2;
-	for (i = 1; i < 512; i++) {
-		element = element << 1;
-	}
-}

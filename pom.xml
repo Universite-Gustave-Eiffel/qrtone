@@ -40,6 +40,5 @@
 
     <modules>
         <module>javabindings</module>
-        <module>javatest</module>
     </modules>
 </project>

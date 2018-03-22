@@ -65,6 +65,14 @@ public class OpenWarble {
     return windowLength;
   }
 
+  public double getMessageTimeLength() {
+    return messageSampleLength / getSampleRate();
+  }
+
+  public double getSampleRate() {
+    return warble.warble_cfg_get_sampleRate(cfg);
+  }
+
   /**
    * Generate a sound signal using the provided payload
    * @param payload Array of bytes
@@ -83,13 +91,22 @@ public class OpenWarble {
       if(res == -1) {
         callback.onError(sampleIndex);
       } else if(res == 1) {
-        byte[] decodedPayload = new byte[];
+        byte[] decodedPayload = new byte[warble.warble_cfg_get_payloadSize(cfg)];
         BytePtr dest = new BytePtr(decodedPayload);
         warble.warble_reed_decode_solomon(cfg, warble.warble_cfg_get_parsed(cfg), dest);
         callback.onNewMessage(decodedPayload, sampleIndex - messageSampleLength);
+      } else if(res == 2) {
+        callback.onPitch(sampleIndex);
       }
     }
     sampleIndex += samples.length;
+  }
+
+  /**
+   * @return The number of pushed samples
+   */
+  public long getPushedSamples() {
+    return sampleIndex;
   }
 
   /**
@@ -117,17 +134,17 @@ public class OpenWarble {
         cache = newCache;
         return;
       }
-    } else {
-      int cursor = 0;
-      while(cursor + windowLength <= samples.length) {
-        pushFixedSamples(Arrays.copyOfRange(samples, cursor, windowLength));
-        cursor+=windowLength;
-      }
-      int remaining = samples.length % windowLength;
-      if(remaining != 0) {
-        cache = Arrays.copyOfRange(samples, samples.length - remaining, samples.length);
-      }
     }
+    int cursor = 0;
+    while(cursor + windowLength <= samples.length) {
+      pushFixedSamples(Arrays.copyOfRange(samples, cursor, cursor+windowLength));
+      cursor+=windowLength;
+    }
+    int remaining = samples.length % windowLength;
+    if(remaining != 0) {
+      cache = Arrays.copyOfRange(samples, samples.length - remaining, samples.length);
+    }
+
   }
 
   public MessageCallback getCallback() {

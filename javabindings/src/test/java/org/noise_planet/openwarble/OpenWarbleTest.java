@@ -31,7 +31,7 @@
  *
  */
 
-package org.noise_planet.openwarbletest;
+package org.noise_planet.openwarble;
 
 import org.junit.Test;
 import org.renjin.gcc.runtime.*;
@@ -41,17 +41,14 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Random;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
-import org.noise_planet.openwarble.warble;
-import org.noise_planet.openwarble.reed_solomon;
-import org.noise_planet.openwarble.encode;
-import org.noise_planet.openwarble.decode;
 
 public class OpenWarbleTest {
   // Frequency factor, related to piano key
@@ -87,40 +84,6 @@ public class OpenWarbleTest {
     return fullArray;
   }
 
-public void testGccBridge() {
-  byte[] dest = {0};
-  char[] orig = {255};
-  warble.test_gccbridge(new BytePtr(dest), new CharPtr(orig));
-}
-
-@Test
-  public void testReedSolomon() {
-    int distance = 8;
-    int payload = 10;
-    byte[] message = new byte[payload];
-    long[] next = new long[]{1};
-    for(int i = 0; i < payload; i++) {
-      message[i] = (byte)(warble.warble_rand(new LongPtr(next)) & 255);
-    }
-    byte[] words = new byte[distance + payload];
-    byte[] result = new byte[message.length];
-
-    Ptr rs = reed_solomon.correct_reed_solomon_create(
-            warble.correct_rs_primitive_polynomial_ccsds, (byte)1, (byte)1, distance);
-
-    encode.correct_reed_solomon_encode(rs, new BytePtr(message),  message.length, new BytePtr(words));
-
-    // Add errors
-    for(int i=0; i < distance / 2; i++) {
-      words[warble.warble_rand(new LongPtr(next)) % words.length] = (byte)(warble.warble_rand(new LongPtr(next)) & 255);
-    }
-
-
-    assertNotEquals(-1, decode.correct_reed_solomon_decode(rs, new BytePtr(words), words.length, new BytePtr(result)));
-
-    assertArrayEquals(message, Arrays.copyOfRange(result,0, payload));
-  }
-
 
 
   @Test
@@ -133,47 +96,49 @@ public void testGccBridge() {
     // payload = map((lambda v : s(v)[0], base58.b58decode("QmXjkFQjnD8i8ntmwehoAHBfJEApETx8ebScyVzAHqgjpD"))
     byte expected_payload[] = { 18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36,
             -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114 };
+
     double samplingRate = 44100;
-    double word_length = 0.0872; // pitch length in seconds
     InputStream inputStream = OpenWarbleTest.class.getResourceAsStream("audioTest_44100_16bitsPCM_0.0872s_1760.raw");
     short[] signal_short = loadShortStream(inputStream, ByteOrder.LITTLE_ENDIAN);
+    OpenWarble openWarble = new OpenWarble(Configuration.getAudible(expected_payload.length, samplingRate));
     // Convert into double
-    double[] signal = new double[signal_short.length];
-    for(int i=0;i< signal_short.length;i++) {
-      signal[i] = signal_short[i];
-    }
-    Ptr cfg = warble.warble_create();
+    double[] buffer;
+    int window = 4096;
+    final List<byte[]> payloads = new ArrayList<>();
+    final AtomicBoolean gotError =  new AtomicBoolean(false);
 
-    warble.warble_init(cfg, samplingRate, 1760, MULT, 0, word_length, expected_payload.length, new IntPtr(new int[]{9, 25}), 2);
-
-    // Encode test message
-    byte[] words = new byte[warble.warble_cfg_get_block_length(cfg)];
-    warble.warble_reed_encode_solomon(cfg, new BytePtr(expected_payload), new BytePtr(words));
-
-    byte[] decoded_payload = new byte[expected_payload.length];
-
-    int window_length = warble.warble_cfg_get_window_length(cfg);
-    int res;
-    for(int i=0; i < signal.length - window_length; i+= window_length) {
-      res = warble.warble_feed(cfg, new DoublePtr(Arrays.copyOfRange(signal, i, i + window_length)), i);
-      assertNotEquals(-1, res);
-      if(res == 1) {
-        // Feed complete
-        // Check parsed frequencies from signal with frequencies computed from expected payload
-
-        for(int j=0; j<words.length;j++) {
-          double[] frequencies = new double[4];
-          warble.warble_char_to_frequencies(cfg, words[j], new DoublePtr(frequencies, 0), new DoublePtr(frequencies, 1));
-          byte parsed = warble.warble_cfg_get_parsed(cfg).getByte(j);
-          warble.warble_char_to_frequencies(cfg, parsed, new DoublePtr(frequencies, 2), new DoublePtr(frequencies, 3));
-          assertEquals(frequencies[0], frequencies[2], 0.1);
-          assertEquals(frequencies[1], frequencies[3], 0.1);
-        }
-        BytePtr dest = new BytePtr(decoded_payload);
-        warble.warble_reed_decode_solomon(cfg, warble.warble_cfg_get_parsed(cfg), dest);
+    // Set callback to collect message
+    openWarble.setCallback(new MessageCallback() {
+      @Override
+      public void onNewMessage(byte[] payload, long sampleId) {
+        payloads.add(payload);
       }
+
+      @Override
+      public void onPitch(long sampleId) {
+
+      }
+
+      @Override
+      public void onError(long sampleId) {
+        gotError.set(true);
+      }
+    });
+
+    // Push audio samples to OpenWarble
+    for(int i=0;i< signal_short.length;i+=window) {
+      buffer = new double[Math.min(signal_short.length-i, window)];
+      for(int j=0; j<buffer.length; j++) {
+        buffer[j] = signal_short[i+j];
+      }
+      openWarble.pushSamples(buffer);
+      assert(!gotError.get());
     }
-    assertArrayEquals(expected_payload, decoded_payload);
+
+    // Check result
+    assertEquals(1, payloads.size());
+    assertArrayEquals(expected_payload, payloads.get(0));
+    assertEquals(signal_short.length - signal_short.length % openWarble.getDefaultWindowLength(), openWarble.getPushedSamples());
   }
 
 }
