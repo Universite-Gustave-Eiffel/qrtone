@@ -53,7 +53,7 @@ public class OpenWarble {
   public OpenWarble(Configuration c) {
     cfg = warble.warble_create();
     warble.warble_init(cfg, c.sampleRate, c.firstFrequency, c.frequencyMulti, c.frequencyIncrement, c.wordTime,
-            c.payloadSize, new IntPtr(c.triggerFrequencies), c.triggerFrequencies.length);
+            c.payloadSize, new IntPtr(c.triggerFrequencies), c.triggerFrequencies.length, c.triggerSnr);
     windowLength = warble.warble_cfg_get_window_length(cfg);
     messageSampleLength = warble.warble_generate_window_size(cfg);
   }
@@ -81,7 +81,9 @@ public class OpenWarble {
    */
   public double[] generateSignal(byte[] payload, double powerPeak) {
     double[] signal = new double[messageSampleLength];
-    warble.warble_generate_signal(cfg, powerPeak, new BytePtr(payload), new DoublePtr(signal));
+    byte[] block = new byte[warble.warble_cfg_get_block_length(cfg)];
+    warble.warble_reed_encode_solomon(cfg, new BytePtr(payload), new BytePtr(block));
+    warble.warble_generate_signal(cfg, powerPeak, new BytePtr(block), new DoublePtr(signal));
     return signal;
   }
 

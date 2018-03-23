@@ -39,7 +39,6 @@
 #include "correct/reed-solomon.h"
 
 #define WARBLE_2PI 6.283185307179586
-#define PITCH_SIGNAL_TO_NOISE_TRIGGER 3 // Accept pitch if pitch power is less than 3dB lower than signal level
 
 // In order to fix at least 20% of error, the maximum message length attached to a reed solomon(255,32) code is 10 Bytes for a 8 distance (can correct up to 2 Bytes)
 #define WARBLE_RS_P 10
@@ -119,11 +118,12 @@ int32_t warble_reed_solomon_distance(int32_t length) {
 void warble_init(warble* this, double sampleRate, double firstFrequency,
 	double frequencyMultiplication,
 	int32_t frequencyIncrement, double word_time,
-	int32_t payloadSize, int32_t* frequenciesIndexTriggers, int32_t frequenciesIndexTriggersCount)  {
+	int32_t payloadSize, int32_t* frequenciesIndexTriggers, int32_t frequenciesIndexTriggersCount, double snr_trigger)  {
 	this->sampleRate = sampleRate;
     this->triggerSampleIndex = -1;
     this->triggerSampleIndexBegin = -1;
 	this->payloadSize = payloadSize;
+	this->snr_trigger = snr_trigger;
 	this->distance = warble_reed_solomon_distance(this->payloadSize);
 	if(this->payloadSize > WARBLE_RS_P && this->distance % WARBLE_RS_P > 0) {
 		// The last cutted message is smaller than WARBLE_RS_P
@@ -175,12 +175,10 @@ int warble_is_triggered(warble *warble, const double* signal,int signal_length, 
 	double rms[1] = { 0 };
 	double signalRMS = warble_compute_rms(signal, warble->window_length);
 	warble_generalized_goertzel(signal, signal_length, warble->sampleRate, trigger, 1, rms);
-	const double splSignal = 20 * log10(signalRMS);
-	const double splPitch = 20 * log10(rms[0]);
 	if(triggerRMS) {
 		*triggerRMS = rms[0];
 	}
-	return splSignal - splPitch < PITCH_SIGNAL_TO_NOISE_TRIGGER;
+	return pow(rms[0] / (signalRMS - rms[0]), 2) > warble->snr_trigger;
 }
 
 int warble_get_highest_index(double* rms, const int from, const int to) {
