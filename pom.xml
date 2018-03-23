@@ -31,6 +31,11 @@
             <name>bedatadriven public repo</name>
             <url>https://nexus.bedatadriven.com/content/groups/public/</url>
         </pluginRepository>
+      <pluginRepository>
+        <id>project.local</id>
+        <name>project</name>
+        <url>file:${project.basedir}/libs</url>
+      </pluginRepository>
     </pluginRepositories>
 
 
