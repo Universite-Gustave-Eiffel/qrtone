@@ -523,28 +523,19 @@ MU_TEST(testDecodingRealAudio1) {
 	warble_free(&cfg);
 }
 
-MU_TEST(testGccBridge) {
-	uint8_t dest;
-	uint16_t orig = 255;
-	dest = (uint8_t)orig;
-	printf("dest=%d\n", dest);
-	printf("dest==0 ? %d\n", dest == 0);
-}
-
 MU_TEST_SUITE(test_suite) {
 
-	//MU_RUN_TEST(test1khz);
-	//MU_RUN_TEST(testGenerateSignal);
-	//MU_RUN_TEST(testFeedSignal1);
-	////MU_RUN_TEST(testWriteSignal); // debug purpose
-	//MU_RUN_TEST(testWithSolomonShort);
-	//MU_RUN_TEST(testWithSolomonLong);
-	//MU_RUN_TEST(testInterleave);
-	//MU_RUN_TEST(testWithSolomonError);
-	//MU_RUN_TEST(testWithSolomonErrorInSignal);
-	//MU_RUN_TEST(testDecodingRealAudio1);
+	MU_RUN_TEST(test1khz);
+	MU_RUN_TEST(testGenerateSignal);
+	MU_RUN_TEST(testFeedSignal1);
+	//MU_RUN_TEST(testWriteSignal); // debug purpose
+	MU_RUN_TEST(testWithSolomonShort);
+	MU_RUN_TEST(testWithSolomonLong);
+	MU_RUN_TEST(testInterleave);
+	MU_RUN_TEST(testWithSolomonError);
+	MU_RUN_TEST(testWithSolomonErrorInSignal);
+	MU_RUN_TEST(testDecodingRealAudio1);
 	MU_RUN_TEST(testReedSolomon);
-	//MU_RUN_TEST(testGccBridge);
 }
 
 int main(int argc, char** argv) {
