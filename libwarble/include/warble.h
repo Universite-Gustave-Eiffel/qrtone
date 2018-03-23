@@ -67,6 +67,7 @@ typedef struct _warble {
 	double frequencies[WARBLE_PITCH_COUNT];            /**< Computed pitch frequencies length is WARBLE_PITCH_COUNT */
 	int64_t triggerSampleIndex;     /**< Best Sample index of first trigger */
 	int64_t triggerSampleIndexBegin;/**< Sample index begining of first trigger */
+	double snr_trigger;				/**< Signal to noise (dB) that trigger a message */
 	double triggerSampleRMS;		/**< Highest RMS of first trigger */
 	int32_t word_length;			/** pitch length in samples*/
 	int32_t window_length;			/** Window length of the signal provided to warble_feed **/
@@ -108,11 +109,12 @@ int8_t spectrumToChar(warble *warble, double* rms);
  *  @param message_size Payload size in char.
  *  @param frequencies_index_triggers Frequency index (0-n) that triggers a series of pitch
  *  @param frequencies_index_triggers_length size of array frequencies_index_triggers
+ *  @param snr_trigger Signal to noise ratio to launch parsing of samples. Unit is dB. Default should be greater than 3dB. A low value will trigger often and consume more resources. A too high value will miss messages.
  */
 void warble_init(warble* this, double sample_rate, double first_frequency,
 	double frequency_multiplication,
 	int32_t frequency_increment, double word_time,
-	int32_t message_size, int32_t* frequencies_index_triggers, int32_t frequencies_index_triggers_length);
+	int32_t message_size, int32_t* frequencies_index_triggers, int32_t frequencies_index_triggers_length, double snr_trigger);
 
 /**
 * Free buffer in object

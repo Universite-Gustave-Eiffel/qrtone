@@ -53,7 +53,7 @@ public class OpenWarble {
   public OpenWarble(Configuration c) {
     cfg = warble.warble_create();
     warble.warble_init(cfg, c.sampleRate, c.firstFrequency, c.frequencyMulti, c.frequencyIncrement, c.wordTime,
-            c.payloadSize, new IntPtr(c.triggerFrequencies), c.triggerFrequencies.length);
+            c.payloadSize, new IntPtr(c.triggerFrequencies), c.triggerFrequencies.length, c.triggerSnr);
     windowLength = warble.warble_cfg_get_window_length(cfg);
     messageSampleLength = warble.warble_generate_window_size(cfg);
   }

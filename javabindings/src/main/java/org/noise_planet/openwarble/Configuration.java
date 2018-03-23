@@ -44,6 +44,7 @@ public class Configuration {
   public static final int DEFAULT_INAUDIBLE_STEP = 120;
   public static final int DEFAULT_FIRST_TRIGGER = 9;
   public static final int DEFAULT_SECOND_TRIGGER = 25;
+  public static final double DEFAULT_TRIGGER_SNR = 3;
 
   public final int payloadSize;
   public final int[] triggerFrequencies;
@@ -52,8 +53,9 @@ public class Configuration {
   public final int frequencyIncrement;
   public final double frequencyMulti;
   public final double wordTime;
+  public final double triggerSnr;
 
-  public Configuration(int payloadSize, int[] triggerFrequencies, double sampleRate, double firstFrequency, int frequencyIncrement, double frequencyMulti, double wordTime) {
+  public Configuration(int payloadSize, int[] triggerFrequencies, double sampleRate, double firstFrequency, int frequencyIncrement, double frequencyMulti, double wordTime, double triggerSnr) {
     this.payloadSize = payloadSize;
     this.triggerFrequencies = triggerFrequencies;
     this.sampleRate = sampleRate;
@@ -61,6 +63,7 @@ public class Configuration {
     this.frequencyIncrement = frequencyIncrement;
     this.frequencyMulti = frequencyMulti;
     this.wordTime = wordTime;
+    this.triggerSnr = triggerSnr;
   }
 
   /**
@@ -71,7 +74,7 @@ public class Configuration {
    */
   public static Configuration getAudible(int payloadSize, double sampleRate) {
     return new Configuration(payloadSize, new int[]{DEFAULT_FIRST_TRIGGER, DEFAULT_SECOND_TRIGGER}, sampleRate, DEFAULT_AUDIBLE_FIRST_FREQUENCY,
-            0, MULT_SEMITONE, DEFAULT_WORD_TIME);
+            0, MULT_SEMITONE, DEFAULT_WORD_TIME, DEFAULT_TRIGGER_SNR);
   }
 
 
@@ -83,6 +86,6 @@ public class Configuration {
    */
   public static Configuration getInaudible(int payloadSize, double sampleRate) {
     return new Configuration(payloadSize, new int[]{DEFAULT_FIRST_TRIGGER, DEFAULT_SECOND_TRIGGER}, sampleRate, DEFAULT_INAUDIBLE_FIRST_FREQUENCY,
-            DEFAULT_INAUDIBLE_STEP, 0, DEFAULT_WORD_TIME);
+            DEFAULT_INAUDIBLE_STEP, 0, DEFAULT_WORD_TIME, DEFAULT_TRIGGER_SNR);
   }
 }
