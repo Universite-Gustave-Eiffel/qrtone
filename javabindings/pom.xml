@@ -6,7 +6,7 @@
     <artifactId>openwarble</artifactId>
     <parent>
         <artifactId>openwarble-parent</artifactId>
-        <groupId>org.noise_planet</groupId>
+        <groupId>org.noise-planet</groupId>
         <version>1.0-SNAPSHOT</version>
         <relativePath>../</relativePath>
     </parent>
@@ -16,16 +16,17 @@
     <maven.compiler.target>1.7</maven.compiler.target>
     </properties>
     <dependencies>
+      <dependency>
+        <groupId>org.noise-planet</groupId>
+        <artifactId>gcc-bridge-maven-plugin</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <scope>compile</scope>
+      </dependency>
         <dependency>
-            <groupId>org.renjin</groupId>
+            <groupId>org.noise-planet</groupId>
             <artifactId>gcc-runtime</artifactId>
-            <version>${gcc.bridge.version}</version>
+            <version>1.0.0-SNAPSHOT</version>
         </dependency>
-        <!--<dependency>-->
-            <!--<groupId>org.hamcrest</groupId>-->
-            <!--<artifactId>hamcrest-library</artifactId>-->
-            <!--<version>1.3</version>-->
-        <!--</dependency>-->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
@@ -33,6 +34,7 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
 
 
     <build>
@@ -52,9 +54,9 @@
             </executions>
           </plugin>
             <plugin>
-                <groupId>org.renjin</groupId>
+                <groupId>org.noise-planet</groupId>
                 <artifactId>gcc-bridge-maven-plugin</artifactId>
-                <version>${gcc.bridge.version}</version>
+                <version>1.0.0-SNAPSHOT</version>
                 <configuration>
                     <!-- Sets the package name of all generated classes -->
                     <packageName>org.noise_planet.openwarble</packageName>
