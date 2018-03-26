@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Emscripten-Generated Code</title>
+	<script type="text/javascript" src="openwarble-emscripten.js"></script>
+    <style>
+      body {
+        font-family: arial;
+        margin: 0;
+        padding: none;
+      }
+    </style>
+  </head>
+  <body>
+    <p id="demo"></p>
+	<script type="text/javascript" >
+
+	var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+	
+		let winstance = _warble_create();
+		
+		let first_frequency = 1760;
+		let frequency_multiplication = 1.0594630943591;
+		let frequency_increment=0;
+		let word_time = 0.0872;
+		let message = "TestOpenWarble";
+		let content = new Int8Array(new TextEncoder("utf-8").encode(message));
+		let message_size = content.length;
+		let frequencies_index_triggers = [9, 25];
+		let snr_trigger = 3.;
+		let frequencies = new Float64Array(frequencies_index_triggers);
+		let powerPeak = 1.;
+	
+		
+		_warble_init(winstance, audioCtx.sampleRate, first_frequency, frequency_multiplication, frequency_increment,
+		word_time,content.length, frequencies, frequencies_index_triggers.length, snr_trigger);
+		
+		
+		let signalSize = _warble_generate_window_size(winstance);
+		
+		//let signal = new Float64Array(signalSize);
+		
+		let wordLength = _warble_cfg_get_block_length(winstance);
+		let wordAlloc = Module._malloc(wordLength);		
+		_warble_reed_encode_solomon(winstance, content, wordAlloc);
+		//let words = new Int8Array(wordLength);
+		//for(var i=0;i<wordLength;i++) {
+		//	words[i] = Module.getValue(wordAlloc+i,'i8');
+		//	console.log("w:" + words[i]);
+		//}
+	
+		
+		let signalAlloc = Module._malloc(signalSize * 8);		
+		_warble_generate_signal(winstance, powerPeak, wordAlloc , signalAlloc);	
+		
+		let signal = Module.HEAPF64.subarray(signalAlloc / 8, (signalAlloc / 8) + signalSize);
+		
+ 
+		_warble_free(winstance);
+	
+	
+	let channels = 1;
+	
+	function play(samples){
+		// Create an empty two second stereo buffer at the
+		// sample rate of the AudioContext
+		var frameCount = samples.length;
+		
+		document.getElementById("demo").innerHTML = "sampleRate: "+audioCtx.sampleRate+" Hz<br>"
+		+"Max value " + Math.max(samples) + "<br>"
+		+"Signal length " + samples.length + "<br>";
+		
+		var myAudioBuffer = audioCtx.createBuffer(channels, frameCount, audioCtx.sampleRate);
+		for (var channel = 0; channel < channels; channel++) {
+
+			var nowBuffering = myAudioBuffer.getChannelData(channel);
+			for (var i = 0; i < frameCount; i++) {
+				// audio needs to be in [-1.0; 1.0]
+				nowBuffering[i] = Math.min(1, Math.max(-1, samples[i]));
+			}
+		}
+		// Get an AudioBufferSourceNode.
+		// This is the AudioNode to use when we want to play an AudioBuffer
+		var source = audioCtx.createBufferSource();
+		// set the buffer in the AudioBufferSourceNode
+		source.buffer = myAudioBuffer;
+		// connect the AudioBufferSourceNode to the
+		// destination so we can hear the sound
+		source.connect(audioCtx.destination);
+		// start the source playing
+		source.start();
+	}
+	
+	</script>
+	<div>
+     <button id="play" type="button" onclick="play(signal)">Play sound</button>
+   </div>
+  </body>
+</html>
