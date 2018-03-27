@@ -25,37 +25,38 @@
 		let frequency_multiplication = 1.0594630943591;
 		let frequency_increment=0;
 		let word_time = 0.0872;
-		let message = "TestOpenWarble";
-		let content = new Int8Array(new TextEncoder("utf-8").encode(message));
-		let message_size = content.length;
+		let content = new Int8Array([18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36,
+		-100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114]);
 		let frequencies_index_triggers = [9, 25];
 		let snr_trigger = 3.;
-		let frequencies = new Float64Array(frequencies_index_triggers);
-		let powerPeak = 1.;
+		let powerPeak = 0.5;
 	
 		
 		_warble_init(winstance, audioCtx.sampleRate, first_frequency, frequency_multiplication, frequency_increment,
-		word_time,content.length, frequencies, frequencies_index_triggers.length, snr_trigger);
+		word_time,content.length, allocate(frequencies_index_triggers, 'double', ALLOC_NORMAL), frequencies_index_triggers.length, snr_trigger);
 		
 		
 		let signalSize = _warble_generate_window_size(winstance);
-		
-		//let signal = new Float64Array(signalSize);
-		
+		let contenti8 = allocate(content, 'i8', ALLOC_NORMAL);
 		let wordLength = _warble_cfg_get_block_length(winstance);
-		let wordAlloc = Module._malloc(wordLength);		
-		_warble_reed_encode_solomon(winstance, content, wordAlloc);
-		//let words = new Int8Array(wordLength);
-		//for(var i=0;i<wordLength;i++) {
-		//	words[i] = Module.getValue(wordAlloc+i,'i8');
-		//	console.log("w:" + words[i]);
-		//}
-	
+		let wordAlloc = Module._malloc(wordLength);	
+		//_warble_test_js(winstance, contenti8, wordAlloc);
+		_warble_reed_encode_solomon(winstance, contenti8, wordAlloc);
+		for(var i=0;i<content.length;i++) {
+			document.getElementById("demo").innerHTML +=content[i]+",";
+		}
+		// Expected
+		// -100,-106,-118,-32,31,103,95,83,81,-2,-117,-70,-93,-44,-6,114,-82,-56,26,-63,-39,93,46,-93,18,109,39,50,12,-100,2,50,-22,-50,32,119,-109,-117,108,-71,-50,52,-121,-75,-116,69,42,6,-97,-1,-98,-75,43,77,53,28,24,-9,97,4,36,-109
+		document.getElementById("demo").innerHTML +="<br><br>";
+		for(var i=0;i<wordLength;i++) {
+			document.getElementById("demo").innerHTML +=Module.getValue(wordAlloc + i,'i8')+",";
+		}
 		
-		let signalAlloc = Module._malloc(signalSize * 8);		
+		let signalAlloc = Module._malloc(signalSize * 8);
+		//Module._memset(signalAlloc, 0, signalSize * 8);
 		_warble_generate_signal(winstance, powerPeak, wordAlloc , signalAlloc);	
 		
-		let signal = Module.HEAPF64.subarray(signalAlloc / 8, (signalAlloc / 8) + signalSize);
+		let signal = Module.HEAPF64.subarray(signalAlloc / 8, signalAlloc + signalSize);
 		
  
 		_warble_free(winstance);
@@ -63,24 +64,31 @@
 	
 	let channels = 1;
 	
-	function play(samples){
+	function play(){
 		// Create an empty two second stereo buffer at the
 		// sample rate of the AudioContext
-		var frameCount = samples.length;
+		var frameCount = signalSize;
 		
-		document.getElementById("demo").innerHTML = "sampleRate: "+audioCtx.sampleRate+" Hz<br>"
-		+"Max value " + Math.max(samples) + "<br>"
-		+"Signal length " + samples.length + "<br>";
+		document.getElementById("demo").innerHTML += "sampleRate: "+audioCtx.sampleRate+" Hz<br>"+
+		"content length: "+ content.length+"<br>"+
+		"words length: "+ wordLength+"<br>"+
+		" Play time "+(signalSize/audioCtx.sampleRate)+" s<br>";
 		
 		var myAudioBuffer = audioCtx.createBuffer(channels, frameCount, audioCtx.sampleRate);
+		var nanvals = 0;
 		for (var channel = 0; channel < channels; channel++) {
 
 			var nowBuffering = myAudioBuffer.getChannelData(channel);
 			for (var i = 0; i < frameCount; i++) {
 				// audio needs to be in [-1.0; 1.0]
-				nowBuffering[i] = Math.min(1, Math.max(-1, samples[i]));
+				nowBuffering[i] = Module.getValue(signalAlloc + ( i * 8), 'double');
+				if(isNaN(nowBuffering[i])) {
+					nanvals++;
+				}
 			}
 		}
+		
+		console.log("nan: "+nanvals);
 		// Get an AudioBufferSourceNode.
 		// This is the AudioNode to use when we want to play an AudioBuffer
 		var source = audioCtx.createBufferSource();
@@ -95,7 +103,7 @@
 	
 	</script>
 	<div>
-     <button id="play" type="button" onclick="play(signal)">Play sound</button>
+     <button id="play" type="button" onclick="play()">Play sound</button>
    </div>
   </body>
 </html>
