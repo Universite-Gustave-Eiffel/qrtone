@@ -39,6 +39,9 @@ from cpython.bytes cimport PyBytes_FromStringAndSize
 from libcpp cimport bool
 from cpython.mem cimport PyMem_Malloc
 
+cdef array.array int_array_template = array.array('i', [])
+cdef array.array double_array_template = array.array('d', [])
+
 cdef class pywarble:
   cdef cpywarble.warble* _c_pywarble
   def __cinit__(self):
@@ -58,3 +61,14 @@ cdef class pywarble:
       	frequency_multiplication,
       	frequency_increment, word_time,
       	message_size, <int32_t*>&cfrequencies_index_triggers[0], cfrequencies_index_triggers.shape[0], snr_trigger)
+
+  def _generalized_goertzel(self, list signal, double sample_rate, list frequencies):
+    cdef double[::1] csignal = array.array('d',signal)
+    cdef double[::1] cfrequencies = array.array('d',frequencies)
+    cdef double[::1] rms = array.clone(double_array_template, len(frequencies), zero=False)
+    cpywarble.warble_generalized_goertzel(&csignal[0], csignal.shape[0], sample_rate, &cfrequencies[0], cfrequencies.shape[0], &rms[0])
+    return list(rms)
+
+  def _compute_rms(self, list signal):
+    cdef double[::1] csignal = array.array('d',signal)
+    return cpywarble.warble_compute_rms(&csignal[0], csignal.shape[0])

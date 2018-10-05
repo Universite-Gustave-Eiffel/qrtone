@@ -50,21 +50,40 @@ logging.basicConfig(level=logging.DEBUG)
 # Unit test, check ut_reference.py for reference values on this unit test
 class TestModule(unittest.TestCase):
 
-    ##
-    # Test init
-    def test_init(self):
-
+    def create_default(self, payload):
         sample_rate = 44100
         first_frequency = 1760
         frequency_multiplication = 1.0594630943591
         frequency_increment = 0
         word_time = 0.0872
-        message_size = len("parrot")
+        message_size = len(payload)
         frequencies_index_triggers = [9, 25]
         snr_trigger = 10
-        np = pywarble.pywarble(sample_rate, first_frequency,
+        return pywarble.pywarble(sample_rate, first_frequency,
          frequency_multiplication, frequency_increment, word_time, message_size,
           frequencies_index_triggers, snr_trigger)
+
+    ##
+    # Test init
+    def test_init(self):
+
+        self.create_default("parrot")
+
+    def test_warble(self):
+    	sampleRate = 44100.0;
+    	powerRMS = 500;
+    	signalFrequency = 1000;
+    	powerPeak = powerRMS * math.sqrt(2);
+        audio = [math.sin(2 * math.pi * signalFrequency * s * (1 / sampleRate)) * (powerPeak) for s in range(int(sampleRate))]
+
+    	freqs = [ 1000 ]
+
+        warble = self.create_default("test")
+    	out = warble._generalized_goertzel(audio, sampleRate, freqs);
+
+    	signal_rms = warble._compute_rms(audio);
+
+    	self.assertAlmostEqual(signal_rms, out[0], 1)
 
 if __name__ == '__main__':
     sys.settrace(trace)
