@@ -105,12 +105,6 @@ double warble_compute_rms(const double* signal, int32_t s_length) {
 	return sqrt(sum / s_length);
 }
 
-// Used by Java binding
-warble* warble_create() {
-	warble* this = (warble*)malloc(sizeof(warble));
-	return this;
-}
-
 int32_t warble_reed_solomon_distance(int32_t length) {
 	return (int32_t)max(4, min(WARBLE_RS_DISTANCE, pow(2, round(log(length / 3.) / log(2)))));
 }
@@ -120,8 +114,8 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 	int32_t frequencyIncrement, double word_time,
 	int32_t payloadSize, int32_t* frequenciesIndexTriggers, int32_t frequenciesIndexTriggersCount, double snr_trigger)  {
 	this->sampleRate = sampleRate;
-    this->triggerSampleIndex = -1;
-    this->triggerSampleIndexBegin = -1;
+  this->triggerSampleIndex = -1;
+  this->triggerSampleIndexBegin = -1;
 	this->payloadSize = payloadSize;
 	this->snr_trigger = snr_trigger;
 	this->distance = warble_reed_solomon_distance(this->payloadSize);
@@ -166,7 +160,7 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 
 void warble_free(warble *warble) {
 	free(warble->frequenciesIndexTriggers);
-    free(warble->parsed);
+  free(warble->parsed);
 	free(warble->shuffleIndex);
 }
 
@@ -376,6 +370,11 @@ void warble_generate_signal(warble *warble,double power_peak, int8_t* words, dou
 	}
 }
 // For java bindings
+
+warble* warble_create() {
+	warble* this = (warble*)malloc(sizeof(warble));
+	return this;
+}
 
 int32_t warble_cfg_get_payloadSize(warble *warble) {
     return warble->payloadSize;

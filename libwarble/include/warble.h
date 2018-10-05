@@ -121,6 +121,9 @@ void warble_init(warble* this, double sample_rate, double first_frequency,
 * @param warble Object to free
 */
 void warble_free(warble *warble);
+/** Alloc struct
+ */
+warble* warble_create();
 
 /**
 * Analyse the provided spectrum

@@ -1,5 +1,7 @@
 target/
 build/
+dist/
+*.egg-info
 .vscode/
 pom.xml.tag
 pom.xml.releaseBackup
@@ -13,6 +15,7 @@ ubuntu-xenial-16.04-cloudimg-console.log
 .vagrant/
 .idea/
 *.iml
+*.pyc
 .kdev4
 *.kdev4
 # Avoid ignoring Maven wrapper jar file (.jar files are usually ignored)
