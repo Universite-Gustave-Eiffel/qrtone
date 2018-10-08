@@ -44,6 +44,7 @@ cdef array.array int_array_template = array.array('i', [])
 cdef array.array double_array_template = array.array('d', [])
 
 cdef class pywarble:
+  cdef int64_t sample_index
   cdef cpywarble.warble* _c_pywarble
   def __cinit__(self):
     self._c_pywarble = cpywarble.warble_create()
@@ -57,6 +58,7 @@ cdef class pywarble:
   def __init__(self, double sample_rate, double first_frequency,
    double frequency_multiplication, int32_t frequency_increment, double word_time,
   	int32_t message_size, list frequencies_index_triggers, double snr_trigger):
+      self.sample_index = 0
       cdef int[::1] cfrequencies_index_triggers = array.array('i',frequencies_index_triggers)
       cpywarble.warble_init(self._c_pywarble, sample_rate, first_frequency,
       	frequency_multiplication,
@@ -82,11 +84,13 @@ cdef class pywarble:
       cpywarble.warble_generate_signal(self._c_pywarble,powerPeak, <int8_t *>words, &signal_out[0])
       return list(signal_out)
 
-  def feed(self, list signal, int64_t sample_index):
+  def feed(self, list signal):
       if len(signal) == 0:
         return 0
       cdef double[::1] csignal = array.array('d',signal)
-      return cpywarble.warble_feed(self._c_pywarble, &csignal[0], csignal.shape[0])
+      cdef int res = cpywarble.warble_feed(self._c_pywarble, &csignal[0], self.sample_index)
+      self.sample_index += csignal.shape[0]
+      return res
 
   def get_payload_size(self):
       return cpywarble.warble_cfg_get_payloadSize(self._c_pywarble);
@@ -95,8 +99,8 @@ cdef class pywarble:
       return cpywarble.warble_cfg_get_frequenciesIndexTriggersCount(self._c_pywarble)
 
   def get_frequencies_index_triggers(self):
-      cdef double[::1] triggers = array.clone(double_array_template, cpywarble.warble_generate_window_size(self._c_pywarble), zero=False)
-      memcpy(&triggers[0], cpywarble.warble_cfg_get_frequenciesIndexTriggers(self._c_pywarble), sizeof(double) * cpywarble.warble_cfg_get_frequenciesIndexTriggersCount(self._c_pywarble))
+      cdef int[::1] triggers = array.clone(int_array_template, 2, zero=False)
+      memcpy(&triggers[0], cpywarble.warble_cfg_get_frequenciesIndexTriggers(self._c_pywarble), sizeof(int32_t) * 2)
       return list(triggers)
 
   def get_sample_rate(self):
@@ -118,7 +122,7 @@ cdef class pywarble:
       return cpywarble.warble_cfg_get_parsed(self._c_pywarble)
 
   def get_shuffleIndex(self):
-      cdef int[::1] index = array.clone(double_array_template, cpywarble.WARBLE_PITCH_COUNT, zero=False)
+      cdef int[::1] index = array.clone(int_array_template, cpywarble.warble_cfg_get_block_length(self._c_pywarble), zero=False)
       memcpy(&index[0], cpywarble.warble_cfg_get_shuffleIndex(self._c_pywarble), sizeof(int32_t) * cpywarble.warble_cfg_get_block_length(self._c_pywarble))
       return list(index)
 

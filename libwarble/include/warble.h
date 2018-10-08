@@ -172,6 +172,40 @@ void warble_char_to_frequencies(warble *warble, int8_t c, double* f0, double* f1
 
 int warble_get_highest_index(double* rms, const int from, const int to);
 
+warble* warble_create();
+
+int32_t warble_cfg_get_payloadSize(warble *warble);
+
+int32_t warble_cfg_get_frequenciesIndexTriggersCount(warble *warble);
+
+int32_t* warble_cfg_get_frequenciesIndexTriggers(warble *warble);
+
+double warble_cfg_get_sampleRate(warble *warble);
+
+int32_t warble_cfg_get_block_length(warble *warble);
+
+int32_t warble_cfg_get_distance(warble *warble);
+
+int32_t warble_cfg_get_rs_message_length(warble *warble);
+
+int32_t warble_cfg_get_distance_last(warble *warble);
+
+int8_t* warble_cfg_get_parsed(warble *warble);
+
+int32_t* warble_cfg_get_shuffleIndex(warble *warble);
+
+double* warble_cfg_get_frequencies(warble *warble);
+
+int64_t warble_cfg_get_triggerSampleIndex(warble *warble);
+
+int64_t warble_cfg_get_triggerSampleIndexBegin(warble *warble);
+
+double warble_cfg_get_triggerSampleRMS(warble *warble);
+
+int32_t warble_cfg_get_word_length(warble *warble);
+
+int32_t warble_cfg_get_window_length(warble *warble);
+
 #ifdef __cplusplus
 }
 #endif

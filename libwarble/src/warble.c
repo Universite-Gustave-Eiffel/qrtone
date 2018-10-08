@@ -295,7 +295,7 @@ void warble_reed_encode_solomon(warble *warble, int8_t* msg, int8_t* block) {
 	int block_cursor = 0;
 	int remaining = warble->payloadSize % warble->rs_message_length;
 	correct_reed_solomon *rs = correct_reed_solomon_create(
-		correct_rs_primitive_polynomial_ccsds, 1, 1, warble->distance);
+	correct_rs_primitive_polynomial_ccsds, 1, 1, warble->distance);
 	for(msg_cursor = 0; msg_cursor < warble->payloadSize - remaining; msg_cursor += warble->rs_message_length) {
 		correct_reed_solomon_encode(rs, &(msg[msg_cursor]), warble->rs_message_length, &(block[block_cursor]));
 		block_cursor += warble->rs_message_length + warble->distance;
