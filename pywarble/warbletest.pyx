@@ -1,9 +1,4 @@
 
-  def _generalized_goertzel(const double* signal, int32_t s_length, double sample_rate, const double* frequencies, int32_t f_length):
-    # cdef double * rms = <double *>PyMem_Malloc(sizeof(double) * cpywarble.WARBLE_PITCH_COUNT)
-    cdef array.array rms = array.array('d', [0.] * cpywarble.WARBLE_PITCH_COUNT)
-    cpywarble.warble_generalized_goertzel(signal, s_length, sample_rate, frequencies, f_length, rms.as_doubles)
-    return rms
 
   def _compute_rms(const double* signal, int32_t s_length):
     return cpywarble.warble_compute_rms(signal, s_length)

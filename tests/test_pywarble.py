@@ -36,15 +36,18 @@ import pywarble
 import math
 import sys
 
+
 def trace(frame, event, arg):
     print "%s, %s:%d" % (event, frame.f_code.co_filename, frame.f_lineno)
     return trace
+
 
 """
 Some basic tests
 """
 
 logging.basicConfig(level=logging.DEBUG)
+
 
 ##
 # Unit test, check ut_reference.py for reference values on this unit test
@@ -60,8 +63,8 @@ class TestModule(unittest.TestCase):
         frequencies_index_triggers = [9, 25]
         snr_trigger = 10
         return pywarble.pywarble(sample_rate, first_frequency,
-         frequency_multiplication, frequency_increment, word_time, message_size,
-          frequencies_index_triggers, snr_trigger)
+                                 frequency_multiplication, frequency_increment, word_time, message_size,
+                                 frequencies_index_triggers, snr_trigger)
 
     ##
     # Test init
@@ -69,23 +72,49 @@ class TestModule(unittest.TestCase):
 
         self.create_default("parrot")
 
-    def test_warble(self):
-    	sampleRate = 44100.0;
-    	powerRMS = 500;
-    	signalFrequency = 1000;
-    	powerPeak = powerRMS * math.sqrt(2);
-        audio = [math.sin(2 * math.pi * signalFrequency * s * (1 / sampleRate)) * (powerPeak) for s in range(int(sampleRate))]
+    def test_goertzel(self):
+        sampleRate = 44100.0
+        powerRMS = 500
+        signalFrequency = 1000
+        powerPeak = powerRMS * math.sqrt(2);
+        audio = [math.sin(2 * math.pi * signalFrequency * s * (1 / sampleRate)) * (powerPeak) for s in
+                 range(int(sampleRate))]
 
-    	freqs = [ 1000 ]
+        freqs = [signalFrequency]
 
         warble = self.create_default("test")
-    	out = warble._generalized_goertzel(audio, sampleRate, freqs);
+        out = warble._generalized_goertzel(audio, sampleRate, freqs);
 
-    	signal_rms = warble._compute_rms(audio);
+        signal_rms = warble._compute_rms(audio)
 
-    	self.assertAlmostEqual(signal_rms, out[0], 1)
+        self.assertAlmostEqual(signal_rms, out[0], 1)
 
-if __name__ == '__main__':
-    sys.settrace(trace)
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestModule)
-    unittest.TextTestRunner(verbosity=2).run(suite)
+    def test_generate(self):
+        payload = "!0BSduvwxyz"
+
+        blankBefore = int(44100 * 0.13)
+
+        blankAfter = int(44100 * 0.2)
+
+        warble = self.create_default(payload)
+
+        signal_size = warble.warble_generate_window_size() + blankBefore + blankAfter
+
+        # Copy payload to words(larger size)
+        words = malloc(sizeof(int8_t) * cfg.block_length + 1);
+        memset(words, 0, sizeof(int8_t) * cfg.block_length + 1);
+        memcpy(words, payload, sizeof(payload));
+
+        signal_short = warble.warble_generate_signal(self.powerPeak, words)
+
+        # Check with all possible offset in the wave (detect window index errors)
+        for i in range(signal_size - cfg.window_length):
+            pass
+            res = warble_feed( & cfg, & (signal[i]), i)
+            if res == warble.warble_feed_message_complete:
+                break
+        self.assertEqual(payload, cfg.parsed);
+        if __name__ == '__main__':
+            sys.settrace(trace)
+        suite = unittest.TestLoader().loadTestsFromTestCase(TestModule)
+        unittest.TextTestRunner(verbosity=2).run(suite)

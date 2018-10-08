@@ -72,3 +72,11 @@ cdef class pywarble:
   def _compute_rms(self, list signal):
     cdef double[::1] csignal = array.array('d',signal)
     return cpywarble.warble_compute_rms(&csignal[0], csignal.shape[0])
+
+  def generate_window_size(self):
+    return cpywarble.warble_generate_window_size(self._c_pywarble)
+
+  def generate_signal(self,double powerPeak, const char * words):
+      cdef double[::1] signal_out = array.clone(double_array_template, cpywarble.warble_generate_window_size(self._c_pywarble), zero=False)
+      cpywarble.warble_generate_signal(self._c_pywarble,powerPeak, words, signal_out)
+      return signal_out
