@@ -33,6 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 cimport cpywarble
 from libc.stdint cimport int8_t, int16_t, int32_t, int64_t
 from libc.stdlib cimport malloc
+from libc.string cimport memcpy
 from cpython cimport array
 import array
 from cpython.bytes cimport PyBytes_FromStringAndSize
@@ -78,5 +79,65 @@ cdef class pywarble:
 
   def generate_signal(self,double powerPeak, const char * words):
       cdef double[::1] signal_out = array.clone(double_array_template, cpywarble.warble_generate_window_size(self._c_pywarble), zero=False)
-      cpywarble.warble_generate_signal(self._c_pywarble,powerPeak, words, signal_out)
-      return signal_out
+      cpywarble.warble_generate_signal(self._c_pywarble,powerPeak, <int8_t *>words, &signal_out[0])
+      return list(signal_out)
+
+  def feed(self, list signal, int64_t sample_index):
+      if len(signal) == 0:
+        return 0
+      cdef double[::1] csignal = array.array('d',signal)
+      return cpywarble.warble_feed(self._c_pywarble, &csignal[0], csignal.shape[0])
+
+  def get_payload_size(self):
+      return cpywarble.warble_cfg_get_payloadSize(self._c_pywarble);
+
+  def get_frequencies_index_triggers_count(self):
+      return cpywarble.warble_cfg_get_frequenciesIndexTriggersCount(self._c_pywarble)
+
+  def get_frequencies_index_triggers(self):
+      cdef double[::1] triggers = array.clone(double_array_template, cpywarble.warble_generate_window_size(self._c_pywarble), zero=False)
+      memcpy(&triggers[0], cpywarble.warble_cfg_get_frequenciesIndexTriggers(self._c_pywarble), sizeof(double) * cpywarble.warble_cfg_get_frequenciesIndexTriggersCount(self._c_pywarble))
+      return list(triggers)
+
+  def get_sample_rate(self):
+      return cpywarble.warble_cfg_get_sampleRate(self._c_pywarble)
+
+  def get_block_length(self):
+      return cpywarble.warble_cfg_get_block_length(self._c_pywarble)
+
+  def get_distance(self):
+      return cpywarble.warble_cfg_get_distance(self._c_pywarble)
+
+  def get_rs_message_length(self):
+      return cpywarble.warble_cfg_get_rs_message_length(self._c_pywarble)
+
+  def get_distance_last(self):
+      return cpywarble.warble_cfg_get_distance_last(self._c_pywarble)
+
+  def get_parsed(self):
+      return cpywarble.warble_cfg_get_parsed(self._c_pywarble)
+
+  def get_shuffleIndex(self):
+      cdef int[::1] index = array.clone(double_array_template, cpywarble.WARBLE_PITCH_COUNT, zero=False)
+      memcpy(&index[0], cpywarble.warble_cfg_get_shuffleIndex(self._c_pywarble), sizeof(int32_t) * cpywarble.warble_cfg_get_block_length(self._c_pywarble))
+      return list(index)
+
+  def get_frequencies(self):
+      cdef double[::1] freqs = array.clone(double_array_template, cpywarble.WARBLE_PITCH_COUNT, zero=False)
+      memcpy(&freqs[0], cpywarble.warble_cfg_get_frequencies(self._c_pywarble), sizeof(double) * cpywarble.WARBLE_PITCH_COUNT);
+      return list(freqs)
+
+  def get_trigger_sample_index(self):
+      return cpywarble.warble_cfg_get_triggerSampleIndex(self._c_pywarble)
+
+  def get_trigger_sample_index_begin(self):
+      return cpywarble.warble_cfg_get_triggerSampleIndexBegin(self._c_pywarble)
+
+  def get_trigger_sample_rms(self):
+      return cpywarble.warble_cfg_get_triggerSampleRMS(self._c_pywarble)
+
+  def get_word_length(self):
+      return cpywarble.warble_cfg_get_word_length(self._c_pywarble)
+
+  def get_window_length(self):
+      return cpywarble.warble_cfg_get_window_length(self._c_pywarble)

@@ -90,6 +90,8 @@ class TestModule(unittest.TestCase):
         self.assertAlmostEqual(signal_rms, out[0], 1)
 
     def test_generate(self):
+        powerRMS = 500
+        powerPeak = powerRMS * math.sqrt(2)
         payload = "!0BSduvwxyz"
 
         blankBefore = int(44100 * 0.13)
@@ -98,22 +100,24 @@ class TestModule(unittest.TestCase):
 
         warble = self.create_default(payload)
 
-        signal_size = warble.warble_generate_window_size() + blankBefore + blankAfter
+        warble.generate_window_size() + blankBefore + blankAfter
 
         # Copy payload to words(larger size)
-        words = malloc(sizeof(int8_t) * cfg.block_length + 1);
-        memset(words, 0, sizeof(int8_t) * cfg.block_length + 1);
-        memcpy(words, payload, sizeof(payload));
+        words = payload.ljust(warble.get_block_length() + 1)
 
-        signal_short = warble.warble_generate_signal(self.powerPeak, words)
+        signal_short = [0.0] * blankBefore + warble.generate_signal(powerPeak, words) + [0.0] * blankAfter
+
+        signal_size = len(signal_short)
 
         # Check with all possible offset in the wave (detect window index errors)
-        for i in range(signal_size - cfg.window_length):
-            pass
-            res = warble_feed( & cfg, & (signal[i]), i)
-            if res == warble.warble_feed_message_complete:
+        messageComplete = False
+        for i in range(0, signal_size - warble.get_window_length(), warble.get_window_length()):
+            res = warble.feed(signal_short[i:i+warble.get_window_length()], i)
+            if res == pywarble.warble_feed_message_complete:
+                messageComplete = True
                 break
-        self.assertEqual(payload, cfg.parsed);
+        self.assertTrue(messageComplete)
+        self.assertEqual(payload, warble.get_parsed())
         if __name__ == '__main__':
             sys.settrace(trace)
         suite = unittest.TestLoader().loadTestsFromTestCase(TestModule)

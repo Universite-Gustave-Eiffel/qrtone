@@ -926,7 +926,7 @@ struct __pyx_MemviewEnum_obj;
 struct __pyx_memoryview_obj;
 struct __pyx_memoryviewslice_obj;
 
-/* "pywarble/pywarble.pyx":45
+/* "pywarble/pywarble.pyx":46
  * cdef array.array double_array_template = array.array('d', [])
  * 
  * cdef class pywarble:             # <<<<<<<<<<<<<<
@@ -1678,6 +1678,19 @@ static CYTHON_INLINE PyObject *__pyx_capsule_create(void *p, const char *sig);
 static CYTHON_INLINE PyObject *__pyx_memview_get_double(const char *itemp);
 static CYTHON_INLINE int __pyx_memview_set_double(const char *itemp, PyObject *obj);
 
+/* CIntToPy.proto */
+static CYTHON_INLINE PyObject* __Pyx_PyInt_From_int32_t(int32_t value);
+
+/* CIntToPy.proto */
+static CYTHON_INLINE PyObject* __Pyx_PyInt_From_int(int value);
+
+/* MemviewDtypeToObject.proto */
+static CYTHON_INLINE PyObject *__pyx_memview_get_int(const char *itemp);
+static CYTHON_INLINE int __pyx_memview_set_int(const char *itemp, PyObject *obj);
+
+/* CIntToPy.proto */
+static CYTHON_INLINE PyObject* __Pyx_PyInt_From_int64_t(int64_t value);
+
 /* MemviewSliceCopyTemplate.proto */
 static __Pyx_memviewslice
 __pyx_memoryview_copy_new_contig(const __Pyx_memviewslice *from_mvs,
@@ -1689,13 +1702,13 @@ __pyx_memoryview_copy_new_contig(const __Pyx_memviewslice *from_mvs,
 static CYTHON_INLINE int32_t __Pyx_PyInt_As_int32_t(PyObject *);
 
 /* CIntFromPy.proto */
+static CYTHON_INLINE int64_t __Pyx_PyInt_As_int64_t(PyObject *);
+
+/* CIntFromPy.proto */
 static CYTHON_INLINE int __Pyx_PyInt_As_int(PyObject *);
 
 /* CIntFromPy.proto */
 static CYTHON_INLINE long __Pyx_PyInt_As_long(PyObject *);
-
-/* CIntToPy.proto */
-static CYTHON_INLINE PyObject* __Pyx_PyInt_From_int(int value);
 
 /* CIntToPy.proto */
 static CYTHON_INLINE PyObject* __Pyx_PyInt_From_long(long value);
@@ -1951,6 +1964,7 @@ static const char __pyx_k_flags[] = "flags";
 static const char __pyx_k_range[] = "range";
 static const char __pyx_k_shape[] = "shape";
 static const char __pyx_k_start[] = "start";
+static const char __pyx_k_words[] = "words";
 static const char __pyx_k_encode[] = "encode";
 static const char __pyx_k_format[] = "format";
 static const char __pyx_k_import[] = "__import__";
@@ -1970,6 +1984,7 @@ static const char __pyx_k_pyx_type[] = "__pyx_type";
 static const char __pyx_k_setstate[] = "__setstate__";
 static const char __pyx_k_TypeError[] = "TypeError";
 static const char __pyx_k_enumerate[] = "enumerate";
+static const char __pyx_k_powerPeak[] = "powerPeak";
 static const char __pyx_k_pyx_state[] = "__pyx_state";
 static const char __pyx_k_reduce_ex[] = "__reduce_ex__";
 static const char __pyx_k_word_time[] = "word_time";
@@ -1984,6 +1999,7 @@ static const char __pyx_k_sample_rate[] = "sample_rate";
 static const char __pyx_k_snr_trigger[] = "snr_trigger";
 static const char __pyx_k_message_size[] = "message_size";
 static const char __pyx_k_pyx_checksum[] = "__pyx_checksum";
+static const char __pyx_k_sample_index[] = "sample_index";
 static const char __pyx_k_stringsource[] = "stringsource";
 static const char __pyx_k_pyx_getbuffer[] = "__pyx_getbuffer";
 static const char __pyx_k_reduce_cython[] = "__reduce_cython__";
@@ -2089,6 +2105,7 @@ static PyObject *__pyx_kp_s_no_default___reduce___due_to_non;
 static PyObject *__pyx_n_s_obj;
 static PyObject *__pyx_n_s_pack;
 static PyObject *__pyx_n_s_pickle;
+static PyObject *__pyx_n_s_powerPeak;
 static PyObject *__pyx_n_s_pyx_PickleError;
 static PyObject *__pyx_n_s_pyx_checksum;
 static PyObject *__pyx_n_s_pyx_getbuffer;
@@ -2101,6 +2118,7 @@ static PyObject *__pyx_n_s_range;
 static PyObject *__pyx_n_s_reduce;
 static PyObject *__pyx_n_s_reduce_cython;
 static PyObject *__pyx_n_s_reduce_ex;
+static PyObject *__pyx_n_s_sample_index;
 static PyObject *__pyx_n_s_sample_rate;
 static PyObject *__pyx_n_s_setstate;
 static PyObject *__pyx_n_s_setstate_cython;
@@ -2122,13 +2140,33 @@ static PyObject *__pyx_kp_s_unable_to_allocate_shape_and_str;
 static PyObject *__pyx_n_s_unpack;
 static PyObject *__pyx_n_s_update;
 static PyObject *__pyx_n_s_word_time;
+static PyObject *__pyx_n_s_words;
 static int __pyx_pf_8pywarble_7wrapped_8pywarble___cinit__(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self); /* proto */
 static void __pyx_pf_8pywarble_7wrapped_8pywarble_2__dealloc__(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self); /* proto */
 static int __pyx_pf_8pywarble_7wrapped_8pywarble_4__init__(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self, double __pyx_v_sample_rate, double __pyx_v_first_frequency, double __pyx_v_frequency_multiplication, int32_t __pyx_v_frequency_increment, double __pyx_v_word_time, int32_t __pyx_v_message_size, PyObject *__pyx_v_frequencies_index_triggers, double __pyx_v_snr_trigger); /* proto */
 static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_6_generalized_goertzel(CYTHON_UNUSED struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self, PyObject *__pyx_v_signal, double __pyx_v_sample_rate, PyObject *__pyx_v_frequencies); /* proto */
 static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_8_compute_rms(CYTHON_UNUSED struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self, PyObject *__pyx_v_signal); /* proto */
-static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_10__reduce_cython__(CYTHON_UNUSED struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self); /* proto */
-static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_12__setstate_cython__(CYTHON_UNUSED struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state); /* proto */
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_10generate_window_size(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_12generate_signal(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self, double __pyx_v_powerPeak, char const *__pyx_v_words); /* proto */
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_14feed(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self, PyObject *__pyx_v_signal, CYTHON_UNUSED int64_t __pyx_v_sample_index); /* proto */
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_16get_payload_size(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_18get_frequencies_index_triggers_count(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_20get_frequencies_index_triggers(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_22get_sample_rate(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_24get_block_length(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_26get_distance(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_28get_rs_message_length(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_30get_distance_last(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_32get_parsed(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_34get_shuffleIndex(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_36get_frequencies(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_38get_trigger_sample_index(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_40get_trigger_sample_index_begin(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_42get_trigger_sample_rms(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_44get_word_length(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_46get_window_length(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_48__reduce_cython__(CYTHON_UNUSED struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_50__setstate_cython__(CYTHON_UNUSED struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state); /* proto */
 static int __pyx_pf_7cpython_5array_5array___getbuffer__(arrayobject *__pyx_v_self, Py_buffer *__pyx_v_info, CYTHON_UNUSED int __pyx_v_flags); /* proto */
 static void __pyx_pf_7cpython_5array_5array_2__releasebuffer__(CYTHON_UNUSED arrayobject *__pyx_v_self, Py_buffer *__pyx_v_info); /* proto */
 static int __pyx_array___pyx_pf_15View_dot_MemoryView_5array___cinit__(struct __pyx_array_obj *__pyx_v_self, PyObject *__pyx_v_shape, Py_ssize_t __pyx_v_itemsize, PyObject *__pyx_v_format, PyObject *__pyx_v_mode, int __pyx_v_allocate_buffer); /* proto */
@@ -2214,7 +2252,7 @@ static PyObject *__pyx_tuple__29;
 static PyObject *__pyx_codeobj__30;
 /* Late includes */
 
-/* "pywarble/pywarble.pyx":47
+/* "pywarble/pywarble.pyx":48
  * cdef class pywarble:
  *   cdef cpywarble.warble* _c_pywarble
  *   def __cinit__(self):             # <<<<<<<<<<<<<<
@@ -2244,7 +2282,7 @@ static int __pyx_pf_8pywarble_7wrapped_8pywarble___cinit__(struct __pyx_obj_8pyw
   int __pyx_t_1;
   __Pyx_RefNannySetupContext("__cinit__", 0);
 
-  /* "pywarble/pywarble.pyx":48
+  /* "pywarble/pywarble.pyx":49
  *   cdef cpywarble.warble* _c_pywarble
  *   def __cinit__(self):
  *     self._c_pywarble = cpywarble.warble_create()             # <<<<<<<<<<<<<<
@@ -2253,7 +2291,7 @@ static int __pyx_pf_8pywarble_7wrapped_8pywarble___cinit__(struct __pyx_obj_8pyw
  */
   __pyx_v_self->_c_pywarble = warble_create();
 
-  /* "pywarble/pywarble.pyx":49
+  /* "pywarble/pywarble.pyx":50
  *   def __cinit__(self):
  *     self._c_pywarble = cpywarble.warble_create()
  *     if not self._c_pywarble:             # <<<<<<<<<<<<<<
@@ -2263,16 +2301,16 @@ static int __pyx_pf_8pywarble_7wrapped_8pywarble___cinit__(struct __pyx_obj_8pyw
   __pyx_t_1 = ((!(__pyx_v_self->_c_pywarble != 0)) != 0);
   if (unlikely(__pyx_t_1)) {
 
-    /* "pywarble/pywarble.pyx":50
+    /* "pywarble/pywarble.pyx":51
  *     self._c_pywarble = cpywarble.warble_create()
  *     if not self._c_pywarble:
  *       raise MemoryError()             # <<<<<<<<<<<<<<
  * 
  *   def __dealloc__(self):
  */
-    PyErr_NoMemory(); __PYX_ERR(0, 50, __pyx_L1_error)
+    PyErr_NoMemory(); __PYX_ERR(0, 51, __pyx_L1_error)
 
-    /* "pywarble/pywarble.pyx":49
+    /* "pywarble/pywarble.pyx":50
  *   def __cinit__(self):
  *     self._c_pywarble = cpywarble.warble_create()
  *     if not self._c_pywarble:             # <<<<<<<<<<<<<<
@@ -2281,7 +2319,7 @@ static int __pyx_pf_8pywarble_7wrapped_8pywarble___cinit__(struct __pyx_obj_8pyw
  */
   }
 
-  /* "pywarble/pywarble.pyx":47
+  /* "pywarble/pywarble.pyx":48
  * cdef class pywarble:
  *   cdef cpywarble.warble* _c_pywarble
  *   def __cinit__(self):             # <<<<<<<<<<<<<<
@@ -2300,7 +2338,7 @@ static int __pyx_pf_8pywarble_7wrapped_8pywarble___cinit__(struct __pyx_obj_8pyw
   return __pyx_r;
 }
 
-/* "pywarble/pywarble.pyx":52
+/* "pywarble/pywarble.pyx":53
  *       raise MemoryError()
  * 
  *   def __dealloc__(self):             # <<<<<<<<<<<<<<
@@ -2324,7 +2362,7 @@ static void __pyx_pf_8pywarble_7wrapped_8pywarble_2__dealloc__(struct __pyx_obj_
   int __pyx_t_1;
   __Pyx_RefNannySetupContext("__dealloc__", 0);
 
-  /* "pywarble/pywarble.pyx":53
+  /* "pywarble/pywarble.pyx":54
  * 
  *   def __dealloc__(self):
  *     if self._c_pywarble is not NULL:             # <<<<<<<<<<<<<<
@@ -2334,7 +2372,7 @@ static void __pyx_pf_8pywarble_7wrapped_8pywarble_2__dealloc__(struct __pyx_obj_
   __pyx_t_1 = ((__pyx_v_self->_c_pywarble != NULL) != 0);
   if (__pyx_t_1) {
 
-    /* "pywarble/pywarble.pyx":54
+    /* "pywarble/pywarble.pyx":55
  *   def __dealloc__(self):
  *     if self._c_pywarble is not NULL:
  *         cpywarble.warble_free(self._c_pywarble)             # <<<<<<<<<<<<<<
@@ -2343,7 +2381,7 @@ static void __pyx_pf_8pywarble_7wrapped_8pywarble_2__dealloc__(struct __pyx_obj_
  */
     warble_free(__pyx_v_self->_c_pywarble);
 
-    /* "pywarble/pywarble.pyx":53
+    /* "pywarble/pywarble.pyx":54
  * 
  *   def __dealloc__(self):
  *     if self._c_pywarble is not NULL:             # <<<<<<<<<<<<<<
@@ -2352,7 +2390,7 @@ static void __pyx_pf_8pywarble_7wrapped_8pywarble_2__dealloc__(struct __pyx_obj_
  */
   }
 
-  /* "pywarble/pywarble.pyx":52
+  /* "pywarble/pywarble.pyx":53
  *       raise MemoryError()
  * 
  *   def __dealloc__(self):             # <<<<<<<<<<<<<<
@@ -2364,7 +2402,7 @@ static void __pyx_pf_8pywarble_7wrapped_8pywarble_2__dealloc__(struct __pyx_obj_
   __Pyx_RefNannyFinishContext();
 }
 
-/* "pywarble/pywarble.pyx":56
+/* "pywarble/pywarble.pyx":57
  *         cpywarble.warble_free(self._c_pywarble)
  * 
  *   def __init__(self, double sample_rate, double first_frequency,             # <<<<<<<<<<<<<<
@@ -2421,47 +2459,47 @@ static int __pyx_pw_8pywarble_7wrapped_8pywarble_5__init__(PyObject *__pyx_v_sel
         case  1:
         if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_first_frequency)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("__init__", 1, 8, 8, 1); __PYX_ERR(0, 56, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("__init__", 1, 8, 8, 1); __PYX_ERR(0, 57, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  2:
         if (likely((values[2] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_frequency_multiplication)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("__init__", 1, 8, 8, 2); __PYX_ERR(0, 56, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("__init__", 1, 8, 8, 2); __PYX_ERR(0, 57, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  3:
         if (likely((values[3] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_frequency_increment)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("__init__", 1, 8, 8, 3); __PYX_ERR(0, 56, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("__init__", 1, 8, 8, 3); __PYX_ERR(0, 57, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  4:
         if (likely((values[4] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_word_time)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("__init__", 1, 8, 8, 4); __PYX_ERR(0, 56, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("__init__", 1, 8, 8, 4); __PYX_ERR(0, 57, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  5:
         if (likely((values[5] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_message_size)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("__init__", 1, 8, 8, 5); __PYX_ERR(0, 56, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("__init__", 1, 8, 8, 5); __PYX_ERR(0, 57, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  6:
         if (likely((values[6] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_frequencies_index_triggers)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("__init__", 1, 8, 8, 6); __PYX_ERR(0, 56, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("__init__", 1, 8, 8, 6); __PYX_ERR(0, 57, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  7:
         if (likely((values[7] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_snr_trigger)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("__init__", 1, 8, 8, 7); __PYX_ERR(0, 56, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("__init__", 1, 8, 8, 7); __PYX_ERR(0, 57, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__init__") < 0)) __PYX_ERR(0, 56, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__init__") < 0)) __PYX_ERR(0, 57, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 8) {
       goto __pyx_L5_argtuple_error;
@@ -2475,24 +2513,24 @@ static int __pyx_pw_8pywarble_7wrapped_8pywarble_5__init__(PyObject *__pyx_v_sel
       values[6] = PyTuple_GET_ITEM(__pyx_args, 6);
       values[7] = PyTuple_GET_ITEM(__pyx_args, 7);
     }
-    __pyx_v_sample_rate = __pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_sample_rate == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 56, __pyx_L3_error)
-    __pyx_v_first_frequency = __pyx_PyFloat_AsDouble(values[1]); if (unlikely((__pyx_v_first_frequency == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 56, __pyx_L3_error)
-    __pyx_v_frequency_multiplication = __pyx_PyFloat_AsDouble(values[2]); if (unlikely((__pyx_v_frequency_multiplication == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 57, __pyx_L3_error)
-    __pyx_v_frequency_increment = __Pyx_PyInt_As_int32_t(values[3]); if (unlikely((__pyx_v_frequency_increment == ((int32_t)-1)) && PyErr_Occurred())) __PYX_ERR(0, 57, __pyx_L3_error)
-    __pyx_v_word_time = __pyx_PyFloat_AsDouble(values[4]); if (unlikely((__pyx_v_word_time == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 57, __pyx_L3_error)
-    __pyx_v_message_size = __Pyx_PyInt_As_int32_t(values[5]); if (unlikely((__pyx_v_message_size == ((int32_t)-1)) && PyErr_Occurred())) __PYX_ERR(0, 58, __pyx_L3_error)
+    __pyx_v_sample_rate = __pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_sample_rate == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 57, __pyx_L3_error)
+    __pyx_v_first_frequency = __pyx_PyFloat_AsDouble(values[1]); if (unlikely((__pyx_v_first_frequency == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 57, __pyx_L3_error)
+    __pyx_v_frequency_multiplication = __pyx_PyFloat_AsDouble(values[2]); if (unlikely((__pyx_v_frequency_multiplication == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 58, __pyx_L3_error)
+    __pyx_v_frequency_increment = __Pyx_PyInt_As_int32_t(values[3]); if (unlikely((__pyx_v_frequency_increment == ((int32_t)-1)) && PyErr_Occurred())) __PYX_ERR(0, 58, __pyx_L3_error)
+    __pyx_v_word_time = __pyx_PyFloat_AsDouble(values[4]); if (unlikely((__pyx_v_word_time == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 58, __pyx_L3_error)
+    __pyx_v_message_size = __Pyx_PyInt_As_int32_t(values[5]); if (unlikely((__pyx_v_message_size == ((int32_t)-1)) && PyErr_Occurred())) __PYX_ERR(0, 59, __pyx_L3_error)
     __pyx_v_frequencies_index_triggers = ((PyObject*)values[6]);
-    __pyx_v_snr_trigger = __pyx_PyFloat_AsDouble(values[7]); if (unlikely((__pyx_v_snr_trigger == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 58, __pyx_L3_error)
+    __pyx_v_snr_trigger = __pyx_PyFloat_AsDouble(values[7]); if (unlikely((__pyx_v_snr_trigger == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 59, __pyx_L3_error)
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__init__", 1, 8, 8, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 56, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__init__", 1, 8, 8, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 57, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("pywarble.wrapped.pywarble.__init__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return -1;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_frequencies_index_triggers), (&PyList_Type), 1, "frequencies_index_triggers", 1))) __PYX_ERR(0, 58, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_frequencies_index_triggers), (&PyList_Type), 1, "frequencies_index_triggers", 1))) __PYX_ERR(0, 59, __pyx_L1_error)
   __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_4__init__(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self), __pyx_v_sample_rate, __pyx_v_first_frequency, __pyx_v_frequency_multiplication, __pyx_v_frequency_increment, __pyx_v_word_time, __pyx_v_message_size, __pyx_v_frequencies_index_triggers, __pyx_v_snr_trigger);
 
   /* function exit code */
@@ -2515,14 +2553,14 @@ static int __pyx_pf_8pywarble_7wrapped_8pywarble_4__init__(struct __pyx_obj_8pyw
   int __pyx_t_5;
   __Pyx_RefNannySetupContext("__init__", 0);
 
-  /* "pywarble/pywarble.pyx":59
+  /* "pywarble/pywarble.pyx":60
  *    double frequency_multiplication, int32_t frequency_increment, double word_time,
  *   	int32_t message_size, list frequencies_index_triggers, double snr_trigger):
  *       cdef int[::1] cfrequencies_index_triggers = array.array('i',frequencies_index_triggers)             # <<<<<<<<<<<<<<
  *       cpywarble.warble_init(self._c_pywarble, sample_rate, first_frequency,
  *       	frequency_multiplication,
  */
-  __pyx_t_1 = PyTuple_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 59, __pyx_L1_error)
+  __pyx_t_1 = PyTuple_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 60, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(__pyx_n_s_i);
   __Pyx_GIVEREF(__pyx_n_s_i);
@@ -2530,16 +2568,16 @@ static int __pyx_pf_8pywarble_7wrapped_8pywarble_4__init__(struct __pyx_obj_8pyw
   __Pyx_INCREF(__pyx_v_frequencies_index_triggers);
   __Pyx_GIVEREF(__pyx_v_frequencies_index_triggers);
   PyTuple_SET_ITEM(__pyx_t_1, 1, __pyx_v_frequencies_index_triggers);
-  __pyx_t_2 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 59, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 60, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_3 = __Pyx_PyObject_to_MemoryviewSlice_dc_int(__pyx_t_2, PyBUF_WRITABLE); if (unlikely(!__pyx_t_3.memview)) __PYX_ERR(0, 59, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_to_MemoryviewSlice_dc_int(__pyx_t_2, PyBUF_WRITABLE); if (unlikely(!__pyx_t_3.memview)) __PYX_ERR(0, 60, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_v_cfrequencies_index_triggers = __pyx_t_3;
   __pyx_t_3.memview = NULL;
   __pyx_t_3.data = NULL;
 
-  /* "pywarble/pywarble.pyx":63
+  /* "pywarble/pywarble.pyx":64
  *       	frequency_multiplication,
  *       	frequency_increment, word_time,
  *       	message_size, <int32_t*>&cfrequencies_index_triggers[0], cfrequencies_index_triggers.shape[0], snr_trigger)             # <<<<<<<<<<<<<<
@@ -2554,10 +2592,10 @@ static int __pyx_pf_8pywarble_7wrapped_8pywarble_4__init__(struct __pyx_obj_8pyw
   } else if (unlikely(__pyx_t_4 >= __pyx_v_cfrequencies_index_triggers.shape[0])) __pyx_t_5 = 0;
   if (unlikely(__pyx_t_5 != -1)) {
     __Pyx_RaiseBufferIndexError(__pyx_t_5);
-    __PYX_ERR(0, 63, __pyx_L1_error)
+    __PYX_ERR(0, 64, __pyx_L1_error)
   }
 
-  /* "pywarble/pywarble.pyx":60
+  /* "pywarble/pywarble.pyx":61
  *   	int32_t message_size, list frequencies_index_triggers, double snr_trigger):
  *       cdef int[::1] cfrequencies_index_triggers = array.array('i',frequencies_index_triggers)
  *       cpywarble.warble_init(self._c_pywarble, sample_rate, first_frequency,             # <<<<<<<<<<<<<<
@@ -2566,7 +2604,7 @@ static int __pyx_pf_8pywarble_7wrapped_8pywarble_4__init__(struct __pyx_obj_8pyw
  */
   warble_init(__pyx_v_self->_c_pywarble, __pyx_v_sample_rate, __pyx_v_first_frequency, __pyx_v_frequency_multiplication, __pyx_v_frequency_increment, __pyx_v_word_time, __pyx_v_message_size, ((int32_t *)(&(*((int *) ( /* dim=0 */ ((char *) (((int *) __pyx_v_cfrequencies_index_triggers.data) + __pyx_t_4)) ))))), (__pyx_v_cfrequencies_index_triggers.shape[0]), __pyx_v_snr_trigger);
 
-  /* "pywarble/pywarble.pyx":56
+  /* "pywarble/pywarble.pyx":57
  *         cpywarble.warble_free(self._c_pywarble)
  * 
  *   def __init__(self, double sample_rate, double first_frequency,             # <<<<<<<<<<<<<<
@@ -2589,7 +2627,7 @@ static int __pyx_pf_8pywarble_7wrapped_8pywarble_4__init__(struct __pyx_obj_8pyw
   return __pyx_r;
 }
 
-/* "pywarble/pywarble.pyx":65
+/* "pywarble/pywarble.pyx":66
  *       	message_size, <int32_t*>&cfrequencies_index_triggers[0], cfrequencies_index_triggers.shape[0], snr_trigger)
  * 
  *   def _generalized_goertzel(self, list signal, double sample_rate, list frequencies):             # <<<<<<<<<<<<<<
@@ -2631,17 +2669,17 @@ static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_7_generalized_goertzel(Py
         case  1:
         if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_sample_rate)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("_generalized_goertzel", 1, 3, 3, 1); __PYX_ERR(0, 65, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("_generalized_goertzel", 1, 3, 3, 1); __PYX_ERR(0, 66, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  2:
         if (likely((values[2] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_frequencies)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("_generalized_goertzel", 1, 3, 3, 2); __PYX_ERR(0, 65, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("_generalized_goertzel", 1, 3, 3, 2); __PYX_ERR(0, 66, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "_generalized_goertzel") < 0)) __PYX_ERR(0, 65, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "_generalized_goertzel") < 0)) __PYX_ERR(0, 66, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 3) {
       goto __pyx_L5_argtuple_error;
@@ -2651,19 +2689,19 @@ static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_7_generalized_goertzel(Py
       values[2] = PyTuple_GET_ITEM(__pyx_args, 2);
     }
     __pyx_v_signal = ((PyObject*)values[0]);
-    __pyx_v_sample_rate = __pyx_PyFloat_AsDouble(values[1]); if (unlikely((__pyx_v_sample_rate == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 65, __pyx_L3_error)
+    __pyx_v_sample_rate = __pyx_PyFloat_AsDouble(values[1]); if (unlikely((__pyx_v_sample_rate == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 66, __pyx_L3_error)
     __pyx_v_frequencies = ((PyObject*)values[2]);
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("_generalized_goertzel", 1, 3, 3, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 65, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("_generalized_goertzel", 1, 3, 3, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 66, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("pywarble.wrapped.pywarble._generalized_goertzel", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_signal), (&PyList_Type), 1, "signal", 1))) __PYX_ERR(0, 65, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_frequencies), (&PyList_Type), 1, "frequencies", 1))) __PYX_ERR(0, 65, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_signal), (&PyList_Type), 1, "signal", 1))) __PYX_ERR(0, 66, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_frequencies), (&PyList_Type), 1, "frequencies", 1))) __PYX_ERR(0, 66, __pyx_L1_error)
   __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_6_generalized_goertzel(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self), __pyx_v_signal, __pyx_v_sample_rate, __pyx_v_frequencies);
 
   /* function exit code */
@@ -2691,14 +2729,14 @@ static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_6_generalized_goertzel(CY
   Py_ssize_t __pyx_t_8;
   __Pyx_RefNannySetupContext("_generalized_goertzel", 0);
 
-  /* "pywarble/pywarble.pyx":66
+  /* "pywarble/pywarble.pyx":67
  * 
  *   def _generalized_goertzel(self, list signal, double sample_rate, list frequencies):
  *     cdef double[::1] csignal = array.array('d',signal)             # <<<<<<<<<<<<<<
  *     cdef double[::1] cfrequencies = array.array('d',frequencies)
  *     cdef double[::1] rms = array.clone(double_array_template, len(frequencies), zero=False)
  */
-  __pyx_t_1 = PyTuple_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 66, __pyx_L1_error)
+  __pyx_t_1 = PyTuple_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 67, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(__pyx_n_s_d);
   __Pyx_GIVEREF(__pyx_n_s_d);
@@ -2706,23 +2744,23 @@ static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_6_generalized_goertzel(CY
   __Pyx_INCREF(__pyx_v_signal);
   __Pyx_GIVEREF(__pyx_v_signal);
   PyTuple_SET_ITEM(__pyx_t_1, 1, __pyx_v_signal);
-  __pyx_t_2 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 66, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 67, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_3 = __Pyx_PyObject_to_MemoryviewSlice_dc_double(__pyx_t_2, PyBUF_WRITABLE); if (unlikely(!__pyx_t_3.memview)) __PYX_ERR(0, 66, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_to_MemoryviewSlice_dc_double(__pyx_t_2, PyBUF_WRITABLE); if (unlikely(!__pyx_t_3.memview)) __PYX_ERR(0, 67, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_v_csignal = __pyx_t_3;
   __pyx_t_3.memview = NULL;
   __pyx_t_3.data = NULL;
 
-  /* "pywarble/pywarble.pyx":67
+  /* "pywarble/pywarble.pyx":68
  *   def _generalized_goertzel(self, list signal, double sample_rate, list frequencies):
  *     cdef double[::1] csignal = array.array('d',signal)
  *     cdef double[::1] cfrequencies = array.array('d',frequencies)             # <<<<<<<<<<<<<<
  *     cdef double[::1] rms = array.clone(double_array_template, len(frequencies), zero=False)
  *     cpywarble.warble_generalized_goertzel(&csignal[0], csignal.shape[0], sample_rate, &cfrequencies[0], cfrequencies.shape[0], &rms[0])
  */
-  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 67, __pyx_L1_error)
+  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 68, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_INCREF(__pyx_n_s_d);
   __Pyx_GIVEREF(__pyx_n_s_d);
@@ -2730,16 +2768,16 @@ static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_6_generalized_goertzel(CY
   __Pyx_INCREF(__pyx_v_frequencies);
   __Pyx_GIVEREF(__pyx_v_frequencies);
   PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_v_frequencies);
-  __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_2, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 67, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_2, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 68, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_3 = __Pyx_PyObject_to_MemoryviewSlice_dc_double(__pyx_t_1, PyBUF_WRITABLE); if (unlikely(!__pyx_t_3.memview)) __PYX_ERR(0, 67, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_to_MemoryviewSlice_dc_double(__pyx_t_1, PyBUF_WRITABLE); if (unlikely(!__pyx_t_3.memview)) __PYX_ERR(0, 68, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v_cfrequencies = __pyx_t_3;
   __pyx_t_3.memview = NULL;
   __pyx_t_3.data = NULL;
 
-  /* "pywarble/pywarble.pyx":68
+  /* "pywarble/pywarble.pyx":69
  *     cdef double[::1] csignal = array.array('d',signal)
  *     cdef double[::1] cfrequencies = array.array('d',frequencies)
  *     cdef double[::1] rms = array.clone(double_array_template, len(frequencies), zero=False)             # <<<<<<<<<<<<<<
@@ -2750,19 +2788,19 @@ static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_6_generalized_goertzel(CY
   __Pyx_INCREF(__pyx_t_1);
   if (unlikely(__pyx_v_frequencies == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-    __PYX_ERR(0, 68, __pyx_L1_error)
+    __PYX_ERR(0, 69, __pyx_L1_error)
   }
-  __pyx_t_4 = PyList_GET_SIZE(__pyx_v_frequencies); if (unlikely(__pyx_t_4 == ((Py_ssize_t)-1))) __PYX_ERR(0, 68, __pyx_L1_error)
-  __pyx_t_2 = ((PyObject *)__pyx_f_7cpython_5array_clone(((arrayobject *)__pyx_t_1), __pyx_t_4, 0)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 68, __pyx_L1_error)
+  __pyx_t_4 = PyList_GET_SIZE(__pyx_v_frequencies); if (unlikely(__pyx_t_4 == ((Py_ssize_t)-1))) __PYX_ERR(0, 69, __pyx_L1_error)
+  __pyx_t_2 = ((PyObject *)__pyx_f_7cpython_5array_clone(((arrayobject *)__pyx_t_1), __pyx_t_4, 0)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 69, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_3 = __Pyx_PyObject_to_MemoryviewSlice_dc_double(__pyx_t_2, PyBUF_WRITABLE); if (unlikely(!__pyx_t_3.memview)) __PYX_ERR(0, 68, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_to_MemoryviewSlice_dc_double(__pyx_t_2, PyBUF_WRITABLE); if (unlikely(!__pyx_t_3.memview)) __PYX_ERR(0, 69, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_v_rms = __pyx_t_3;
   __pyx_t_3.memview = NULL;
   __pyx_t_3.data = NULL;
 
-  /* "pywarble/pywarble.pyx":69
+  /* "pywarble/pywarble.pyx":70
  *     cdef double[::1] cfrequencies = array.array('d',frequencies)
  *     cdef double[::1] rms = array.clone(double_array_template, len(frequencies), zero=False)
  *     cpywarble.warble_generalized_goertzel(&csignal[0], csignal.shape[0], sample_rate, &cfrequencies[0], cfrequencies.shape[0], &rms[0])             # <<<<<<<<<<<<<<
@@ -2777,7 +2815,7 @@ static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_6_generalized_goertzel(CY
   } else if (unlikely(__pyx_t_5 >= __pyx_v_csignal.shape[0])) __pyx_t_6 = 0;
   if (unlikely(__pyx_t_6 != -1)) {
     __Pyx_RaiseBufferIndexError(__pyx_t_6);
-    __PYX_ERR(0, 69, __pyx_L1_error)
+    __PYX_ERR(0, 70, __pyx_L1_error)
   }
   __pyx_t_7 = 0;
   __pyx_t_6 = -1;
@@ -2787,7 +2825,7 @@ static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_6_generalized_goertzel(CY
   } else if (unlikely(__pyx_t_7 >= __pyx_v_cfrequencies.shape[0])) __pyx_t_6 = 0;
   if (unlikely(__pyx_t_6 != -1)) {
     __Pyx_RaiseBufferIndexError(__pyx_t_6);
-    __PYX_ERR(0, 69, __pyx_L1_error)
+    __PYX_ERR(0, 70, __pyx_L1_error)
   }
   __pyx_t_8 = 0;
   __pyx_t_6 = -1;
@@ -2797,11 +2835,11 @@ static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_6_generalized_goertzel(CY
   } else if (unlikely(__pyx_t_8 >= __pyx_v_rms.shape[0])) __pyx_t_6 = 0;
   if (unlikely(__pyx_t_6 != -1)) {
     __Pyx_RaiseBufferIndexError(__pyx_t_6);
-    __PYX_ERR(0, 69, __pyx_L1_error)
+    __PYX_ERR(0, 70, __pyx_L1_error)
   }
   warble_generalized_goertzel((&(*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_csignal.data) + __pyx_t_5)) )))), (__pyx_v_csignal.shape[0]), __pyx_v_sample_rate, (&(*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_cfrequencies.data) + __pyx_t_7)) )))), (__pyx_v_cfrequencies.shape[0]), (&(*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_rms.data) + __pyx_t_8)) )))));
 
-  /* "pywarble/pywarble.pyx":70
+  /* "pywarble/pywarble.pyx":71
  *     cdef double[::1] rms = array.clone(double_array_template, len(frequencies), zero=False)
  *     cpywarble.warble_generalized_goertzel(&csignal[0], csignal.shape[0], sample_rate, &cfrequencies[0], cfrequencies.shape[0], &rms[0])
  *     return list(rms)             # <<<<<<<<<<<<<<
@@ -2809,16 +2847,16 @@ static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_6_generalized_goertzel(CY
  *   def _compute_rms(self, list signal):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_2 = __pyx_memoryview_fromslice(__pyx_v_rms, 1, (PyObject *(*)(char *)) __pyx_memview_get_double, (int (*)(char *, PyObject *)) __pyx_memview_set_double, 0);; if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 70, __pyx_L1_error)
+  __pyx_t_2 = __pyx_memoryview_fromslice(__pyx_v_rms, 1, (PyObject *(*)(char *)) __pyx_memview_get_double, (int (*)(char *, PyObject *)) __pyx_memview_set_double, 0);; if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 71, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_1 = PySequence_List(__pyx_t_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 70, __pyx_L1_error)
+  __pyx_t_1 = PySequence_List(__pyx_t_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 71, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "pywarble/pywarble.pyx":65
+  /* "pywarble/pywarble.pyx":66
  *       	message_size, <int32_t*>&cfrequencies_index_triggers[0], cfrequencies_index_triggers.shape[0], snr_trigger)
  * 
  *   def _generalized_goertzel(self, list signal, double sample_rate, list frequencies):             # <<<<<<<<<<<<<<
@@ -2842,7 +2880,7 @@ static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_6_generalized_goertzel(CY
   return __pyx_r;
 }
 
-/* "pywarble/pywarble.pyx":72
+/* "pywarble/pywarble.pyx":73
  *     return list(rms)
  * 
  *   def _compute_rms(self, list signal):             # <<<<<<<<<<<<<<
@@ -2856,7 +2894,7 @@ static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_9_compute_rms(PyObject *_
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("_compute_rms (wrapper)", 0);
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_signal), (&PyList_Type), 1, "signal", 1))) __PYX_ERR(0, 72, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_signal), (&PyList_Type), 1, "signal", 1))) __PYX_ERR(0, 73, __pyx_L1_error)
   __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_8_compute_rms(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self), ((PyObject*)__pyx_v_signal));
 
   /* function exit code */
@@ -2879,13 +2917,14 @@ static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_8_compute_rms(CYTHON_UNUS
   int __pyx_t_5;
   __Pyx_RefNannySetupContext("_compute_rms", 0);
 
-  /* "pywarble/pywarble.pyx":73
+  /* "pywarble/pywarble.pyx":74
  * 
  *   def _compute_rms(self, list signal):
  *     cdef double[::1] csignal = array.array('d',signal)             # <<<<<<<<<<<<<<
  *     return cpywarble.warble_compute_rms(&csignal[0], csignal.shape[0])
+ * 
  */
-  __pyx_t_1 = PyTuple_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 73, __pyx_L1_error)
+  __pyx_t_1 = PyTuple_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 74, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(__pyx_n_s_d);
   __Pyx_GIVEREF(__pyx_n_s_d);
@@ -2893,19 +2932,21 @@ static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_8_compute_rms(CYTHON_UNUS
   __Pyx_INCREF(__pyx_v_signal);
   __Pyx_GIVEREF(__pyx_v_signal);
   PyTuple_SET_ITEM(__pyx_t_1, 1, __pyx_v_signal);
-  __pyx_t_2 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 73, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 74, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_3 = __Pyx_PyObject_to_MemoryviewSlice_dc_double(__pyx_t_2, PyBUF_WRITABLE); if (unlikely(!__pyx_t_3.memview)) __PYX_ERR(0, 73, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_to_MemoryviewSlice_dc_double(__pyx_t_2, PyBUF_WRITABLE); if (unlikely(!__pyx_t_3.memview)) __PYX_ERR(0, 74, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_v_csignal = __pyx_t_3;
   __pyx_t_3.memview = NULL;
   __pyx_t_3.data = NULL;
 
-  /* "pywarble/pywarble.pyx":74
+  /* "pywarble/pywarble.pyx":75
  *   def _compute_rms(self, list signal):
  *     cdef double[::1] csignal = array.array('d',signal)
  *     return cpywarble.warble_compute_rms(&csignal[0], csignal.shape[0])             # <<<<<<<<<<<<<<
+ * 
+ *   def generate_window_size(self):
  */
   __Pyx_XDECREF(__pyx_r);
   __pyx_t_4 = 0;
@@ -2916,15 +2957,15 @@ static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_8_compute_rms(CYTHON_UNUS
   } else if (unlikely(__pyx_t_4 >= __pyx_v_csignal.shape[0])) __pyx_t_5 = 0;
   if (unlikely(__pyx_t_5 != -1)) {
     __Pyx_RaiseBufferIndexError(__pyx_t_5);
-    __PYX_ERR(0, 74, __pyx_L1_error)
+    __PYX_ERR(0, 75, __pyx_L1_error)
   }
-  __pyx_t_2 = PyFloat_FromDouble(warble_compute_rms((&(*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_csignal.data) + __pyx_t_4)) )))), (__pyx_v_csignal.shape[0]))); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 74, __pyx_L1_error)
+  __pyx_t_2 = PyFloat_FromDouble(warble_compute_rms((&(*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_csignal.data) + __pyx_t_4)) )))), (__pyx_v_csignal.shape[0]))); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 75, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_r = __pyx_t_2;
   __pyx_t_2 = 0;
   goto __pyx_L0;
 
-  /* "pywarble/pywarble.pyx":72
+  /* "pywarble/pywarble.pyx":73
  *     return list(rms)
  * 
  *   def _compute_rms(self, list signal):             # <<<<<<<<<<<<<<
@@ -2946,6 +2987,1515 @@ static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_8_compute_rms(CYTHON_UNUS
   return __pyx_r;
 }
 
+/* "pywarble/pywarble.pyx":77
+ *     return cpywarble.warble_compute_rms(&csignal[0], csignal.shape[0])
+ * 
+ *   def generate_window_size(self):             # <<<<<<<<<<<<<<
+ *     return cpywarble.warble_generate_window_size(self._c_pywarble)
+ * 
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_11generate_window_size(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_11generate_window_size(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("generate_window_size (wrapper)", 0);
+  __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_10generate_window_size(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_10generate_window_size(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  __Pyx_RefNannySetupContext("generate_window_size", 0);
+
+  /* "pywarble/pywarble.pyx":78
+ * 
+ *   def generate_window_size(self):
+ *     return cpywarble.warble_generate_window_size(self._c_pywarble)             # <<<<<<<<<<<<<<
+ * 
+ *   def generate_signal(self,double powerPeak, const char * words):
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __Pyx_PyInt_From_int32_t(warble_generate_window_size(__pyx_v_self->_c_pywarble)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 78, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "pywarble/pywarble.pyx":77
+ *     return cpywarble.warble_compute_rms(&csignal[0], csignal.shape[0])
+ * 
+ *   def generate_window_size(self):             # <<<<<<<<<<<<<<
+ *     return cpywarble.warble_generate_window_size(self._c_pywarble)
+ * 
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("pywarble.wrapped.pywarble.generate_window_size", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "pywarble/pywarble.pyx":80
+ *     return cpywarble.warble_generate_window_size(self._c_pywarble)
+ * 
+ *   def generate_signal(self,double powerPeak, const char * words):             # <<<<<<<<<<<<<<
+ *       cdef double[::1] signal_out = array.clone(double_array_template, cpywarble.warble_generate_window_size(self._c_pywarble), zero=False)
+ *       cpywarble.warble_generate_signal(self._c_pywarble,powerPeak, <int8_t *>words, &signal_out[0])
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_13generate_signal(PyObject *__pyx_v_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_13generate_signal(PyObject *__pyx_v_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
+  double __pyx_v_powerPeak;
+  char const *__pyx_v_words;
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("generate_signal (wrapper)", 0);
+  {
+    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_powerPeak,&__pyx_n_s_words,0};
+    PyObject* values[2] = {0,0};
+    if (unlikely(__pyx_kwds)) {
+      Py_ssize_t kw_args;
+      const Py_ssize_t pos_args = PyTuple_GET_SIZE(__pyx_args);
+      switch (pos_args) {
+        case  2: values[1] = PyTuple_GET_ITEM(__pyx_args, 1);
+        CYTHON_FALLTHROUGH;
+        case  1: values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
+        CYTHON_FALLTHROUGH;
+        case  0: break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+      kw_args = PyDict_Size(__pyx_kwds);
+      switch (pos_args) {
+        case  0:
+        if (likely((values[0] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_powerPeak)) != 0)) kw_args--;
+        else goto __pyx_L5_argtuple_error;
+        CYTHON_FALLTHROUGH;
+        case  1:
+        if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_words)) != 0)) kw_args--;
+        else {
+          __Pyx_RaiseArgtupleInvalid("generate_signal", 1, 2, 2, 1); __PYX_ERR(0, 80, __pyx_L3_error)
+        }
+      }
+      if (unlikely(kw_args > 0)) {
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "generate_signal") < 0)) __PYX_ERR(0, 80, __pyx_L3_error)
+      }
+    } else if (PyTuple_GET_SIZE(__pyx_args) != 2) {
+      goto __pyx_L5_argtuple_error;
+    } else {
+      values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
+      values[1] = PyTuple_GET_ITEM(__pyx_args, 1);
+    }
+    __pyx_v_powerPeak = __pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_powerPeak == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 80, __pyx_L3_error)
+    __pyx_v_words = __Pyx_PyObject_AsString(values[1]); if (unlikely((!__pyx_v_words) && PyErr_Occurred())) __PYX_ERR(0, 80, __pyx_L3_error)
+  }
+  goto __pyx_L4_argument_unpacking_done;
+  __pyx_L5_argtuple_error:;
+  __Pyx_RaiseArgtupleInvalid("generate_signal", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 80, __pyx_L3_error)
+  __pyx_L3_error:;
+  __Pyx_AddTraceback("pywarble.wrapped.pywarble.generate_signal", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_RefNannyFinishContext();
+  return NULL;
+  __pyx_L4_argument_unpacking_done:;
+  __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_12generate_signal(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self), __pyx_v_powerPeak, __pyx_v_words);
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_12generate_signal(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self, double __pyx_v_powerPeak, char const *__pyx_v_words) {
+  __Pyx_memviewslice __pyx_v_signal_out = { 0, 0, { 0 }, { 0 }, { 0 } };
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  __Pyx_memviewslice __pyx_t_3 = { 0, 0, { 0 }, { 0 }, { 0 } };
+  Py_ssize_t __pyx_t_4;
+  int __pyx_t_5;
+  __Pyx_RefNannySetupContext("generate_signal", 0);
+
+  /* "pywarble/pywarble.pyx":81
+ * 
+ *   def generate_signal(self,double powerPeak, const char * words):
+ *       cdef double[::1] signal_out = array.clone(double_array_template, cpywarble.warble_generate_window_size(self._c_pywarble), zero=False)             # <<<<<<<<<<<<<<
+ *       cpywarble.warble_generate_signal(self._c_pywarble,powerPeak, <int8_t *>words, &signal_out[0])
+ *       return list(signal_out)
+ */
+  __pyx_t_1 = ((PyObject *)__pyx_v_8pywarble_7wrapped_double_array_template);
+  __Pyx_INCREF(__pyx_t_1);
+  __pyx_t_2 = ((PyObject *)__pyx_f_7cpython_5array_clone(((arrayobject *)__pyx_t_1), warble_generate_window_size(__pyx_v_self->_c_pywarble), 0)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 81, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_t_3 = __Pyx_PyObject_to_MemoryviewSlice_dc_double(__pyx_t_2, PyBUF_WRITABLE); if (unlikely(!__pyx_t_3.memview)) __PYX_ERR(0, 81, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_v_signal_out = __pyx_t_3;
+  __pyx_t_3.memview = NULL;
+  __pyx_t_3.data = NULL;
+
+  /* "pywarble/pywarble.pyx":82
+ *   def generate_signal(self,double powerPeak, const char * words):
+ *       cdef double[::1] signal_out = array.clone(double_array_template, cpywarble.warble_generate_window_size(self._c_pywarble), zero=False)
+ *       cpywarble.warble_generate_signal(self._c_pywarble,powerPeak, <int8_t *>words, &signal_out[0])             # <<<<<<<<<<<<<<
+ *       return list(signal_out)
+ * 
+ */
+  __pyx_t_4 = 0;
+  __pyx_t_5 = -1;
+  if (__pyx_t_4 < 0) {
+    __pyx_t_4 += __pyx_v_signal_out.shape[0];
+    if (unlikely(__pyx_t_4 < 0)) __pyx_t_5 = 0;
+  } else if (unlikely(__pyx_t_4 >= __pyx_v_signal_out.shape[0])) __pyx_t_5 = 0;
+  if (unlikely(__pyx_t_5 != -1)) {
+    __Pyx_RaiseBufferIndexError(__pyx_t_5);
+    __PYX_ERR(0, 82, __pyx_L1_error)
+  }
+  warble_generate_signal(__pyx_v_self->_c_pywarble, __pyx_v_powerPeak, ((int8_t *)__pyx_v_words), (&(*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_signal_out.data) + __pyx_t_4)) )))));
+
+  /* "pywarble/pywarble.pyx":83
+ *       cdef double[::1] signal_out = array.clone(double_array_template, cpywarble.warble_generate_window_size(self._c_pywarble), zero=False)
+ *       cpywarble.warble_generate_signal(self._c_pywarble,powerPeak, <int8_t *>words, &signal_out[0])
+ *       return list(signal_out)             # <<<<<<<<<<<<<<
+ * 
+ *   def feed(self, list signal, int64_t sample_index):
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_2 = __pyx_memoryview_fromslice(__pyx_v_signal_out, 1, (PyObject *(*)(char *)) __pyx_memview_get_double, (int (*)(char *, PyObject *)) __pyx_memview_set_double, 0);; if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 83, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_1 = PySequence_List(__pyx_t_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 83, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "pywarble/pywarble.pyx":80
+ *     return cpywarble.warble_generate_window_size(self._c_pywarble)
+ * 
+ *   def generate_signal(self,double powerPeak, const char * words):             # <<<<<<<<<<<<<<
+ *       cdef double[::1] signal_out = array.clone(double_array_template, cpywarble.warble_generate_window_size(self._c_pywarble), zero=False)
+ *       cpywarble.warble_generate_signal(self._c_pywarble,powerPeak, <int8_t *>words, &signal_out[0])
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __PYX_XDEC_MEMVIEW(&__pyx_t_3, 1);
+  __Pyx_AddTraceback("pywarble.wrapped.pywarble.generate_signal", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __PYX_XDEC_MEMVIEW(&__pyx_v_signal_out, 1);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "pywarble/pywarble.pyx":85
+ *       return list(signal_out)
+ * 
+ *   def feed(self, list signal, int64_t sample_index):             # <<<<<<<<<<<<<<
+ *       if len(signal) == 0:
+ *         return 0
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_15feed(PyObject *__pyx_v_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_15feed(PyObject *__pyx_v_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
+  PyObject *__pyx_v_signal = 0;
+  CYTHON_UNUSED int64_t __pyx_v_sample_index;
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("feed (wrapper)", 0);
+  {
+    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_signal,&__pyx_n_s_sample_index,0};
+    PyObject* values[2] = {0,0};
+    if (unlikely(__pyx_kwds)) {
+      Py_ssize_t kw_args;
+      const Py_ssize_t pos_args = PyTuple_GET_SIZE(__pyx_args);
+      switch (pos_args) {
+        case  2: values[1] = PyTuple_GET_ITEM(__pyx_args, 1);
+        CYTHON_FALLTHROUGH;
+        case  1: values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
+        CYTHON_FALLTHROUGH;
+        case  0: break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+      kw_args = PyDict_Size(__pyx_kwds);
+      switch (pos_args) {
+        case  0:
+        if (likely((values[0] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_signal)) != 0)) kw_args--;
+        else goto __pyx_L5_argtuple_error;
+        CYTHON_FALLTHROUGH;
+        case  1:
+        if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_sample_index)) != 0)) kw_args--;
+        else {
+          __Pyx_RaiseArgtupleInvalid("feed", 1, 2, 2, 1); __PYX_ERR(0, 85, __pyx_L3_error)
+        }
+      }
+      if (unlikely(kw_args > 0)) {
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "feed") < 0)) __PYX_ERR(0, 85, __pyx_L3_error)
+      }
+    } else if (PyTuple_GET_SIZE(__pyx_args) != 2) {
+      goto __pyx_L5_argtuple_error;
+    } else {
+      values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
+      values[1] = PyTuple_GET_ITEM(__pyx_args, 1);
+    }
+    __pyx_v_signal = ((PyObject*)values[0]);
+    __pyx_v_sample_index = __Pyx_PyInt_As_int64_t(values[1]); if (unlikely((__pyx_v_sample_index == ((int64_t)-1)) && PyErr_Occurred())) __PYX_ERR(0, 85, __pyx_L3_error)
+  }
+  goto __pyx_L4_argument_unpacking_done;
+  __pyx_L5_argtuple_error:;
+  __Pyx_RaiseArgtupleInvalid("feed", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 85, __pyx_L3_error)
+  __pyx_L3_error:;
+  __Pyx_AddTraceback("pywarble.wrapped.pywarble.feed", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_RefNannyFinishContext();
+  return NULL;
+  __pyx_L4_argument_unpacking_done:;
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_signal), (&PyList_Type), 1, "signal", 1))) __PYX_ERR(0, 85, __pyx_L1_error)
+  __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_14feed(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self), __pyx_v_signal, __pyx_v_sample_index);
+
+  /* function exit code */
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_14feed(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self, PyObject *__pyx_v_signal, CYTHON_UNUSED int64_t __pyx_v_sample_index) {
+  __Pyx_memviewslice __pyx_v_csignal = { 0, 0, { 0 }, { 0 }, { 0 } };
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  Py_ssize_t __pyx_t_1;
+  int __pyx_t_2;
+  PyObject *__pyx_t_3 = NULL;
+  PyObject *__pyx_t_4 = NULL;
+  __Pyx_memviewslice __pyx_t_5 = { 0, 0, { 0 }, { 0 }, { 0 } };
+  Py_ssize_t __pyx_t_6;
+  int __pyx_t_7;
+  __Pyx_RefNannySetupContext("feed", 0);
+
+  /* "pywarble/pywarble.pyx":86
+ * 
+ *   def feed(self, list signal, int64_t sample_index):
+ *       if len(signal) == 0:             # <<<<<<<<<<<<<<
+ *         return 0
+ *       cdef double[::1] csignal = array.array('d',signal)
+ */
+  if (unlikely(__pyx_v_signal == Py_None)) {
+    PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
+    __PYX_ERR(0, 86, __pyx_L1_error)
+  }
+  __pyx_t_1 = PyList_GET_SIZE(__pyx_v_signal); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(0, 86, __pyx_L1_error)
+  __pyx_t_2 = ((__pyx_t_1 == 0) != 0);
+  if (__pyx_t_2) {
+
+    /* "pywarble/pywarble.pyx":87
+ *   def feed(self, list signal, int64_t sample_index):
+ *       if len(signal) == 0:
+ *         return 0             # <<<<<<<<<<<<<<
+ *       cdef double[::1] csignal = array.array('d',signal)
+ *       return cpywarble.warble_feed(self._c_pywarble, &csignal[0], csignal.shape[0])
+ */
+    __Pyx_XDECREF(__pyx_r);
+    __Pyx_INCREF(__pyx_int_0);
+    __pyx_r = __pyx_int_0;
+    goto __pyx_L0;
+
+    /* "pywarble/pywarble.pyx":86
+ * 
+ *   def feed(self, list signal, int64_t sample_index):
+ *       if len(signal) == 0:             # <<<<<<<<<<<<<<
+ *         return 0
+ *       cdef double[::1] csignal = array.array('d',signal)
+ */
+  }
+
+  /* "pywarble/pywarble.pyx":88
+ *       if len(signal) == 0:
+ *         return 0
+ *       cdef double[::1] csignal = array.array('d',signal)             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_feed(self._c_pywarble, &csignal[0], csignal.shape[0])
+ * 
+ */
+  __pyx_t_3 = PyTuple_New(2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 88, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_INCREF(__pyx_n_s_d);
+  __Pyx_GIVEREF(__pyx_n_s_d);
+  PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_n_s_d);
+  __Pyx_INCREF(__pyx_v_signal);
+  __Pyx_GIVEREF(__pyx_v_signal);
+  PyTuple_SET_ITEM(__pyx_t_3, 1, __pyx_v_signal);
+  __pyx_t_4 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_3, NULL); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 88, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_4);
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __pyx_t_5 = __Pyx_PyObject_to_MemoryviewSlice_dc_double(__pyx_t_4, PyBUF_WRITABLE); if (unlikely(!__pyx_t_5.memview)) __PYX_ERR(0, 88, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  __pyx_v_csignal = __pyx_t_5;
+  __pyx_t_5.memview = NULL;
+  __pyx_t_5.data = NULL;
+
+  /* "pywarble/pywarble.pyx":89
+ *         return 0
+ *       cdef double[::1] csignal = array.array('d',signal)
+ *       return cpywarble.warble_feed(self._c_pywarble, &csignal[0], csignal.shape[0])             # <<<<<<<<<<<<<<
+ * 
+ *   def get_payload_size(self):
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_6 = 0;
+  __pyx_t_7 = -1;
+  if (__pyx_t_6 < 0) {
+    __pyx_t_6 += __pyx_v_csignal.shape[0];
+    if (unlikely(__pyx_t_6 < 0)) __pyx_t_7 = 0;
+  } else if (unlikely(__pyx_t_6 >= __pyx_v_csignal.shape[0])) __pyx_t_7 = 0;
+  if (unlikely(__pyx_t_7 != -1)) {
+    __Pyx_RaiseBufferIndexError(__pyx_t_7);
+    __PYX_ERR(0, 89, __pyx_L1_error)
+  }
+  __pyx_t_4 = __Pyx_PyInt_From_int32_t(warble_feed(__pyx_v_self->_c_pywarble, (&(*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_csignal.data) + __pyx_t_6)) )))), (__pyx_v_csignal.shape[0]))); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 89, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_4);
+  __pyx_r = __pyx_t_4;
+  __pyx_t_4 = 0;
+  goto __pyx_L0;
+
+  /* "pywarble/pywarble.pyx":85
+ *       return list(signal_out)
+ * 
+ *   def feed(self, list signal, int64_t sample_index):             # <<<<<<<<<<<<<<
+ *       if len(signal) == 0:
+ *         return 0
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_4);
+  __PYX_XDEC_MEMVIEW(&__pyx_t_5, 1);
+  __Pyx_AddTraceback("pywarble.wrapped.pywarble.feed", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __PYX_XDEC_MEMVIEW(&__pyx_v_csignal, 1);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "pywarble/pywarble.pyx":91
+ *       return cpywarble.warble_feed(self._c_pywarble, &csignal[0], csignal.shape[0])
+ * 
+ *   def get_payload_size(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_payloadSize(self._c_pywarble);
+ * 
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_17get_payload_size(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_17get_payload_size(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("get_payload_size (wrapper)", 0);
+  __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_16get_payload_size(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_16get_payload_size(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  __Pyx_RefNannySetupContext("get_payload_size", 0);
+
+  /* "pywarble/pywarble.pyx":92
+ * 
+ *   def get_payload_size(self):
+ *       return cpywarble.warble_cfg_get_payloadSize(self._c_pywarble);             # <<<<<<<<<<<<<<
+ * 
+ *   def get_frequencies_index_triggers_count(self):
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __Pyx_PyInt_From_int32_t(warble_cfg_get_payloadSize(__pyx_v_self->_c_pywarble)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 92, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "pywarble/pywarble.pyx":91
+ *       return cpywarble.warble_feed(self._c_pywarble, &csignal[0], csignal.shape[0])
+ * 
+ *   def get_payload_size(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_payloadSize(self._c_pywarble);
+ * 
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("pywarble.wrapped.pywarble.get_payload_size", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "pywarble/pywarble.pyx":94
+ *       return cpywarble.warble_cfg_get_payloadSize(self._c_pywarble);
+ * 
+ *   def get_frequencies_index_triggers_count(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_frequenciesIndexTriggersCount(self._c_pywarble)
+ * 
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_19get_frequencies_index_triggers_count(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_19get_frequencies_index_triggers_count(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("get_frequencies_index_triggers_count (wrapper)", 0);
+  __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_18get_frequencies_index_triggers_count(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_18get_frequencies_index_triggers_count(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  __Pyx_RefNannySetupContext("get_frequencies_index_triggers_count", 0);
+
+  /* "pywarble/pywarble.pyx":95
+ * 
+ *   def get_frequencies_index_triggers_count(self):
+ *       return cpywarble.warble_cfg_get_frequenciesIndexTriggersCount(self._c_pywarble)             # <<<<<<<<<<<<<<
+ * 
+ *   def get_frequencies_index_triggers(self):
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __Pyx_PyInt_From_int32_t(warble_cfg_get_frequenciesIndexTriggersCount(__pyx_v_self->_c_pywarble)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 95, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "pywarble/pywarble.pyx":94
+ *       return cpywarble.warble_cfg_get_payloadSize(self._c_pywarble);
+ * 
+ *   def get_frequencies_index_triggers_count(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_frequenciesIndexTriggersCount(self._c_pywarble)
+ * 
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("pywarble.wrapped.pywarble.get_frequencies_index_triggers_count", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "pywarble/pywarble.pyx":97
+ *       return cpywarble.warble_cfg_get_frequenciesIndexTriggersCount(self._c_pywarble)
+ * 
+ *   def get_frequencies_index_triggers(self):             # <<<<<<<<<<<<<<
+ *       cdef double[::1] triggers = array.clone(double_array_template, cpywarble.warble_generate_window_size(self._c_pywarble), zero=False)
+ *       memcpy(&triggers[0], cpywarble.warble_cfg_get_frequenciesIndexTriggers(self._c_pywarble), sizeof(double) * cpywarble.warble_cfg_get_frequenciesIndexTriggersCount(self._c_pywarble))
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_21get_frequencies_index_triggers(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_21get_frequencies_index_triggers(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("get_frequencies_index_triggers (wrapper)", 0);
+  __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_20get_frequencies_index_triggers(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_20get_frequencies_index_triggers(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self) {
+  __Pyx_memviewslice __pyx_v_triggers = { 0, 0, { 0 }, { 0 }, { 0 } };
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  __Pyx_memviewslice __pyx_t_3 = { 0, 0, { 0 }, { 0 }, { 0 } };
+  Py_ssize_t __pyx_t_4;
+  int __pyx_t_5;
+  __Pyx_RefNannySetupContext("get_frequencies_index_triggers", 0);
+
+  /* "pywarble/pywarble.pyx":98
+ * 
+ *   def get_frequencies_index_triggers(self):
+ *       cdef double[::1] triggers = array.clone(double_array_template, cpywarble.warble_generate_window_size(self._c_pywarble), zero=False)             # <<<<<<<<<<<<<<
+ *       memcpy(&triggers[0], cpywarble.warble_cfg_get_frequenciesIndexTriggers(self._c_pywarble), sizeof(double) * cpywarble.warble_cfg_get_frequenciesIndexTriggersCount(self._c_pywarble))
+ *       return list(triggers)
+ */
+  __pyx_t_1 = ((PyObject *)__pyx_v_8pywarble_7wrapped_double_array_template);
+  __Pyx_INCREF(__pyx_t_1);
+  __pyx_t_2 = ((PyObject *)__pyx_f_7cpython_5array_clone(((arrayobject *)__pyx_t_1), warble_generate_window_size(__pyx_v_self->_c_pywarble), 0)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 98, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_t_3 = __Pyx_PyObject_to_MemoryviewSlice_dc_double(__pyx_t_2, PyBUF_WRITABLE); if (unlikely(!__pyx_t_3.memview)) __PYX_ERR(0, 98, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_v_triggers = __pyx_t_3;
+  __pyx_t_3.memview = NULL;
+  __pyx_t_3.data = NULL;
+
+  /* "pywarble/pywarble.pyx":99
+ *   def get_frequencies_index_triggers(self):
+ *       cdef double[::1] triggers = array.clone(double_array_template, cpywarble.warble_generate_window_size(self._c_pywarble), zero=False)
+ *       memcpy(&triggers[0], cpywarble.warble_cfg_get_frequenciesIndexTriggers(self._c_pywarble), sizeof(double) * cpywarble.warble_cfg_get_frequenciesIndexTriggersCount(self._c_pywarble))             # <<<<<<<<<<<<<<
+ *       return list(triggers)
+ * 
+ */
+  __pyx_t_4 = 0;
+  __pyx_t_5 = -1;
+  if (__pyx_t_4 < 0) {
+    __pyx_t_4 += __pyx_v_triggers.shape[0];
+    if (unlikely(__pyx_t_4 < 0)) __pyx_t_5 = 0;
+  } else if (unlikely(__pyx_t_4 >= __pyx_v_triggers.shape[0])) __pyx_t_5 = 0;
+  if (unlikely(__pyx_t_5 != -1)) {
+    __Pyx_RaiseBufferIndexError(__pyx_t_5);
+    __PYX_ERR(0, 99, __pyx_L1_error)
+  }
+  (void)(memcpy((&(*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_triggers.data) + __pyx_t_4)) )))), warble_cfg_get_frequenciesIndexTriggers(__pyx_v_self->_c_pywarble), ((sizeof(double)) * warble_cfg_get_frequenciesIndexTriggersCount(__pyx_v_self->_c_pywarble))));
+
+  /* "pywarble/pywarble.pyx":100
+ *       cdef double[::1] triggers = array.clone(double_array_template, cpywarble.warble_generate_window_size(self._c_pywarble), zero=False)
+ *       memcpy(&triggers[0], cpywarble.warble_cfg_get_frequenciesIndexTriggers(self._c_pywarble), sizeof(double) * cpywarble.warble_cfg_get_frequenciesIndexTriggersCount(self._c_pywarble))
+ *       return list(triggers)             # <<<<<<<<<<<<<<
+ * 
+ *   def get_sample_rate(self):
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_2 = __pyx_memoryview_fromslice(__pyx_v_triggers, 1, (PyObject *(*)(char *)) __pyx_memview_get_double, (int (*)(char *, PyObject *)) __pyx_memview_set_double, 0);; if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 100, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_1 = PySequence_List(__pyx_t_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 100, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "pywarble/pywarble.pyx":97
+ *       return cpywarble.warble_cfg_get_frequenciesIndexTriggersCount(self._c_pywarble)
+ * 
+ *   def get_frequencies_index_triggers(self):             # <<<<<<<<<<<<<<
+ *       cdef double[::1] triggers = array.clone(double_array_template, cpywarble.warble_generate_window_size(self._c_pywarble), zero=False)
+ *       memcpy(&triggers[0], cpywarble.warble_cfg_get_frequenciesIndexTriggers(self._c_pywarble), sizeof(double) * cpywarble.warble_cfg_get_frequenciesIndexTriggersCount(self._c_pywarble))
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __PYX_XDEC_MEMVIEW(&__pyx_t_3, 1);
+  __Pyx_AddTraceback("pywarble.wrapped.pywarble.get_frequencies_index_triggers", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __PYX_XDEC_MEMVIEW(&__pyx_v_triggers, 1);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "pywarble/pywarble.pyx":102
+ *       return list(triggers)
+ * 
+ *   def get_sample_rate(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_sampleRate(self._c_pywarble)
+ * 
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_23get_sample_rate(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_23get_sample_rate(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("get_sample_rate (wrapper)", 0);
+  __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_22get_sample_rate(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_22get_sample_rate(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  __Pyx_RefNannySetupContext("get_sample_rate", 0);
+
+  /* "pywarble/pywarble.pyx":103
+ * 
+ *   def get_sample_rate(self):
+ *       return cpywarble.warble_cfg_get_sampleRate(self._c_pywarble)             # <<<<<<<<<<<<<<
+ * 
+ *   def get_block_length(self):
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = PyFloat_FromDouble(warble_cfg_get_sampleRate(__pyx_v_self->_c_pywarble)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 103, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "pywarble/pywarble.pyx":102
+ *       return list(triggers)
+ * 
+ *   def get_sample_rate(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_sampleRate(self._c_pywarble)
+ * 
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("pywarble.wrapped.pywarble.get_sample_rate", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "pywarble/pywarble.pyx":105
+ *       return cpywarble.warble_cfg_get_sampleRate(self._c_pywarble)
+ * 
+ *   def get_block_length(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_block_length(self._c_pywarble)
+ * 
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_25get_block_length(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_25get_block_length(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("get_block_length (wrapper)", 0);
+  __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_24get_block_length(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_24get_block_length(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  __Pyx_RefNannySetupContext("get_block_length", 0);
+
+  /* "pywarble/pywarble.pyx":106
+ * 
+ *   def get_block_length(self):
+ *       return cpywarble.warble_cfg_get_block_length(self._c_pywarble)             # <<<<<<<<<<<<<<
+ * 
+ *   def get_distance(self):
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __Pyx_PyInt_From_int32_t(warble_cfg_get_block_length(__pyx_v_self->_c_pywarble)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 106, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "pywarble/pywarble.pyx":105
+ *       return cpywarble.warble_cfg_get_sampleRate(self._c_pywarble)
+ * 
+ *   def get_block_length(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_block_length(self._c_pywarble)
+ * 
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("pywarble.wrapped.pywarble.get_block_length", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "pywarble/pywarble.pyx":108
+ *       return cpywarble.warble_cfg_get_block_length(self._c_pywarble)
+ * 
+ *   def get_distance(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_distance(self._c_pywarble)
+ * 
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_27get_distance(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_27get_distance(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("get_distance (wrapper)", 0);
+  __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_26get_distance(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_26get_distance(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  __Pyx_RefNannySetupContext("get_distance", 0);
+
+  /* "pywarble/pywarble.pyx":109
+ * 
+ *   def get_distance(self):
+ *       return cpywarble.warble_cfg_get_distance(self._c_pywarble)             # <<<<<<<<<<<<<<
+ * 
+ *   def get_rs_message_length(self):
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __Pyx_PyInt_From_int32_t(warble_cfg_get_distance(__pyx_v_self->_c_pywarble)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 109, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "pywarble/pywarble.pyx":108
+ *       return cpywarble.warble_cfg_get_block_length(self._c_pywarble)
+ * 
+ *   def get_distance(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_distance(self._c_pywarble)
+ * 
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("pywarble.wrapped.pywarble.get_distance", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "pywarble/pywarble.pyx":111
+ *       return cpywarble.warble_cfg_get_distance(self._c_pywarble)
+ * 
+ *   def get_rs_message_length(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_rs_message_length(self._c_pywarble)
+ * 
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_29get_rs_message_length(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_29get_rs_message_length(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("get_rs_message_length (wrapper)", 0);
+  __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_28get_rs_message_length(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_28get_rs_message_length(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  __Pyx_RefNannySetupContext("get_rs_message_length", 0);
+
+  /* "pywarble/pywarble.pyx":112
+ * 
+ *   def get_rs_message_length(self):
+ *       return cpywarble.warble_cfg_get_rs_message_length(self._c_pywarble)             # <<<<<<<<<<<<<<
+ * 
+ *   def get_distance_last(self):
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __Pyx_PyInt_From_int32_t(warble_cfg_get_rs_message_length(__pyx_v_self->_c_pywarble)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 112, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "pywarble/pywarble.pyx":111
+ *       return cpywarble.warble_cfg_get_distance(self._c_pywarble)
+ * 
+ *   def get_rs_message_length(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_rs_message_length(self._c_pywarble)
+ * 
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("pywarble.wrapped.pywarble.get_rs_message_length", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "pywarble/pywarble.pyx":114
+ *       return cpywarble.warble_cfg_get_rs_message_length(self._c_pywarble)
+ * 
+ *   def get_distance_last(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_distance_last(self._c_pywarble)
+ * 
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_31get_distance_last(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_31get_distance_last(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("get_distance_last (wrapper)", 0);
+  __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_30get_distance_last(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_30get_distance_last(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  __Pyx_RefNannySetupContext("get_distance_last", 0);
+
+  /* "pywarble/pywarble.pyx":115
+ * 
+ *   def get_distance_last(self):
+ *       return cpywarble.warble_cfg_get_distance_last(self._c_pywarble)             # <<<<<<<<<<<<<<
+ * 
+ *   def get_parsed(self):
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __Pyx_PyInt_From_int32_t(warble_cfg_get_distance_last(__pyx_v_self->_c_pywarble)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 115, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "pywarble/pywarble.pyx":114
+ *       return cpywarble.warble_cfg_get_rs_message_length(self._c_pywarble)
+ * 
+ *   def get_distance_last(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_distance_last(self._c_pywarble)
+ * 
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("pywarble.wrapped.pywarble.get_distance_last", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "pywarble/pywarble.pyx":117
+ *       return cpywarble.warble_cfg_get_distance_last(self._c_pywarble)
+ * 
+ *   def get_parsed(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_parsed(self._c_pywarble)
+ * 
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_33get_parsed(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_33get_parsed(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("get_parsed (wrapper)", 0);
+  __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_32get_parsed(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_32get_parsed(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  __Pyx_RefNannySetupContext("get_parsed", 0);
+
+  /* "pywarble/pywarble.pyx":118
+ * 
+ *   def get_parsed(self):
+ *       return cpywarble.warble_cfg_get_parsed(self._c_pywarble)             # <<<<<<<<<<<<<<
+ * 
+ *   def get_shuffleIndex(self):
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __Pyx_PyBytes_FromCString(warble_cfg_get_parsed(__pyx_v_self->_c_pywarble)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 118, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "pywarble/pywarble.pyx":117
+ *       return cpywarble.warble_cfg_get_distance_last(self._c_pywarble)
+ * 
+ *   def get_parsed(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_parsed(self._c_pywarble)
+ * 
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("pywarble.wrapped.pywarble.get_parsed", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "pywarble/pywarble.pyx":120
+ *       return cpywarble.warble_cfg_get_parsed(self._c_pywarble)
+ * 
+ *   def get_shuffleIndex(self):             # <<<<<<<<<<<<<<
+ *       cdef int[::1] index = array.clone(double_array_template, cpywarble.WARBLE_PITCH_COUNT, zero=False)
+ *       memcpy(&index[0], cpywarble.warble_cfg_get_shuffleIndex(self._c_pywarble), sizeof(int32_t) * cpywarble.warble_cfg_get_block_length(self._c_pywarble))
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_35get_shuffleIndex(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_35get_shuffleIndex(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("get_shuffleIndex (wrapper)", 0);
+  __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_34get_shuffleIndex(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_34get_shuffleIndex(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self) {
+  __Pyx_memviewslice __pyx_v_index = { 0, 0, { 0 }, { 0 }, { 0 } };
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  __Pyx_memviewslice __pyx_t_3 = { 0, 0, { 0 }, { 0 }, { 0 } };
+  Py_ssize_t __pyx_t_4;
+  int __pyx_t_5;
+  __Pyx_RefNannySetupContext("get_shuffleIndex", 0);
+
+  /* "pywarble/pywarble.pyx":121
+ * 
+ *   def get_shuffleIndex(self):
+ *       cdef int[::1] index = array.clone(double_array_template, cpywarble.WARBLE_PITCH_COUNT, zero=False)             # <<<<<<<<<<<<<<
+ *       memcpy(&index[0], cpywarble.warble_cfg_get_shuffleIndex(self._c_pywarble), sizeof(int32_t) * cpywarble.warble_cfg_get_block_length(self._c_pywarble))
+ *       return list(index)
+ */
+  __pyx_t_1 = ((PyObject *)__pyx_v_8pywarble_7wrapped_double_array_template);
+  __Pyx_INCREF(__pyx_t_1);
+  __pyx_t_2 = ((PyObject *)__pyx_f_7cpython_5array_clone(((arrayobject *)__pyx_t_1), WARBLE_PITCH_COUNT, 0)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 121, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_t_3 = __Pyx_PyObject_to_MemoryviewSlice_dc_int(__pyx_t_2, PyBUF_WRITABLE); if (unlikely(!__pyx_t_3.memview)) __PYX_ERR(0, 121, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_v_index = __pyx_t_3;
+  __pyx_t_3.memview = NULL;
+  __pyx_t_3.data = NULL;
+
+  /* "pywarble/pywarble.pyx":122
+ *   def get_shuffleIndex(self):
+ *       cdef int[::1] index = array.clone(double_array_template, cpywarble.WARBLE_PITCH_COUNT, zero=False)
+ *       memcpy(&index[0], cpywarble.warble_cfg_get_shuffleIndex(self._c_pywarble), sizeof(int32_t) * cpywarble.warble_cfg_get_block_length(self._c_pywarble))             # <<<<<<<<<<<<<<
+ *       return list(index)
+ * 
+ */
+  __pyx_t_4 = 0;
+  __pyx_t_5 = -1;
+  if (__pyx_t_4 < 0) {
+    __pyx_t_4 += __pyx_v_index.shape[0];
+    if (unlikely(__pyx_t_4 < 0)) __pyx_t_5 = 0;
+  } else if (unlikely(__pyx_t_4 >= __pyx_v_index.shape[0])) __pyx_t_5 = 0;
+  if (unlikely(__pyx_t_5 != -1)) {
+    __Pyx_RaiseBufferIndexError(__pyx_t_5);
+    __PYX_ERR(0, 122, __pyx_L1_error)
+  }
+  (void)(memcpy((&(*((int *) ( /* dim=0 */ ((char *) (((int *) __pyx_v_index.data) + __pyx_t_4)) )))), warble_cfg_get_shuffleIndex(__pyx_v_self->_c_pywarble), ((sizeof(int32_t)) * warble_cfg_get_block_length(__pyx_v_self->_c_pywarble))));
+
+  /* "pywarble/pywarble.pyx":123
+ *       cdef int[::1] index = array.clone(double_array_template, cpywarble.WARBLE_PITCH_COUNT, zero=False)
+ *       memcpy(&index[0], cpywarble.warble_cfg_get_shuffleIndex(self._c_pywarble), sizeof(int32_t) * cpywarble.warble_cfg_get_block_length(self._c_pywarble))
+ *       return list(index)             # <<<<<<<<<<<<<<
+ * 
+ *   def get_frequencies(self):
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_2 = __pyx_memoryview_fromslice(__pyx_v_index, 1, (PyObject *(*)(char *)) __pyx_memview_get_int, (int (*)(char *, PyObject *)) __pyx_memview_set_int, 0);; if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 123, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_1 = PySequence_List(__pyx_t_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 123, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "pywarble/pywarble.pyx":120
+ *       return cpywarble.warble_cfg_get_parsed(self._c_pywarble)
+ * 
+ *   def get_shuffleIndex(self):             # <<<<<<<<<<<<<<
+ *       cdef int[::1] index = array.clone(double_array_template, cpywarble.WARBLE_PITCH_COUNT, zero=False)
+ *       memcpy(&index[0], cpywarble.warble_cfg_get_shuffleIndex(self._c_pywarble), sizeof(int32_t) * cpywarble.warble_cfg_get_block_length(self._c_pywarble))
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __PYX_XDEC_MEMVIEW(&__pyx_t_3, 1);
+  __Pyx_AddTraceback("pywarble.wrapped.pywarble.get_shuffleIndex", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __PYX_XDEC_MEMVIEW(&__pyx_v_index, 1);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "pywarble/pywarble.pyx":125
+ *       return list(index)
+ * 
+ *   def get_frequencies(self):             # <<<<<<<<<<<<<<
+ *       cdef double[::1] freqs = array.clone(double_array_template, cpywarble.WARBLE_PITCH_COUNT, zero=False)
+ *       memcpy(&freqs[0], cpywarble.warble_cfg_get_frequencies(self._c_pywarble), sizeof(double) * cpywarble.WARBLE_PITCH_COUNT);
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_37get_frequencies(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_37get_frequencies(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("get_frequencies (wrapper)", 0);
+  __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_36get_frequencies(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_36get_frequencies(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self) {
+  __Pyx_memviewslice __pyx_v_freqs = { 0, 0, { 0 }, { 0 }, { 0 } };
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  __Pyx_memviewslice __pyx_t_3 = { 0, 0, { 0 }, { 0 }, { 0 } };
+  Py_ssize_t __pyx_t_4;
+  int __pyx_t_5;
+  __Pyx_RefNannySetupContext("get_frequencies", 0);
+
+  /* "pywarble/pywarble.pyx":126
+ * 
+ *   def get_frequencies(self):
+ *       cdef double[::1] freqs = array.clone(double_array_template, cpywarble.WARBLE_PITCH_COUNT, zero=False)             # <<<<<<<<<<<<<<
+ *       memcpy(&freqs[0], cpywarble.warble_cfg_get_frequencies(self._c_pywarble), sizeof(double) * cpywarble.WARBLE_PITCH_COUNT);
+ *       return list(freqs)
+ */
+  __pyx_t_1 = ((PyObject *)__pyx_v_8pywarble_7wrapped_double_array_template);
+  __Pyx_INCREF(__pyx_t_1);
+  __pyx_t_2 = ((PyObject *)__pyx_f_7cpython_5array_clone(((arrayobject *)__pyx_t_1), WARBLE_PITCH_COUNT, 0)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 126, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_t_3 = __Pyx_PyObject_to_MemoryviewSlice_dc_double(__pyx_t_2, PyBUF_WRITABLE); if (unlikely(!__pyx_t_3.memview)) __PYX_ERR(0, 126, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_v_freqs = __pyx_t_3;
+  __pyx_t_3.memview = NULL;
+  __pyx_t_3.data = NULL;
+
+  /* "pywarble/pywarble.pyx":127
+ *   def get_frequencies(self):
+ *       cdef double[::1] freqs = array.clone(double_array_template, cpywarble.WARBLE_PITCH_COUNT, zero=False)
+ *       memcpy(&freqs[0], cpywarble.warble_cfg_get_frequencies(self._c_pywarble), sizeof(double) * cpywarble.WARBLE_PITCH_COUNT);             # <<<<<<<<<<<<<<
+ *       return list(freqs)
+ * 
+ */
+  __pyx_t_4 = 0;
+  __pyx_t_5 = -1;
+  if (__pyx_t_4 < 0) {
+    __pyx_t_4 += __pyx_v_freqs.shape[0];
+    if (unlikely(__pyx_t_4 < 0)) __pyx_t_5 = 0;
+  } else if (unlikely(__pyx_t_4 >= __pyx_v_freqs.shape[0])) __pyx_t_5 = 0;
+  if (unlikely(__pyx_t_5 != -1)) {
+    __Pyx_RaiseBufferIndexError(__pyx_t_5);
+    __PYX_ERR(0, 127, __pyx_L1_error)
+  }
+  (void)(memcpy((&(*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_freqs.data) + __pyx_t_4)) )))), warble_cfg_get_frequencies(__pyx_v_self->_c_pywarble), ((sizeof(double)) * WARBLE_PITCH_COUNT)));
+
+  /* "pywarble/pywarble.pyx":128
+ *       cdef double[::1] freqs = array.clone(double_array_template, cpywarble.WARBLE_PITCH_COUNT, zero=False)
+ *       memcpy(&freqs[0], cpywarble.warble_cfg_get_frequencies(self._c_pywarble), sizeof(double) * cpywarble.WARBLE_PITCH_COUNT);
+ *       return list(freqs)             # <<<<<<<<<<<<<<
+ * 
+ *   def get_trigger_sample_index(self):
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_2 = __pyx_memoryview_fromslice(__pyx_v_freqs, 1, (PyObject *(*)(char *)) __pyx_memview_get_double, (int (*)(char *, PyObject *)) __pyx_memview_set_double, 0);; if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 128, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_1 = PySequence_List(__pyx_t_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 128, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "pywarble/pywarble.pyx":125
+ *       return list(index)
+ * 
+ *   def get_frequencies(self):             # <<<<<<<<<<<<<<
+ *       cdef double[::1] freqs = array.clone(double_array_template, cpywarble.WARBLE_PITCH_COUNT, zero=False)
+ *       memcpy(&freqs[0], cpywarble.warble_cfg_get_frequencies(self._c_pywarble), sizeof(double) * cpywarble.WARBLE_PITCH_COUNT);
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __PYX_XDEC_MEMVIEW(&__pyx_t_3, 1);
+  __Pyx_AddTraceback("pywarble.wrapped.pywarble.get_frequencies", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __PYX_XDEC_MEMVIEW(&__pyx_v_freqs, 1);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "pywarble/pywarble.pyx":130
+ *       return list(freqs)
+ * 
+ *   def get_trigger_sample_index(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_triggerSampleIndex(self._c_pywarble)
+ * 
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_39get_trigger_sample_index(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_39get_trigger_sample_index(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("get_trigger_sample_index (wrapper)", 0);
+  __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_38get_trigger_sample_index(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_38get_trigger_sample_index(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  __Pyx_RefNannySetupContext("get_trigger_sample_index", 0);
+
+  /* "pywarble/pywarble.pyx":131
+ * 
+ *   def get_trigger_sample_index(self):
+ *       return cpywarble.warble_cfg_get_triggerSampleIndex(self._c_pywarble)             # <<<<<<<<<<<<<<
+ * 
+ *   def get_trigger_sample_index_begin(self):
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __Pyx_PyInt_From_int64_t(warble_cfg_get_triggerSampleIndex(__pyx_v_self->_c_pywarble)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 131, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "pywarble/pywarble.pyx":130
+ *       return list(freqs)
+ * 
+ *   def get_trigger_sample_index(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_triggerSampleIndex(self._c_pywarble)
+ * 
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("pywarble.wrapped.pywarble.get_trigger_sample_index", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "pywarble/pywarble.pyx":133
+ *       return cpywarble.warble_cfg_get_triggerSampleIndex(self._c_pywarble)
+ * 
+ *   def get_trigger_sample_index_begin(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_triggerSampleIndexBegin(self._c_pywarble)
+ * 
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_41get_trigger_sample_index_begin(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_41get_trigger_sample_index_begin(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("get_trigger_sample_index_begin (wrapper)", 0);
+  __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_40get_trigger_sample_index_begin(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_40get_trigger_sample_index_begin(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  __Pyx_RefNannySetupContext("get_trigger_sample_index_begin", 0);
+
+  /* "pywarble/pywarble.pyx":134
+ * 
+ *   def get_trigger_sample_index_begin(self):
+ *       return cpywarble.warble_cfg_get_triggerSampleIndexBegin(self._c_pywarble)             # <<<<<<<<<<<<<<
+ * 
+ *   def get_trigger_sample_rms(self):
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __Pyx_PyInt_From_int64_t(warble_cfg_get_triggerSampleIndexBegin(__pyx_v_self->_c_pywarble)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 134, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "pywarble/pywarble.pyx":133
+ *       return cpywarble.warble_cfg_get_triggerSampleIndex(self._c_pywarble)
+ * 
+ *   def get_trigger_sample_index_begin(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_triggerSampleIndexBegin(self._c_pywarble)
+ * 
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("pywarble.wrapped.pywarble.get_trigger_sample_index_begin", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "pywarble/pywarble.pyx":136
+ *       return cpywarble.warble_cfg_get_triggerSampleIndexBegin(self._c_pywarble)
+ * 
+ *   def get_trigger_sample_rms(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_triggerSampleRMS(self._c_pywarble)
+ * 
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_43get_trigger_sample_rms(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_43get_trigger_sample_rms(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("get_trigger_sample_rms (wrapper)", 0);
+  __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_42get_trigger_sample_rms(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_42get_trigger_sample_rms(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  __Pyx_RefNannySetupContext("get_trigger_sample_rms", 0);
+
+  /* "pywarble/pywarble.pyx":137
+ * 
+ *   def get_trigger_sample_rms(self):
+ *       return cpywarble.warble_cfg_get_triggerSampleRMS(self._c_pywarble)             # <<<<<<<<<<<<<<
+ * 
+ *   def get_word_length(self):
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = PyFloat_FromDouble(warble_cfg_get_triggerSampleRMS(__pyx_v_self->_c_pywarble)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 137, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "pywarble/pywarble.pyx":136
+ *       return cpywarble.warble_cfg_get_triggerSampleIndexBegin(self._c_pywarble)
+ * 
+ *   def get_trigger_sample_rms(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_triggerSampleRMS(self._c_pywarble)
+ * 
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("pywarble.wrapped.pywarble.get_trigger_sample_rms", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "pywarble/pywarble.pyx":139
+ *       return cpywarble.warble_cfg_get_triggerSampleRMS(self._c_pywarble)
+ * 
+ *   def get_word_length(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_word_length(self._c_pywarble)
+ * 
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_45get_word_length(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_45get_word_length(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("get_word_length (wrapper)", 0);
+  __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_44get_word_length(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_44get_word_length(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  __Pyx_RefNannySetupContext("get_word_length", 0);
+
+  /* "pywarble/pywarble.pyx":140
+ * 
+ *   def get_word_length(self):
+ *       return cpywarble.warble_cfg_get_word_length(self._c_pywarble)             # <<<<<<<<<<<<<<
+ * 
+ *   def get_window_length(self):
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __Pyx_PyInt_From_int32_t(warble_cfg_get_word_length(__pyx_v_self->_c_pywarble)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 140, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "pywarble/pywarble.pyx":139
+ *       return cpywarble.warble_cfg_get_triggerSampleRMS(self._c_pywarble)
+ * 
+ *   def get_word_length(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_word_length(self._c_pywarble)
+ * 
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("pywarble.wrapped.pywarble.get_word_length", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "pywarble/pywarble.pyx":142
+ *       return cpywarble.warble_cfg_get_word_length(self._c_pywarble)
+ * 
+ *   def get_window_length(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_window_length(self._c_pywarble)
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_47get_window_length(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_47get_window_length(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("get_window_length (wrapper)", 0);
+  __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_46get_window_length(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_46get_window_length(struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  __Pyx_RefNannySetupContext("get_window_length", 0);
+
+  /* "pywarble/pywarble.pyx":143
+ * 
+ *   def get_window_length(self):
+ *       return cpywarble.warble_cfg_get_window_length(self._c_pywarble)             # <<<<<<<<<<<<<<
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __Pyx_PyInt_From_int32_t(warble_cfg_get_window_length(__pyx_v_self->_c_pywarble)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 143, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "pywarble/pywarble.pyx":142
+ *       return cpywarble.warble_cfg_get_word_length(self._c_pywarble)
+ * 
+ *   def get_window_length(self):             # <<<<<<<<<<<<<<
+ *       return cpywarble.warble_cfg_get_window_length(self._c_pywarble)
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("pywarble.wrapped.pywarble.get_window_length", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
 /* "(tree fragment)":1
  * def __reduce_cython__(self):             # <<<<<<<<<<<<<<
  *     raise TypeError("no default __reduce__ due to non-trivial __cinit__")
@@ -2953,19 +4503,19 @@ static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_8_compute_rms(CYTHON_UNUS
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_11__reduce_cython__(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
-static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_11__reduce_cython__(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_49__reduce_cython__(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_49__reduce_cython__(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__reduce_cython__ (wrapper)", 0);
-  __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_10__reduce_cython__(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self));
+  __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_48__reduce_cython__(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self));
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_10__reduce_cython__(CYTHON_UNUSED struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self) {
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_48__reduce_cython__(CYTHON_UNUSED struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
@@ -3007,19 +4557,19 @@ static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_10__reduce_cython__(CYTHO
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_13__setstate_cython__(PyObject *__pyx_v_self, PyObject *__pyx_v___pyx_state); /*proto*/
-static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_13__setstate_cython__(PyObject *__pyx_v_self, PyObject *__pyx_v___pyx_state) {
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_51__setstate_cython__(PyObject *__pyx_v_self, PyObject *__pyx_v___pyx_state); /*proto*/
+static PyObject *__pyx_pw_8pywarble_7wrapped_8pywarble_51__setstate_cython__(PyObject *__pyx_v_self, PyObject *__pyx_v___pyx_state) {
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__setstate_cython__ (wrapper)", 0);
-  __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_12__setstate_cython__(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self), ((PyObject *)__pyx_v___pyx_state));
+  __pyx_r = __pyx_pf_8pywarble_7wrapped_8pywarble_50__setstate_cython__(((struct __pyx_obj_8pywarble_7wrapped_pywarble *)__pyx_v_self), ((PyObject *)__pyx_v___pyx_state));
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_12__setstate_cython__(CYTHON_UNUSED struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state) {
+static PyObject *__pyx_pf_8pywarble_7wrapped_8pywarble_50__setstate_cython__(CYTHON_UNUSED struct __pyx_obj_8pywarble_7wrapped_pywarble *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
@@ -16640,8 +18190,27 @@ static void __pyx_tp_dealloc_8pywarble_7wrapped_pywarble(PyObject *o) {
 static PyMethodDef __pyx_methods_8pywarble_7wrapped_pywarble[] = {
   {"_generalized_goertzel", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_7_generalized_goertzel, METH_VARARGS|METH_KEYWORDS, 0},
   {"_compute_rms", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_9_compute_rms, METH_O, 0},
-  {"__reduce_cython__", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_11__reduce_cython__, METH_NOARGS, 0},
-  {"__setstate_cython__", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_13__setstate_cython__, METH_O, 0},
+  {"generate_window_size", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_11generate_window_size, METH_NOARGS, 0},
+  {"generate_signal", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_13generate_signal, METH_VARARGS|METH_KEYWORDS, 0},
+  {"feed", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_15feed, METH_VARARGS|METH_KEYWORDS, 0},
+  {"get_payload_size", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_17get_payload_size, METH_NOARGS, 0},
+  {"get_frequencies_index_triggers_count", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_19get_frequencies_index_triggers_count, METH_NOARGS, 0},
+  {"get_frequencies_index_triggers", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_21get_frequencies_index_triggers, METH_NOARGS, 0},
+  {"get_sample_rate", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_23get_sample_rate, METH_NOARGS, 0},
+  {"get_block_length", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_25get_block_length, METH_NOARGS, 0},
+  {"get_distance", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_27get_distance, METH_NOARGS, 0},
+  {"get_rs_message_length", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_29get_rs_message_length, METH_NOARGS, 0},
+  {"get_distance_last", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_31get_distance_last, METH_NOARGS, 0},
+  {"get_parsed", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_33get_parsed, METH_NOARGS, 0},
+  {"get_shuffleIndex", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_35get_shuffleIndex, METH_NOARGS, 0},
+  {"get_frequencies", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_37get_frequencies, METH_NOARGS, 0},
+  {"get_trigger_sample_index", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_39get_trigger_sample_index, METH_NOARGS, 0},
+  {"get_trigger_sample_index_begin", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_41get_trigger_sample_index_begin, METH_NOARGS, 0},
+  {"get_trigger_sample_rms", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_43get_trigger_sample_rms, METH_NOARGS, 0},
+  {"get_word_length", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_45get_word_length, METH_NOARGS, 0},
+  {"get_window_length", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_47get_window_length, METH_NOARGS, 0},
+  {"__reduce_cython__", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_49__reduce_cython__, METH_NOARGS, 0},
+  {"__setstate_cython__", (PyCFunction)__pyx_pw_8pywarble_7wrapped_8pywarble_51__setstate_cython__, METH_O, 0},
   {0, 0, 0, 0}
 };
 
@@ -17477,6 +19046,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_obj, __pyx_k_obj, sizeof(__pyx_k_obj), 0, 0, 1, 1},
   {&__pyx_n_s_pack, __pyx_k_pack, sizeof(__pyx_k_pack), 0, 0, 1, 1},
   {&__pyx_n_s_pickle, __pyx_k_pickle, sizeof(__pyx_k_pickle), 0, 0, 1, 1},
+  {&__pyx_n_s_powerPeak, __pyx_k_powerPeak, sizeof(__pyx_k_powerPeak), 0, 0, 1, 1},
   {&__pyx_n_s_pyx_PickleError, __pyx_k_pyx_PickleError, sizeof(__pyx_k_pyx_PickleError), 0, 0, 1, 1},
   {&__pyx_n_s_pyx_checksum, __pyx_k_pyx_checksum, sizeof(__pyx_k_pyx_checksum), 0, 0, 1, 1},
   {&__pyx_n_s_pyx_getbuffer, __pyx_k_pyx_getbuffer, sizeof(__pyx_k_pyx_getbuffer), 0, 0, 1, 1},
@@ -17489,6 +19059,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_reduce, __pyx_k_reduce, sizeof(__pyx_k_reduce), 0, 0, 1, 1},
   {&__pyx_n_s_reduce_cython, __pyx_k_reduce_cython, sizeof(__pyx_k_reduce_cython), 0, 0, 1, 1},
   {&__pyx_n_s_reduce_ex, __pyx_k_reduce_ex, sizeof(__pyx_k_reduce_ex), 0, 0, 1, 1},
+  {&__pyx_n_s_sample_index, __pyx_k_sample_index, sizeof(__pyx_k_sample_index), 0, 0, 1, 1},
   {&__pyx_n_s_sample_rate, __pyx_k_sample_rate, sizeof(__pyx_k_sample_rate), 0, 0, 1, 1},
   {&__pyx_n_s_setstate, __pyx_k_setstate, sizeof(__pyx_k_setstate), 0, 0, 1, 1},
   {&__pyx_n_s_setstate_cython, __pyx_k_setstate_cython, sizeof(__pyx_k_setstate_cython), 0, 0, 1, 1},
@@ -17510,10 +19081,11 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_unpack, __pyx_k_unpack, sizeof(__pyx_k_unpack), 0, 0, 1, 1},
   {&__pyx_n_s_update, __pyx_k_update, sizeof(__pyx_k_update), 0, 0, 1, 1},
   {&__pyx_n_s_word_time, __pyx_k_word_time, sizeof(__pyx_k_word_time), 0, 0, 1, 1},
+  {&__pyx_n_s_words, __pyx_k_words, sizeof(__pyx_k_words), 0, 0, 1, 1},
   {0, 0, 0, 0, 0, 0, 0}
 };
 static int __Pyx_InitCachedBuiltins(void) {
-  __pyx_builtin_MemoryError = __Pyx_GetBuiltinName(__pyx_n_s_MemoryError); if (!__pyx_builtin_MemoryError) __PYX_ERR(0, 50, __pyx_L1_error)
+  __pyx_builtin_MemoryError = __Pyx_GetBuiltinName(__pyx_n_s_MemoryError); if (!__pyx_builtin_MemoryError) __PYX_ERR(0, 51, __pyx_L1_error)
   __pyx_builtin_TypeError = __Pyx_GetBuiltinName(__pyx_n_s_TypeError); if (!__pyx_builtin_TypeError) __PYX_ERR(1, 2, __pyx_L1_error)
   __pyx_builtin_ValueError = __Pyx_GetBuiltinName(__pyx_n_s_ValueError); if (!__pyx_builtin_ValueError) __PYX_ERR(1, 132, __pyx_L1_error)
   __pyx_builtin_enumerate = __Pyx_GetBuiltinName(__pyx_n_s_enumerate); if (!__pyx_builtin_enumerate) __PYX_ERR(1, 150, __pyx_L1_error)
@@ -17899,13 +19471,13 @@ static int __Pyx_modinit_type_init_code(void) {
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__Pyx_modinit_type_init_code", 0);
   /*--- Type init code ---*/
-  if (PyType_Ready(&__pyx_type_8pywarble_7wrapped_pywarble) < 0) __PYX_ERR(0, 45, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_8pywarble_7wrapped_pywarble) < 0) __PYX_ERR(0, 46, __pyx_L1_error)
   __pyx_type_8pywarble_7wrapped_pywarble.tp_print = 0;
   if ((CYTHON_USE_TYPE_SLOTS && CYTHON_USE_PYTYPE_LOOKUP) && likely(!__pyx_type_8pywarble_7wrapped_pywarble.tp_dictoffset && __pyx_type_8pywarble_7wrapped_pywarble.tp_getattro == PyObject_GenericGetAttr)) {
     __pyx_type_8pywarble_7wrapped_pywarble.tp_getattro = __Pyx_PyObject_GenericGetAttr;
   }
-  if (PyObject_SetAttrString(__pyx_m, "pywarble", (PyObject *)&__pyx_type_8pywarble_7wrapped_pywarble) < 0) __PYX_ERR(0, 45, __pyx_L1_error)
-  if (__Pyx_setup_reduce((PyObject*)&__pyx_type_8pywarble_7wrapped_pywarble) < 0) __PYX_ERR(0, 45, __pyx_L1_error)
+  if (PyObject_SetAttrString(__pyx_m, "pywarble", (PyObject *)&__pyx_type_8pywarble_7wrapped_pywarble) < 0) __PYX_ERR(0, 46, __pyx_L1_error)
+  if (__Pyx_setup_reduce((PyObject*)&__pyx_type_8pywarble_7wrapped_pywarble) < 0) __PYX_ERR(0, 46, __pyx_L1_error)
   __pyx_ptype_8pywarble_7wrapped_pywarble = &__pyx_type_8pywarble_7wrapped_pywarble;
   __pyx_vtabptr_array = &__pyx_vtable_array;
   __pyx_vtable_array.get_memview = (PyObject *(*)(struct __pyx_array_obj *))__pyx_array_get_memview;
@@ -18169,28 +19741,28 @@ if (!__Pyx_RefNanny) {
   if (__Pyx_patch_abc() < 0) __PYX_ERR(0, 1, __pyx_L1_error)
   #endif
 
-  /* "pywarble/pywarble.pyx":37
- * from libc.stdlib cimport malloc
+  /* "pywarble/pywarble.pyx":38
+ * from libc.string cimport memcpy
  * from cpython cimport array
  * import array             # <<<<<<<<<<<<<<
  * from cpython.bytes cimport PyBytes_FromStringAndSize
  * from libcpp cimport bool
  */
-  __pyx_t_1 = __Pyx_Import(__pyx_n_s_array, 0, -1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 37, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_Import(__pyx_n_s_array, 0, -1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 38, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_array, __pyx_t_1) < 0) __PYX_ERR(0, 37, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_array, __pyx_t_1) < 0) __PYX_ERR(0, 38, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "pywarble/pywarble.pyx":42
+  /* "pywarble/pywarble.pyx":43
  * from cpython.mem cimport PyMem_Malloc
  * 
  * cdef array.array int_array_template = array.array('i', [])             # <<<<<<<<<<<<<<
  * cdef array.array double_array_template = array.array('d', [])
  * 
  */
-  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 42, __pyx_L1_error)
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 43, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 42, __pyx_L1_error)
+  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 43, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_INCREF(__pyx_n_s_i);
   __Pyx_GIVEREF(__pyx_n_s_i);
@@ -18198,7 +19770,7 @@ if (!__Pyx_RefNanny) {
   __Pyx_GIVEREF(__pyx_t_1);
   PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_t_1);
   __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_2, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 42, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_2, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 43, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_XGOTREF(((PyObject *)__pyx_v_8pywarble_7wrapped_int_array_template));
@@ -18206,16 +19778,16 @@ if (!__Pyx_RefNanny) {
   __Pyx_GIVEREF(__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "pywarble/pywarble.pyx":43
+  /* "pywarble/pywarble.pyx":44
  * 
  * cdef array.array int_array_template = array.array('i', [])
  * cdef array.array double_array_template = array.array('d', [])             # <<<<<<<<<<<<<<
  * 
  * cdef class pywarble:
  */
-  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 43, __pyx_L1_error)
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 44, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 43, __pyx_L1_error)
+  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 44, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_INCREF(__pyx_n_s_d);
   __Pyx_GIVEREF(__pyx_n_s_d);
@@ -18223,7 +19795,7 @@ if (!__Pyx_RefNanny) {
   __Pyx_GIVEREF(__pyx_t_1);
   PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_t_1);
   __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_2, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 43, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_2, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 44, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_XGOTREF(((PyObject *)__pyx_v_8pywarble_7wrapped_double_array_template));
@@ -20596,6 +22168,111 @@ static CYTHON_INLINE int __pyx_memview_set_double(const char *itemp, PyObject *o
     return 1;
 }
 
+/* CIntToPy */
+      static CYTHON_INLINE PyObject* __Pyx_PyInt_From_int32_t(int32_t value) {
+    const int32_t neg_one = (int32_t) -1, const_zero = (int32_t) 0;
+    const int is_unsigned = neg_one > const_zero;
+    if (is_unsigned) {
+        if (sizeof(int32_t) < sizeof(long)) {
+            return PyInt_FromLong((long) value);
+        } else if (sizeof(int32_t) <= sizeof(unsigned long)) {
+            return PyLong_FromUnsignedLong((unsigned long) value);
+#ifdef HAVE_LONG_LONG
+        } else if (sizeof(int32_t) <= sizeof(unsigned PY_LONG_LONG)) {
+            return PyLong_FromUnsignedLongLong((unsigned PY_LONG_LONG) value);
+#endif
+        }
+    } else {
+        if (sizeof(int32_t) <= sizeof(long)) {
+            return PyInt_FromLong((long) value);
+#ifdef HAVE_LONG_LONG
+        } else if (sizeof(int32_t) <= sizeof(PY_LONG_LONG)) {
+            return PyLong_FromLongLong((PY_LONG_LONG) value);
+#endif
+        }
+    }
+    {
+        int one = 1; int little = (int)*(unsigned char *)&one;
+        unsigned char *bytes = (unsigned char *)&value;
+        return _PyLong_FromByteArray(bytes, sizeof(int32_t),
+                                     little, !is_unsigned);
+    }
+}
+
+/* CIntToPy */
+      static CYTHON_INLINE PyObject* __Pyx_PyInt_From_int(int value) {
+    const int neg_one = (int) -1, const_zero = (int) 0;
+    const int is_unsigned = neg_one > const_zero;
+    if (is_unsigned) {
+        if (sizeof(int) < sizeof(long)) {
+            return PyInt_FromLong((long) value);
+        } else if (sizeof(int) <= sizeof(unsigned long)) {
+            return PyLong_FromUnsignedLong((unsigned long) value);
+#ifdef HAVE_LONG_LONG
+        } else if (sizeof(int) <= sizeof(unsigned PY_LONG_LONG)) {
+            return PyLong_FromUnsignedLongLong((unsigned PY_LONG_LONG) value);
+#endif
+        }
+    } else {
+        if (sizeof(int) <= sizeof(long)) {
+            return PyInt_FromLong((long) value);
+#ifdef HAVE_LONG_LONG
+        } else if (sizeof(int) <= sizeof(PY_LONG_LONG)) {
+            return PyLong_FromLongLong((PY_LONG_LONG) value);
+#endif
+        }
+    }
+    {
+        int one = 1; int little = (int)*(unsigned char *)&one;
+        unsigned char *bytes = (unsigned char *)&value;
+        return _PyLong_FromByteArray(bytes, sizeof(int),
+                                     little, !is_unsigned);
+    }
+}
+
+/* MemviewDtypeToObject */
+      static CYTHON_INLINE PyObject *__pyx_memview_get_int(const char *itemp) {
+    return (PyObject *) __Pyx_PyInt_From_int(*(int *) itemp);
+}
+static CYTHON_INLINE int __pyx_memview_set_int(const char *itemp, PyObject *obj) {
+    int value = __Pyx_PyInt_As_int(obj);
+    if ((value == (int)-1) && PyErr_Occurred())
+        return 0;
+    *(int *) itemp = value;
+    return 1;
+}
+
+/* CIntToPy */
+      static CYTHON_INLINE PyObject* __Pyx_PyInt_From_int64_t(int64_t value) {
+    const int64_t neg_one = (int64_t) -1, const_zero = (int64_t) 0;
+    const int is_unsigned = neg_one > const_zero;
+    if (is_unsigned) {
+        if (sizeof(int64_t) < sizeof(long)) {
+            return PyInt_FromLong((long) value);
+        } else if (sizeof(int64_t) <= sizeof(unsigned long)) {
+            return PyLong_FromUnsignedLong((unsigned long) value);
+#ifdef HAVE_LONG_LONG
+        } else if (sizeof(int64_t) <= sizeof(unsigned PY_LONG_LONG)) {
+            return PyLong_FromUnsignedLongLong((unsigned PY_LONG_LONG) value);
+#endif
+        }
+    } else {
+        if (sizeof(int64_t) <= sizeof(long)) {
+            return PyInt_FromLong((long) value);
+#ifdef HAVE_LONG_LONG
+        } else if (sizeof(int64_t) <= sizeof(PY_LONG_LONG)) {
+            return PyLong_FromLongLong((PY_LONG_LONG) value);
+#endif
+        }
+    }
+    {
+        int one = 1; int little = (int)*(unsigned char *)&one;
+        unsigned char *bytes = (unsigned char *)&value;
+        return _PyLong_FromByteArray(bytes, sizeof(int64_t),
+                                     little, !is_unsigned);
+    }
+}
+
 /* MemviewSliceCopyTemplate */
       static __Pyx_memviewslice
 __pyx_memoryview_copy_new_contig(const __Pyx_memviewslice *from_mvs,
@@ -20850,6 +22527,195 @@ raise_neg_overflow:
     PyErr_SetString(PyExc_OverflowError,
         "can't convert negative value to int32_t");
     return (int32_t) -1;
+}
+
+/* CIntFromPy */
+      static CYTHON_INLINE int64_t __Pyx_PyInt_As_int64_t(PyObject *x) {
+    const int64_t neg_one = (int64_t) -1, const_zero = (int64_t) 0;
+    const int is_unsigned = neg_one > const_zero;
+#if PY_MAJOR_VERSION < 3
+    if (likely(PyInt_Check(x))) {
+        if (sizeof(int64_t) < sizeof(long)) {
+            __PYX_VERIFY_RETURN_INT(int64_t, long, PyInt_AS_LONG(x))
+        } else {
+            long val = PyInt_AS_LONG(x);
+            if (is_unsigned && unlikely(val < 0)) {
+                goto raise_neg_overflow;
+            }
+            return (int64_t) val;
+        }
+    } else
+#endif
+    if (likely(PyLong_Check(x))) {
+        if (is_unsigned) {
+#if CYTHON_USE_PYLONG_INTERNALS
+            const digit* digits = ((PyLongObject*)x)->ob_digit;
+            switch (Py_SIZE(x)) {
+                case  0: return (int64_t) 0;
+                case  1: __PYX_VERIFY_RETURN_INT(int64_t, digit, digits[0])
+                case 2:
+                    if (8 * sizeof(int64_t) > 1 * PyLong_SHIFT) {
+                        if (8 * sizeof(unsigned long) > 2 * PyLong_SHIFT) {
+                            __PYX_VERIFY_RETURN_INT(int64_t, unsigned long, (((((unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if (8 * sizeof(int64_t) >= 2 * PyLong_SHIFT) {
+                            return (int64_t) (((((int64_t)digits[1]) << PyLong_SHIFT) | (int64_t)digits[0]));
+                        }
+                    }
+                    break;
+                case 3:
+                    if (8 * sizeof(int64_t) > 2 * PyLong_SHIFT) {
+                        if (8 * sizeof(unsigned long) > 3 * PyLong_SHIFT) {
+                            __PYX_VERIFY_RETURN_INT(int64_t, unsigned long, (((((((unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if (8 * sizeof(int64_t) >= 3 * PyLong_SHIFT) {
+                            return (int64_t) (((((((int64_t)digits[2]) << PyLong_SHIFT) | (int64_t)digits[1]) << PyLong_SHIFT) | (int64_t)digits[0]));
+                        }
+                    }
+                    break;
+                case 4:
+                    if (8 * sizeof(int64_t) > 3 * PyLong_SHIFT) {
+                        if (8 * sizeof(unsigned long) > 4 * PyLong_SHIFT) {
+                            __PYX_VERIFY_RETURN_INT(int64_t, unsigned long, (((((((((unsigned long)digits[3]) << PyLong_SHIFT) | (unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if (8 * sizeof(int64_t) >= 4 * PyLong_SHIFT) {
+                            return (int64_t) (((((((((int64_t)digits[3]) << PyLong_SHIFT) | (int64_t)digits[2]) << PyLong_SHIFT) | (int64_t)digits[1]) << PyLong_SHIFT) | (int64_t)digits[0]));
+                        }
+                    }
+                    break;
+            }
+#endif
+#if CYTHON_COMPILING_IN_CPYTHON
+            if (unlikely(Py_SIZE(x) < 0)) {
+                goto raise_neg_overflow;
+            }
+#else
+            {
+                int result = PyObject_RichCompareBool(x, Py_False, Py_LT);
+                if (unlikely(result < 0))
+                    return (int64_t) -1;
+                if (unlikely(result == 1))
+                    goto raise_neg_overflow;
+            }
+#endif
+            if (sizeof(int64_t) <= sizeof(unsigned long)) {
+                __PYX_VERIFY_RETURN_INT_EXC(int64_t, unsigned long, PyLong_AsUnsignedLong(x))
+#ifdef HAVE_LONG_LONG
+            } else if (sizeof(int64_t) <= sizeof(unsigned PY_LONG_LONG)) {
+                __PYX_VERIFY_RETURN_INT_EXC(int64_t, unsigned PY_LONG_LONG, PyLong_AsUnsignedLongLong(x))
+#endif
+            }
+        } else {
+#if CYTHON_USE_PYLONG_INTERNALS
+            const digit* digits = ((PyLongObject*)x)->ob_digit;
+            switch (Py_SIZE(x)) {
+                case  0: return (int64_t) 0;
+                case -1: __PYX_VERIFY_RETURN_INT(int64_t, sdigit, (sdigit) (-(sdigit)digits[0]))
+                case  1: __PYX_VERIFY_RETURN_INT(int64_t,  digit, +digits[0])
+                case -2:
+                    if (8 * sizeof(int64_t) - 1 > 1 * PyLong_SHIFT) {
+                        if (8 * sizeof(unsigned long) > 2 * PyLong_SHIFT) {
+                            __PYX_VERIFY_RETURN_INT(int64_t, long, -(long) (((((unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if (8 * sizeof(int64_t) - 1 > 2 * PyLong_SHIFT) {
+                            return (int64_t) (((int64_t)-1)*(((((int64_t)digits[1]) << PyLong_SHIFT) | (int64_t)digits[0])));
+                        }
+                    }
+                    break;
+                case 2:
+                    if (8 * sizeof(int64_t) > 1 * PyLong_SHIFT) {
+                        if (8 * sizeof(unsigned long) > 2 * PyLong_SHIFT) {
+                            __PYX_VERIFY_RETURN_INT(int64_t, unsigned long, (((((unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if (8 * sizeof(int64_t) - 1 > 2 * PyLong_SHIFT) {
+                            return (int64_t) ((((((int64_t)digits[1]) << PyLong_SHIFT) | (int64_t)digits[0])));
+                        }
+                    }
+                    break;
+                case -3:
+                    if (8 * sizeof(int64_t) - 1 > 2 * PyLong_SHIFT) {
+                        if (8 * sizeof(unsigned long) > 3 * PyLong_SHIFT) {
+                            __PYX_VERIFY_RETURN_INT(int64_t, long, -(long) (((((((unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if (8 * sizeof(int64_t) - 1 > 3 * PyLong_SHIFT) {
+                            return (int64_t) (((int64_t)-1)*(((((((int64_t)digits[2]) << PyLong_SHIFT) | (int64_t)digits[1]) << PyLong_SHIFT) | (int64_t)digits[0])));
+                        }
+                    }
+                    break;
+                case 3:
+                    if (8 * sizeof(int64_t) > 2 * PyLong_SHIFT) {
+                        if (8 * sizeof(unsigned long) > 3 * PyLong_SHIFT) {
+                            __PYX_VERIFY_RETURN_INT(int64_t, unsigned long, (((((((unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if (8 * sizeof(int64_t) - 1 > 3 * PyLong_SHIFT) {
+                            return (int64_t) ((((((((int64_t)digits[2]) << PyLong_SHIFT) | (int64_t)digits[1]) << PyLong_SHIFT) | (int64_t)digits[0])));
+                        }
+                    }
+                    break;
+                case -4:
+                    if (8 * sizeof(int64_t) - 1 > 3 * PyLong_SHIFT) {
+                        if (8 * sizeof(unsigned long) > 4 * PyLong_SHIFT) {
+                            __PYX_VERIFY_RETURN_INT(int64_t, long, -(long) (((((((((unsigned long)digits[3]) << PyLong_SHIFT) | (unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if (8 * sizeof(int64_t) - 1 > 4 * PyLong_SHIFT) {
+                            return (int64_t) (((int64_t)-1)*(((((((((int64_t)digits[3]) << PyLong_SHIFT) | (int64_t)digits[2]) << PyLong_SHIFT) | (int64_t)digits[1]) << PyLong_SHIFT) | (int64_t)digits[0])));
+                        }
+                    }
+                    break;
+                case 4:
+                    if (8 * sizeof(int64_t) > 3 * PyLong_SHIFT) {
+                        if (8 * sizeof(unsigned long) > 4 * PyLong_SHIFT) {
+                            __PYX_VERIFY_RETURN_INT(int64_t, unsigned long, (((((((((unsigned long)digits[3]) << PyLong_SHIFT) | (unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if (8 * sizeof(int64_t) - 1 > 4 * PyLong_SHIFT) {
+                            return (int64_t) ((((((((((int64_t)digits[3]) << PyLong_SHIFT) | (int64_t)digits[2]) << PyLong_SHIFT) | (int64_t)digits[1]) << PyLong_SHIFT) | (int64_t)digits[0])));
+                        }
+                    }
+                    break;
+            }
+#endif
+            if (sizeof(int64_t) <= sizeof(long)) {
+                __PYX_VERIFY_RETURN_INT_EXC(int64_t, long, PyLong_AsLong(x))
+#ifdef HAVE_LONG_LONG
+            } else if (sizeof(int64_t) <= sizeof(PY_LONG_LONG)) {
+                __PYX_VERIFY_RETURN_INT_EXC(int64_t, PY_LONG_LONG, PyLong_AsLongLong(x))
+#endif
+            }
+        }
+        {
+#if CYTHON_COMPILING_IN_PYPY && !defined(_PyLong_AsByteArray)
+            PyErr_SetString(PyExc_RuntimeError,
+                            "_PyLong_AsByteArray() not available in PyPy, cannot convert large numbers");
+#else
+            int64_t val;
+            PyObject *v = __Pyx_PyNumber_IntOrLong(x);
+ #if PY_MAJOR_VERSION < 3
+            if (likely(v) && !PyLong_Check(v)) {
+                PyObject *tmp = v;
+                v = PyNumber_Long(tmp);
+                Py_DECREF(tmp);
+            }
+ #endif
+            if (likely(v)) {
+                int one = 1; int is_little = (int)*(unsigned char *)&one;
+                unsigned char *bytes = (unsigned char *)&val;
+                int ret = _PyLong_AsByteArray((PyLongObject *)v,
+                                              bytes, sizeof(val),
+                                              is_little, !is_unsigned);
+                Py_DECREF(v);
+                if (likely(!ret))
+                    return val;
+            }
+#endif
+            return (int64_t) -1;
+        }
+    } else {
+        int64_t val;
+        PyObject *tmp = __Pyx_PyNumber_IntOrLong(x);
+        if (!tmp) return (int64_t) -1;
+        val = __Pyx_PyInt_As_int64_t(tmp);
+        Py_DECREF(tmp);
+        return val;
+    }
+raise_overflow:
+    PyErr_SetString(PyExc_OverflowError,
+        "value too large to convert to int64_t");
+    return (int64_t) -1;
+raise_neg_overflow:
+    PyErr_SetString(PyExc_OverflowError,
+        "can't convert negative value to int64_t");
+    return (int64_t) -1;
 }
 
 /* CIntFromPy */
@@ -21228,37 +23094,6 @@ raise_neg_overflow:
     PyErr_SetString(PyExc_OverflowError,
         "can't convert negative value to long");
     return (long) -1;
-}
-
-/* CIntToPy */
-      static CYTHON_INLINE PyObject* __Pyx_PyInt_From_int(int value) {
-    const int neg_one = (int) -1, const_zero = (int) 0;
-    const int is_unsigned = neg_one > const_zero;
-    if (is_unsigned) {
-        if (sizeof(int) < sizeof(long)) {
-            return PyInt_FromLong((long) value);
-        } else if (sizeof(int) <= sizeof(unsigned long)) {
-            return PyLong_FromUnsignedLong((unsigned long) value);
-#ifdef HAVE_LONG_LONG
-        } else if (sizeof(int) <= sizeof(unsigned PY_LONG_LONG)) {
-            return PyLong_FromUnsignedLongLong((unsigned PY_LONG_LONG) value);
-#endif
-        }
-    } else {
-        if (sizeof(int) <= sizeof(long)) {
-            return PyInt_FromLong((long) value);
-#ifdef HAVE_LONG_LONG
-        } else if (sizeof(int) <= sizeof(PY_LONG_LONG)) {
-            return PyLong_FromLongLong((PY_LONG_LONG) value);
-#endif
-        }
-    }
-    {
-        int one = 1; int little = (int)*(unsigned char *)&one;
-        unsigned char *bytes = (unsigned char *)&value;
-        return _PyLong_FromByteArray(bytes, sizeof(int),
-                                     little, !is_unsigned);
-    }
 }
 
 /* CIntToPy */

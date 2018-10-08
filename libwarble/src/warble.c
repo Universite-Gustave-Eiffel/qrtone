@@ -114,8 +114,8 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 	int32_t frequencyIncrement, double word_time,
 	int32_t payloadSize, int32_t* frequenciesIndexTriggers, int32_t frequenciesIndexTriggersCount, double snr_trigger)  {
 	this->sampleRate = sampleRate;
-  this->triggerSampleIndex = -1;
-  this->triggerSampleIndexBegin = -1;
+    this->triggerSampleIndex = -1;
+    this->triggerSampleIndexBegin = -1;
 	this->payloadSize = payloadSize;
 	this->snr_trigger = snr_trigger;
 	this->distance = warble_reed_solomon_distance(this->payloadSize);
