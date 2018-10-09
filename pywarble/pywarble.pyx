@@ -45,6 +45,7 @@ cdef array.array double_array_template = array.array('d', [])
 
 cdef class pywarble:
   cdef int64_t sample_index
+  cdef int64_t next
   cdef cpywarble.warble* _c_pywarble
   def __cinit__(self):
     self._c_pywarble = cpywarble.warble_create()
@@ -59,6 +60,7 @@ cdef class pywarble:
    double frequency_multiplication, int32_t frequency_increment, double word_time,
   	int32_t message_size, list frequencies_index_triggers, double snr_trigger):
       self.sample_index = 0
+      self.next = 0
       cdef int[::1] cfrequencies_index_triggers = array.array('i',frequencies_index_triggers)
       cpywarble.warble_init(self._c_pywarble, sample_rate, first_frequency,
       	frequency_multiplication,
@@ -71,6 +73,9 @@ cdef class pywarble:
     cdef double[::1] rms = array.clone(double_array_template, len(frequencies), zero=False)
     cpywarble.warble_generalized_goertzel(&csignal[0], csignal.shape[0], sample_rate, &cfrequencies[0], cfrequencies.shape[0], &rms[0])
     return list(rms)
+
+  def set_seed(self, int64_t seed):
+    self.next = seed
 
   def _compute_rms(self, list signal):
     cdef double[::1] csignal = array.array('d',signal)
@@ -85,8 +90,8 @@ cdef class pywarble:
       return list(signal_out)
 
   def feed(self, list signal):
-      if len(signal) == 0:
-        return 0
+      if len(signal) != cpywarble.warble_cfg_get_window_length(self._c_pywarble):
+        raise ValueError("Illegal window length")
       cdef double[::1] csignal = array.array('d',signal)
       cdef int res = cpywarble.warble_feed(self._c_pywarble, &csignal[0], self.sample_index)
       self.sample_index += csignal.shape[0]
@@ -122,7 +127,7 @@ cdef class pywarble:
       return cpywarble.warble_cfg_get_parsed(self._c_pywarble)
 
   def get_shuffleIndex(self):
-      cdef int[::1] index = array.clone(int_array_template, cpywarble.warble_cfg_get_block_length(self._c_pywarble), zero=False)
+      cdef int[::1] index = array.clone(int_array_template, cpywarble.warble_cfg_get_block_length(self._c_pywarble), zero=True)
       memcpy(&index[0], cpywarble.warble_cfg_get_shuffleIndex(self._c_pywarble), sizeof(int32_t) * cpywarble.warble_cfg_get_block_length(self._c_pywarble))
       return list(index)
 
@@ -145,3 +150,20 @@ cdef class pywarble:
 
   def get_window_length(self):
       return cpywarble.warble_cfg_get_window_length(self._c_pywarble)
+
+  def reed_encode_solomon(self, const char * msg):
+    cdef int8_t* c_string = <int8_t *> malloc((cpywarble.warble_cfg_get_block_length(self._c_pywarble) + 1) * sizeof(int8_t))
+    if not c_string:
+        raise MemoryError()
+    cpywarble.warble_reed_encode_solomon(self._c_pywarble, <int8_t *>msg, c_string)
+    return c_string
+
+  def reed_decode_solomon(self, int8_t* words):
+    cdef int8_t* c_string = <int8_t *> malloc((cpywarble.warble_cfg_get_block_length(self._c_pywarble) + 1) * sizeof(int8_t))
+    if not c_string:
+        raise MemoryError()
+    cdef int32_t res = cpywarble.warble_reed_decode_solomon(self._c_pywarble, <int8_t *>words, c_string)
+    return res, c_string
+
+  def rand(self):
+    return cpywarble.warble_rand(&self.next)

@@ -6,16 +6,6 @@
   def _spectrum_to_char(self, double* rms):
     return cpywarble.spectrumToChar(self._c_pywarble, rms)
 
-  def feed(self, double* signal, int64_t sample_index):
-    cpywarble.warble_feed(self._c_pywarble, signal, sample_index)
-
-  def generate_window_size(self):
-    return cpywarble.warble_generate_window_size(self._c_pywarble)
-
-  def generate_signal(self,double powerPeak, int8_t* words):
-      cdef double * signal_out = < double * >PyMem_Malloc( sizeof(double) * cpywarble.warble_generate_window_size(self._c_pywarble) )
-      cpywarble.warble_generate_signal(self._c_pywarble,powerPeak, words, signal_out)
-      return signal_out
 
   def reed_encode_solomon(self, int8_t* msg):
     cdef int8_t * block = <int8_t>PyMem_Malloc(sizeof(int8_t) * self._c_pywarble.block_length)
@@ -39,9 +29,6 @@
     cpywarble.warble_fisher_yates_shuffle_index(n, index)
     return index
 
-  def rand(int64_t next):
-    cpywarble.warble_rand(&next)
-    return next
 
   def char_to_frequencies(self, int8_t c):
     cdef double f0

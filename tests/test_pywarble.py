@@ -124,8 +124,8 @@ class TestModule(unittest.TestCase):
         # Copy payload to words(larger size)
         words = payload.ljust(warble.get_block_length())
 
-        #signal_short = [0.0] * blankBefore + warble.generate_signal(powerPeak, words) + [0.0] * blankAfter
-        signal_short = warble.generate_signal(powerPeak, words)
+        signal_short = [0.0] * blankBefore + warble.generate_signal(powerPeak, words) + [0.0] * blankAfter
+
 
         signal_size = len(signal_short)
         #maxlvl = max(signal_short) * 1.1
@@ -141,9 +141,25 @@ class TestModule(unittest.TestCase):
             if res == pywarble.warble_feed_message_complete:
                 messageComplete = True
                 break
-        #self.print_params(warble)
         self.assertTrue(messageComplete)
         self.assertEqual(words, warble.get_parsed())
+
+    def test_solomon(self):
+        payload = "CONCENTRATIONNAIRE"
+        warble = self.create_default(payload)
+        words = list(warble.reed_encode_solomon(payload))
+
+        # Erase 4 words
+        warble.set_seed(1337)
+        for i in range(4):
+            words[warble.rand() % warble.get_block_length()] = chr(warble.rand() % 255)
+
+        res, decoded_payload = warble.reed_decode_solomon(''.join(words))
+
+        self.assertEquals(0, res, "Can't fix error with reed solomon")
+
+        self.assertEquals(payload, decoded_payload)
+
 
 
 if __name__ == '__main__':
