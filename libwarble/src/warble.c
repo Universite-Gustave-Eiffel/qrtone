@@ -44,6 +44,14 @@
 #define WARBLE_RS_P 10
 #define WARBLE_RS_DISTANCE 8
 
+#ifndef MIN
+#define MIN(a,b) (((a)<(b))?(a):(b))
+#endif
+
+#ifndef MAX
+#define MAX(a,b) (((a)>(b))?(a):(b))
+#endif
+
 // Pseudo random generator
 int warble_rand(int64_t* next) {
 	*next = *next * 1103515245 + 12345;
@@ -115,6 +123,7 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 	int32_t payloadSize, int32_t* frequenciesIndexTriggers, int32_t frequenciesIndexTriggersCount, double snr_trigger)  {
 	this->sampleRate = sampleRate;
     this->triggerSampleIndex = -1;
+    this->parsed_cursor = -1;
     this->triggerSampleIndexBegin = -1;
 	this->payloadSize = payloadSize;
 	this->snr_trigger = snr_trigger;
@@ -133,20 +142,22 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 		this->rs_message_length = this->payloadSize > WARBLE_RS_P ? WARBLE_RS_P : this->payloadSize;
 	}
 	this->word_length = (int32_t)(sampleRate * word_time);
-	// Increase probability to have a window begining at 1/3 of the pitch (capture the lob peak)
-	this->window_length = (int32_t)((sampleRate * (word_time / 3.)));
-	this->frequenciesIndexTriggersCount = frequenciesIndexTriggersCount;
-	this->frequenciesIndexTriggers = malloc(sizeof(int32_t) * frequenciesIndexTriggersCount);
-	memcpy(this->frequenciesIndexTriggers, frequenciesIndexTriggers, sizeof(int32_t) * frequenciesIndexTriggersCount);
+	// Increase probability to have a window begining at 25% of the pitch (capture the lobe peak)
+	this->window_length = (int32_t)((sampleRate * (word_time / 2.)));
+	this->signal_cache = malloc(sizeof(double) * this->word_length * 2);
+    memset(this->signal_cache, 0, sizeof(double) * this->word_length * 2);
+    this->cross_correlation_cache = malloc(sizeof(double) * this->word_length * 2);
+    memset(this->cross_correlation_cache, 0, sizeof(double) * this->word_length * 2);
+    this->trigger_cache = malloc(sizeof(double) * this->word_length);
 	//this->paritySize =  wordSize - 1 - payloadSize / 2;
 	this->parsed = malloc(sizeof(int8_t) * (this->block_length) + 1);
 	memset(this->parsed, 0, sizeof(int8_t) * (this->block_length) + 1);
-	int i;
 	// Precompute pitch frequencies
+    int32_t i;
 	for(i = 0; i < WARBLE_PITCH_COUNT; i++) {
 		if(frequencyIncrement != 0) {
 			this->frequencies[i] = firstFrequency + i * frequencyIncrement;
-		} else {
+        } else {
 			this->frequencies[i] = firstFrequency * pow(frequencyMultiplication, i);
 		}
 	}
@@ -156,23 +167,27 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 		this->shuffleIndex[i] = i;
 	}
 	warble_fisher_yates_shuffle_index(this->block_length, this->shuffleIndex);
+	// Generate log chirp into cache
+    // low frequency to high frequency
+	double f1_div_f0 = this->frequencies[WARBLE_PITCH_COUNT - 1] / this->frequencies[0];
+	for (i = 0; i < this->word_length / 2; i++) {
+		const double window = 0.5 * (1 - cos((WARBLE_2PI * i) / (this->word_length - 1)));
+        this->trigger_cache[i] = window * sin(WARBLE_2PI * word_time / log(f1_div_f0) * this->frequencies[0] * (pow(f1_div_f0, ((double)i / sampleRate) / word_time) - 1.0));
+	}
+    // high frequency to low frequency
+    f1_div_f0 = this->frequencies[0] / this->frequencies[WARBLE_PITCH_COUNT - 1];
+    for (i = this->word_length / 2; i < this->word_length; i++) {
+        const double window = 0.5 * (1 - cos((WARBLE_2PI * i) / (this->word_length - 1)));
+        this->trigger_cache[i] = -1 * window * sin(WARBLE_2PI * word_time / log(f1_div_f0) * this->frequencies[WARBLE_PITCH_COUNT - 1] * (pow(f1_div_f0, ((double)i / sampleRate) / word_time) - 1.0));
+    }
 }
 
 void warble_free(warble *warble) {
-	free(warble->frequenciesIndexTriggers);
-  free(warble->parsed);
+	free(warble->trigger_cache);
+	free(warble->parsed);
+	free(warble->signal_cache);
 	free(warble->shuffleIndex);
-}
-
-int warble_is_triggered(warble *warble, const double* signal,int signal_length, int32_t wordIndex,double* triggerRMS) {
-	double trigger[] = {warble->frequencies[warble->frequenciesIndexTriggers[wordIndex]] };
-	double rms[1] = { 0 };
-	double signalRMS = warble_compute_rms(signal, warble->window_length);
-	warble_generalized_goertzel(signal, signal_length, warble->sampleRate, trigger, 1, rms);
-	if(triggerRMS) {
-		*triggerRMS = rms[0];
-	}
-	return pow(rms[0] / (signalRMS - rms[0]), 2) > warble->snr_trigger;
+    free(warble->cross_correlation_cache);
 }
 
 int warble_get_highest_index(double* rms, const int from, const int to) {
@@ -189,6 +204,8 @@ int warble_get_highest_index(double* rms, const int from, const int to) {
 void warble_clean_parse(warble* warble) {
 	warble->triggerSampleIndexBegin = -1;
 	warble->triggerSampleRMS = -1;
+    warble->parsed_cursor = -1;
+    memset(warble->cross_correlation_cache, 0, sizeof(double) * warble->word_length * 2);
 }
 
 int8_t spectrumToChar(warble *warble, double* rms) {
@@ -197,52 +214,140 @@ int8_t spectrumToChar(warble *warble, double* rms) {
 	return  (int8_t)((f1index * WARBLE_PITCH_ROOT + f0index));
 }
 
-enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int64_t sample_index) {
-	// If we are still on the first trigger time
-	int wordIndex = warble->triggerSampleIndexBegin < 0 ? -1 : (int)((sample_index - warble->triggerSampleIndexBegin + (warble->window_length / 2)) / (double)warble->word_length);
-	if(wordIndex < 0 || wordIndex == 0) {
-		// Looking for start of pitch
-		double triggerRMS;
-		if(warble_is_triggered(warble, signal, warble->window_length, 0, &triggerRMS)) {
-			// Accept pitch for first gate when the power is at maximum level
-			if(warble->triggerSampleIndexBegin < 0 || warble->triggerSampleRMS < triggerRMS) {
-				if(warble->triggerSampleIndexBegin < 0) {
-					warble->triggerSampleIndexBegin = sample_index;
-				}
-				warble->triggerSampleIndex = sample_index;
-				warble->triggerSampleRMS = triggerRMS;
-				return WARBLE_FEED_DETECT_PITCH;
-			}
-		}
-	} else {
-		if(wordIndex > warble->block_length + warble->frequenciesIndexTriggersCount) {
-			warble_clean_parse(warble);
-			return WARBLE_FEED_ERROR; // we have an issue here
-		}
-		// Target pitch contain the pitch peak
-		int64_t targetPitch = warble->triggerSampleIndex + warble->word_length * wordIndex + (warble->window_length / 2);
+int32_t partition(double* arr, int32_t low, int32_t high)
+{
+    double pivot = arr[high];
+    int32_t i = (low - 1);
 
-		// If the peak is contain in this window
-		if(targetPitch >= sample_index && targetPitch < sample_index + warble->window_length) {
+    for (int j = low; j <= high - 1; j++)
+    {
+        if (arr[j] <= pivot)
+        {
+            i++;
+            swap(&arr[i], &arr[j]);
+        }
+    }
+    swap(&arr[i + 1], &arr[high]);
+    return (i + 1);
+}
+
+void swap(double* a, double* b)
+{
+    double t = *a;
+    *a = *b;
+    *b = t;
+}
+
+// Iterative quick sort
+void quick_sort(double* arr, int32_t l, int32_t h)
+{
+    int32_t* stack = malloc(sizeof(int32_t) * (h - l + 1));
+     
+    int32_t top = -1;
+    stack[++top] = l;
+    stack[++top] = h;
+    while (top >= 0)
+    {
+        h = stack[top--];
+        l = stack[top--];
+        int32_t p = partition(arr, l, h);
+        if (p - 1 > l)
+        {
+            stack[++top] = l;
+            stack[++top] = p - 1;
+        }
+        if (p + 1 < h)
+        {
+            stack[++top] = p + 1;
+            stack[++top] = h;
+        }
+    }
+    free(stack);
+}
+
+double median_value(double* cross_correlation, int32_t arsize) {
+    double* sorted = malloc(sizeof(double) * arsize);
+    int32_t i;
+    for (i = 0; i < arsize; i++) {
+        sorted[i] = abs(cross_correlation[i]);
+    }
+    memcpy(sorted, cross_correlation, sizeof(double) * arsize);
+    quick_sort(sorted, 0, arsize);
+    if (arsize % 2 == 0) {
+        return((sorted[arsize / 2] + sorted[arsize / 2 - 1]) / 2.0);
+    } else {
+        return sorted[arsize / 2];
+    }
+    free(sorted);
+}
+
+enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int32_t signal_length, int64_t sample_index) {
+    if (signal_length > warble->window_length) {
+        return WARBLE_FEED_ERROR;
+    }
+    int32_t signal_cache_size = warble->word_length * 2;
+    
+    // Move signal cache samples
+    memcpy(warble->signal_cache, &warble->signal_cache[signal_length], sizeof(double) * (signal_cache_size - signal_length));
+    // Copy window to signal cache
+    memcpy(&warble->signal_cache[signal_cache_size - signal_length], signal, sizeof(double) * signal_length);
+    int64_t signal_cache_end_index = sample_index + signal_length;
+    // If we are still on the first trigger time
+	//int wordIndex = warble->triggerSampleIndexBegin < 0 ? -1 : (int)((sample_index - warble->triggerSampleIndexBegin + (warble->window_length / 2)) / (double)warble->word_length);
+	if(warble->triggerSampleIndexBegin < 0) {
+        int32_t cross_correlation_cache_size = warble->word_length * 2;
+        // Move cross-correlation samples
+        memcpy(warble->cross_correlation_cache, &warble->cross_correlation_cache[signal_length], sizeof(double) * (cross_correlation_cache_size - signal_length));
+        int32_t i;
+        int32_t j;
+        // Compute max value of signal cache for normalize
+        double max = -1e12;
+        for (i = 0; i < signal_cache_size; i++) {
+            max = MAX(max, abs(warble->signal_cache));
+        }
+        // Compute cross-correlation for the new samples
+        for (i = 0; i < signal_length; i++) {
+            double sumproduct = 0;
+            // correlation from cached signal
+            for (j = 0; j < warble->word_length; j++) {
+                sumproduct += (warble->signal_cache[signal_cache_size - signal_length - warble->word_length + i + j] / max) * warble->trigger_cache[j];
+            }
+            warble->cross_correlation_cache[cross_correlation_cache_size - signal_length + i] = sumproduct / warble->word_length;
+        }
+        // Compute median value of absolute correlation
+        double median_ccorrelation = median_value(warble->cross_correlation_cache, cross_correlation_cache_size - warble->word_length);
+        // Looking for triggering pitch
+        // Compare median value with max value
+        double maxCorrelation = -1;
+        int32_t maxCorrelationIndex = -1;
+        for (i = 0; i < cross_correlation_cache_size - warble->word_length; i++) {
+            if (warble->cross_correlation_cache[i] > maxCorrelation) {
+                maxCorrelation = warble->cross_correlation_cache[i];
+                maxCorrelationIndex = i;
+            }
+        }
+        if (median_ccorrelation / maxCorrelation > warble->snr_trigger) {
+            // Found trigger pitch
+            warble->triggerSampleIndexBegin = signal_cache_end_index - cross_correlation_cache_size + maxCorrelationIndex;
+            warble->parsed_cursor = -1;
+        }
+	}
+    if(warble->triggerSampleIndexBegin != 0) {
+		// Target pitch contain the pitch peak
+
+        int64_t targetPitch = warble->triggerSampleIndex + warble->word_length + (warble->parsed_cursor + 1) * warble->word_length;
+
+		// If the peak is fully contained in cached signal
+		if(targetPitch + warble->word_length < signal_cache_end_index) {
+            warble->parsed_cursor++;
 			double rms[WARBLE_PITCH_COUNT];
-			if(wordIndex < warble->frequenciesIndexTriggersCount) {
-				// Still in trigger pitch
-				warble_generalized_goertzel(signal, warble->window_length, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rms);
-				if (warble_get_highest_index(rms, WARBLE_PITCH_ROOT, WARBLE_PITCH_COUNT) != warble->frequenciesIndexTriggers[wordIndex]) {
-					// Fail to recognize expected pitch
-					// Quit pitch, and wait for a new fist trigger
-					warble_clean_parse(warble);
-					return WARBLE_FEED_ERROR;
-				}
-			} else {
-				warble_generalized_goertzel(signal, warble->window_length, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rms);
-				warble->parsed[wordIndex - warble->frequenciesIndexTriggersCount] = spectrumToChar(warble, rms);
-				if(wordIndex == warble->block_length + warble->frequenciesIndexTriggersCount - 1) {
-					warble_clean_parse(warble);
-					return WARBLE_FEED_MESSAGE_COMPLETE;
-				}
-				return WARBLE_FEED_DETECT_PITCH;
+			warble_generalized_goertzel(&(warble->signal_cache[signal_cache_end_index - targetPitch]), warble->word_length / 2, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rms);
+			warble->parsed[warble->parsed_cursor] = spectrumToChar(warble, rms);
+			if(warble->parsed_cursor == warble->block_length) {
+				warble_clean_parse(warble);
+				return WARBLE_FEED_MESSAGE_COMPLETE;
 			}
+			return WARBLE_FEED_DETECT_PITCH;			
 		}
 	}
 	return WARBLE_FEED_IDLE;
@@ -253,16 +358,15 @@ int32_t warble_feed_window_size(warble *warble) {
 }
 
 int32_t warble_generate_window_size(warble *warble) {
-	return (warble->frequenciesIndexTriggersCount + warble->block_length) * warble->word_length;
+    // Window size is chirp + message
+	return (1 + warble->block_length) * warble->word_length;
 }
 
 void warble_generate_pitch(double* signal_out, int32_t length, double sample_rate, double frequency, double power_peak) {
 	int32_t i;
 	double t_step = 1 / sample_rate;
 	for(i=0; i < length; i++) {
-		// Hann windowing function
-		// TODO https://en.wikipedia.org/wiki/Window_function#Flat_top_window
-		const double window = 0.5 * (1 - cos((2 * M_PI * i) / (length - 1)));
+		const double window = 0.5 * (1 - cos((WARBLE_2PI * i) / (length - 1)));
 		signal_out[i] += sin(i * t_step * WARBLE_2PI * frequency) * power_peak * window;
 	}
 }
@@ -353,11 +457,12 @@ void warble_char_to_frequencies(warble *warble, int8_t c, double* f0, double* f1
 void warble_generate_signal(warble *warble,double power_peak, int8_t* words, double* signal_out) {
 	int s = 0;
 	int i;
-	// Triggers signal
-	for(i=0; i<warble->frequenciesIndexTriggersCount; i++) {
-		warble_generate_pitch(&(signal_out[s]), warble->word_length, warble->sampleRate, warble->frequencies[warble->frequenciesIndexTriggers[i]], power_peak);
-		s += warble->word_length;
+	// Trigger chirp
+	int32_t i;
+	for (i = 0; i < warble->word_length; i++) {
+		signal_out[i] += warble->trigger_cache[i] * power_peak;
 	}
+	s += warble->word_length;
 
 	// Other pitchs
 
@@ -378,14 +483,6 @@ warble* warble_create() {
 
 int32_t warble_cfg_get_payloadSize(warble *warble) {
     return warble->payloadSize;
-}
-
-int32_t warble_cfg_get_frequenciesIndexTriggersCount(warble *warble) {
-    return warble->frequenciesIndexTriggersCount;
-}
-
-int32_t* warble_cfg_get_frequenciesIndexTriggers(warble *warble) {
-    return warble->frequenciesIndexTriggers;
 }
 
 double warble_cfg_get_sampleRate(warble *warble) {
