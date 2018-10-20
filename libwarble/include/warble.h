@@ -116,7 +116,7 @@ int8_t spectrumToChar(warble *warble, double* rms);
 void warble_init(warble* this, double sample_rate, double first_frequency,
 	double frequency_multiplication,
 	int32_t frequency_increment, double word_time,
-	int32_t message_size, int32_t* frequencies_index_triggers, int32_t frequencies_index_triggers_length, double snr_trigger);
+	int32_t message_size, double snr_trigger);
 
 /**
 * Free buffer in object

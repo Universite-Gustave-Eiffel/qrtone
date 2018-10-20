@@ -120,7 +120,7 @@ int32_t warble_reed_solomon_distance(int32_t length) {
 void warble_init(warble* this, double sampleRate, double firstFrequency,
 	double frequencyMultiplication,
 	int32_t frequencyIncrement, double word_time,
-	int32_t payloadSize, int32_t* frequenciesIndexTriggers, int32_t frequenciesIndexTriggersCount, double snr_trigger)  {
+	int32_t payloadSize, double snr_trigger)  {
 	this->sampleRate = sampleRate;
     this->triggerSampleIndex = -1;
     this->parsed_cursor = -1;
@@ -214,6 +214,12 @@ int8_t spectrumToChar(warble *warble, double* rms) {
 	return  (int8_t)((f1index * WARBLE_PITCH_ROOT + f0index));
 }
 
+void swapdouble(double* a, double* b) {
+    double t = *a;
+    *a = *b;
+    *b = t;
+}
+
 int32_t partition(double* arr, int32_t low, int32_t high)
 {
     double pivot = arr[high];
@@ -224,19 +230,13 @@ int32_t partition(double* arr, int32_t low, int32_t high)
         if (arr[j] <= pivot)
         {
             i++;
-            swap(&arr[i], &arr[j]);
+            swapdouble(&arr[i], &arr[j]);
         }
     }
-    swap(&arr[i + 1], &arr[high]);
+    swapdouble(&arr[i + 1], &arr[high]);
     return (i + 1);
 }
 
-void swap(double* a, double* b)
-{
-    double t = *a;
-    *a = *b;
-    *b = t;
-}
 
 // Iterative quick sort
 void quick_sort(double* arr, int32_t l, int32_t h)
@@ -456,7 +456,6 @@ void warble_char_to_frequencies(warble *warble, int8_t c, double* f0, double* f1
 
 void warble_generate_signal(warble *warble,double power_peak, int8_t* words, double* signal_out) {
 	int s = 0;
-	int i;
 	// Trigger chirp
 	int32_t i;
 	for (i = 0; i < warble->word_length; i++) {
