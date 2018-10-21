@@ -70,7 +70,6 @@ typedef struct _warble {
     int32_t cross_correlation_accuracy;                         /**< Step size in the inner loop of cross correlation */ 
 	double* trigger_cache;			                            /**< Cache of triggering chirp of size word_length */
 	double frequencies[WARBLE_PITCH_COUNT];                     /**< Computed pitch frequencies length is WARBLE_PITCH_COUNT */
-    double spectrum_normalizing_constant[WARBLE_PITCH_COUNT];   /**< Computed from chirp spectrum, will be applied on pitch leq before comparison */
 	int64_t triggerSampleIndexBegin;                            /**< Sample index begining of chirp */
 	double snr_trigger;				                            /**< Signal to noise (dB) that trigger a message */
 	int32_t word_length;			                            /** pitch length in samples*/

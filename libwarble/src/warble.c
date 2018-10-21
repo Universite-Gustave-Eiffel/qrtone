@@ -380,20 +380,8 @@ enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int32_t sign
                 // Found trigger pitch
                 warble->triggerSampleIndexBegin = chirpLocation;
                 warble->parsed_cursor = -1;
-                // Compute normalizing constant
-                // inequality between expected pitch frequencies leq will be reduced thanks to normalizing constant
-                double rms[WARBLE_PITCH_COUNT];
-                double rmsChirp[WARBLE_PITCH_COUNT];
-                int32_t cache_begin_index = (int32_t)(warble->triggerSampleIndexBegin - (signal_cache_end_index - warble->signal_cache_size));
-                int32_t cache_length = MIN(warble->chirp_length, warble->signal_cache_size - cache_begin_index);
-                warble_generalized_goertzel(warble->trigger_cache, warble->chirp_length, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rmsChirp);
-                warble_generalized_goertzel(&(warble->signal_cache[cache_begin_index]), cache_length, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rms);
-                double maxrms = rms[warble_get_highest_index(rms, 0, WARBLE_PITCH_COUNT)];
-                double maxChirp = rmsChirp[warble_get_highest_index(rmsChirp, 0, WARBLE_PITCH_COUNT)];
-                for (i = 0; i < WARBLE_PITCH_COUNT; i++) {
-                    const double originalChirp = maxChirp / rmsChirp[i];
-                    const double signalChirp = maxrms / rms[i];
-                    warble->spectrum_normalizing_constant[i] = 1 / ((rms[i] * originalChirp) / maxrms);
+                if (warble->verbose != NULL) {
+                    fprintf(warble->verbose, "# chirp at %.3f s\n", warble->triggerSampleIndexBegin / warble->sampleRate);
                 }
             }
         }
@@ -401,23 +389,28 @@ enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int32_t sign
     if(warble->triggerSampleIndexBegin > 0) {
 		// Target pitch contain the pitch peak ( 0.25 to start from hanning filter lobe)
         // Compute absolute position
-        int64_t targetPitch = warble->triggerSampleIndexBegin + warble->chirp_length + (warble->parsed_cursor + 1) * warble->word_length + 0.25 * warble->word_length;
+        int32_t pitch_lobe_offset = (int32_t)(0.25 * warble->word_length);
+        int64_t targetPitch = warble->triggerSampleIndexBegin + warble->chirp_length + (warble->parsed_cursor + 1) * warble->word_length + pitch_lobe_offset;
 
 		// If the peak is fully contained in cached signal
         // Compute relative position of target pitch with begining of cache array
         int32_t cache_begin_index = (int32_t)(targetPitch - (signal_cache_end_index - warble->signal_cache_size));
         int32_t cache_length = warble->word_length / 2;
         int32_t i;
-		if(cache_begin_index >= 0 && cache_begin_index + cache_length <= warble->signal_cache_size) {
+		if(cache_begin_index - 2*pitch_lobe_offset >= 0 && cache_begin_index + cache_length <= warble->signal_cache_size) {
             warble->parsed_cursor++;
 			double rms[WARBLE_PITCH_COUNT];
+            double rms_reference[WARBLE_PITCH_COUNT];
+            // RMS between two pitch
+            warble_generalized_goertzel(&(warble->signal_cache[cache_begin_index - 2 * pitch_lobe_offset]), 2 * pitch_lobe_offset, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rms_reference);
+            // RMS of Pitch peak lobe
 			warble_generalized_goertzel(&(warble->signal_cache[cache_begin_index]), cache_length, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rms);
             if (warble->verbose != NULL) {
-
+                fprintf(warble->verbose, "# word %d: reference at %.3f lobe at %.3f s\n", warble->parsed_cursor, (targetPitch - 2 * pitch_lobe_offset) / warble->sampleRate,targetPitch / warble->sampleRate);
             }
-            //for (i = 0; i < WARBLE_PITCH_COUNT; i++) {
-            //    rms[i] = rms[i] * warble->spectrum_normalizing_constant[i];
-            //}
+            for (i = 0; i < WARBLE_PITCH_COUNT; i++) {
+                rms[i] = rms[i] - rms_reference[i];
+            }
 			warble->parsed[warble->parsed_cursor] = spectrumToChar(rms);
 			if(warble->parsed_cursor == warble->block_length - 1) {
 				warble_clean_parse(warble);
