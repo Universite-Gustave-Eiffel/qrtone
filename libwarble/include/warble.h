@@ -53,31 +53,32 @@ enum WARBLE_FEED_RESULT { WARBLE_FEED_ERROR = -1, WARBLE_FEED_IDLE = 0, WARBLE_F
 */
 typedef struct _warble {
 	// Inputs
-	int32_t payloadSize;            /**< Number of payload words */
-	double sampleRate;				/**< Sample rate of audio in Hz */
+	int32_t payloadSize;                                        /**< Number of payload words */
+	double sampleRate;				                            /**< Sample rate of audio in Hz */
 	// Algorithm data
-	int32_t block_length;           /**< Number of words (payload+forward correction codes) */
-	int32_t distance;               /**< Distance for reed-solomon error code */
-	int32_t rs_message_length;      /**< Length of message attached to distance*/
-	int32_t distance_last;          /**< Distance for reed-solomon error code on the last cutted message piece*/
+	int32_t block_length;                                       /**< Number of words (payload+forward correction codes) */
+	int32_t distance;                                           /**< Distance for reed-solomon error code */
+	int32_t rs_message_length;                                  /**< Length of message attached to distance*/
+	int32_t distance_last;                                      /**< Distance for reed-solomon error code on the last cutted message piece*/
 
-	int8_t* parsed;                 /**< parsed words of length wordTriggerCount+payloadSize+paritySize */
-    int32_t parsed_cursor;          /**< Index of the last recognized word from signal */
-	int32_t* shuffleIndex;		    /**< Shuffle index, used to (de)shuffle words sent/received after/before reed solomon */
-	double* signal_cache;			/**< Cache of audio data*/
+	int8_t* parsed;                                             /**< parsed words of length wordTriggerCount+payloadSize+paritySize */
+    int32_t parsed_cursor;                                      /**< Index of the last recognized word from signal */
+	int32_t* shuffleIndex;		                                /**< Shuffle index, used to (de)shuffle words sent/received after/before reed solomon */
+	double* signal_cache;			                            /**< Cache of audio data*/
     int32_t signal_cache_size;
-    double* cross_correlation_cache;/**< Cache of cross correlation values */
+    double* cross_correlation_cache;                            /**< Cache of cross correlation values */
     int32_t cross_correlation_cache_size;
-    int64_t cross_correlation_last_check; /**< Cross correlation result must only be evaluated when at least a full chirp is analyzed */
-    int32_t cross_correlation_accuracy;  /**< Step size in the inner loop of cross correlation */ 
-	double* trigger_cache;			/**< Cache of triggering chirp of size word_length */
-	double frequencies[WARBLE_PITCH_COUNT];            /**< Computed pitch frequencies length is WARBLE_PITCH_COUNT */
-	int64_t triggerSampleIndexBegin;/**< Sample index begining of chirp */
-	double snr_trigger;				/**< Signal to noise (dB) that trigger a message */
-	int32_t word_length;			/** pitch length in samples*/
-    int32_t chirp_length;           /** chirp length in samples*/
-	int32_t window_length;			/** Window length of the signal provided to warble_feed **/
-    FILE* verbose;                  /** Destination for verbose output (debug purpose)*/
+    int64_t cross_correlation_last_check;                       /**< Cross correlation result must only be evaluated when at least a full chirp is analyzed */
+    int32_t cross_correlation_accuracy;                         /**< Step size in the inner loop of cross correlation */ 
+	double* trigger_cache;			                            /**< Cache of triggering chirp of size word_length */
+	double frequencies[WARBLE_PITCH_COUNT];                     /**< Computed pitch frequencies length is WARBLE_PITCH_COUNT */
+    double spectrum_normalizing_constant[WARBLE_PITCH_COUNT];   /**< Computed from chirp spectrum, will be applied on pitch leq before comparison */
+	int64_t triggerSampleIndexBegin;                            /**< Sample index begining of chirp */
+	double snr_trigger;				                            /**< Signal to noise (dB) that trigger a message */
+	int32_t word_length;			                            /** pitch length in samples*/
+    int32_t chirp_length;                                       /** chirp length in samples*/
+	int32_t window_length;			                            /** Window length of the signal provided to warble_feed **/
+    FILE* verbose;                                              /** Destination for verbose output (debug purpose)*/
 } warble;
 
 /**

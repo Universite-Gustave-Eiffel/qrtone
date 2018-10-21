@@ -147,7 +147,7 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 	// Increase probability to have a window begining at 25% of the pitch (capture the lobe peak)
 	this->window_length = (int32_t)((sampleRate * (word_time / 2.)));
     this->chirp_length = this->word_length;
-    this->signal_cache_size = this->chirp_length + this->window_length;
+    this->signal_cache_size = 2 * this->chirp_length;
 	this->signal_cache = malloc(sizeof(double) * this->signal_cache_size);
     memset(this->signal_cache, 0, sizeof(double) * this->signal_cache_size);
     this->cross_correlation_cache_size = this->chirp_length * 2;
@@ -349,20 +349,24 @@ enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int32_t sign
             warble->cross_correlation_last_check = sample_index + signal_length;
             // Looking for triggering pitch
             // Compare median value with max value
-            double maxCorrelation = warble->cross_correlation_cache[0];
-            int32_t maxCorrelationIndex = 0;
-            for (i = 0; i < warble->cross_correlation_cache_size; i++) {
-                if (warble->cross_correlation_cache[i] > maxCorrelation) {
-                    maxCorrelation = warble->cross_correlation_cache[i];
-                    maxCorrelationIndex = i;
-                }
-            }
+            int32_t maxCorrelationIndex = warble_get_highest_index(warble->cross_correlation_cache, 0, warble->cross_correlation_cache_size);
+            double maxCorrelation = warble->cross_correlation_cache[maxCorrelationIndex];
             // Compute median value of absolute correlation        
             double median_ccorrelation = avg_value(warble->cross_correlation_cache, warble->cross_correlation_cache_size - warble->chirp_length);
             if (median_ccorrelation > 0 && 20 * log10(maxCorrelation / median_ccorrelation) > warble->snr_trigger) {
                 // Found trigger pitch
                 warble->triggerSampleIndexBegin = signal_cache_end_index - warble->cross_correlation_cache_size - warble->chirp_length + maxCorrelationIndex;
                 warble->parsed_cursor = -1;
+                // Compute normalizing constant
+                // inequality between expected pitch frequencies leq will be reduced thanks to this
+                double rms[WARBLE_PITCH_COUNT];
+                int32_t cache_begin_index = MAX(0, warble->triggerSampleIndexBegin - (signal_cache_end_index - warble->signal_cache_size));
+                int32_t cache_length = MIN(warble->chirp_length, warble->signal_cache_size - cache_begin_index);
+                warble_generalized_goertzel(&(warble->signal_cache[cache_begin_index]), cache_length, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rms);
+                double max = rms[warble_get_highest_index(rms, 0, WARBLE_PITCH_COUNT)];
+                for (i = 0; i < WARBLE_PITCH_COUNT; i++) {
+                    warble->spectrum_normalizing_constant[i] = 1 / (rms[i] / max);
+                }
             }
         }        
 	}
@@ -375,10 +379,14 @@ enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int32_t sign
         // Compute relative position of target pitch with begining of cache array
         int32_t cache_begin_index = targetPitch - (signal_cache_end_index - warble->signal_cache_size);
         int32_t cache_length = warble->word_length / 2;
-		if(cache_begin_index + cache_length <= warble->signal_cache_size) {
+        int32_t i;
+		if(cache_begin_index >= 0 && cache_begin_index + cache_length <= warble->signal_cache_size) {
             warble->parsed_cursor++;
 			double rms[WARBLE_PITCH_COUNT];
 			warble_generalized_goertzel(&(warble->signal_cache[cache_begin_index]), cache_length, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rms);
+            for (i = 0; i < WARBLE_PITCH_COUNT; i++) {
+                rms[i] = rms[i] * warble->spectrum_normalizing_constant[i];
+            }
 			warble->parsed[warble->parsed_cursor] = spectrumToChar(warble, rms);
 			if(warble->parsed_cursor == warble->block_length) {
 				warble_clean_parse(warble);
