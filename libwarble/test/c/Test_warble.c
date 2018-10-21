@@ -55,7 +55,7 @@
 
 #define MULT 1.0594630943591
 
-#define DEBUG_SCRIPT_PATH fopen("C:\\Users\\cumu\\ownCloud2\\ifsttar\\documents\\projets\\energic_od\\android\\openwarble\\intercorrelatetest\\debug.py","w")
+#define DEBUG_SCRIPT_PATH fopen("debug.py","w")
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
@@ -179,7 +179,7 @@ MU_TEST(testFeedSignal1) {
 	int blankBefore = (int)(44100 * 0.13);
 	int blankAfter = (int)(44100 * 0.2);
 
-	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, sizeof(payload), DEFAULT_SNR, DEBUG_SCRIPT_PATH);
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, sizeof(payload), DEFAULT_SNR, NULL);
 	size_t signal_size = warble_generate_window_size(&cfg) + blankBefore + blankAfter;
 	double* signal = malloc(sizeof(double) * signal_size);
 	memset(signal, 0, sizeof(double) * signal_size);
@@ -360,13 +360,14 @@ MU_TEST(testWithSolomonErrorInSignal) {
 	double powerRMS = 500;
 	double powerPeak = powerRMS * sqrt(2);
 	int8_t payload[] = "dermatoglyphics";
-	int8_t* decoded_payload = malloc(sizeof(payload));
-	memset(decoded_payload, 0, sizeof(sizeof(payload)));
+    int payloadsize = sizeof(payload);
+	int8_t* decoded_payload = malloc(payloadsize);
+	memset(decoded_payload, 0, payloadsize);
 
 	int blankBefore = (int)(44100 * 0.13);
 	int blankAfter = (int)(44100 * 0.2);
 
-	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, sizeof(payload), DEFAULT_SNR, NULL);
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, payloadsize, DEFAULT_SNR, NULL); // DEBUG_SCRIPT_PATH
 
 	size_t signal_size = warble_generate_window_size(&cfg) + blankBefore + blankAfter;
 	double* signal = malloc(sizeof(double) * signal_size);
@@ -382,12 +383,12 @@ MU_TEST(testWithSolomonErrorInSignal) {
 
 	// Replace some samples with noise
 	int e;
-	int64_t seed = 1337;
-	int offset_error = cfg.word_length + blankBefore;
-	for(e = 0; e < 4; e++) {
-		int start = offset_error + (int)((warble_rand(&seed) / 32768.) * (signal_size - offset_error - cfg.word_length));
+	int64_t seed = 15401375096237;
+	int offset_error = cfg.chirp_length + blankBefore;
+	for(e = 0; e < 3; e++) {
+        int word_error = (warble_rand(&seed) / 32768.) * payloadsize;
+		int start = offset_error + word_error * cfg.word_length;
 		int s;
-		//printf("Erase signal from %d to %d (%d max)\n", start, start + cfg.word_length, signal_size);
 		for(s = start; s < start + cfg.word_length; s++) {
 			signal[s] = (warble_rand(&seed) / 32768.) * powerPeak;
 		}
@@ -395,19 +396,24 @@ MU_TEST(testWithSolomonErrorInSignal) {
 
 	int64_t i;
 	for (i = 0; i < signal_size - cfg.window_length; i += cfg.window_length) {
-		if (warble_feed(&cfg, &(signal[i]), cfg.window_length, i) == WARBLE_FEED_MESSAGE_COMPLETE) {
+        int code = warble_feed(&cfg, &(signal[i]), cfg.window_length, i);
+		if (code == WARBLE_FEED_MESSAGE_COMPLETE) {
 			// Decode and fix parsed words
 			mu_assert(warble_reed_decode_solomon(&cfg, cfg.parsed, decoded_payload) >= 0, "Can't fix error with reed solomon");
 			break;
-		}
+        } else if (code == WARBLE_FEED_DETECT_PITCH) {
+            mu_assert_int_eq(blankBefore, cfg.triggerSampleIndexBegin);
+        }
 	}
 
-
-	mu_assert_string_eq(payload, decoded_payload);
+    mu_assert_string_eq(payload, decoded_payload);
 
 	free(decoded_payload);
 	free(words);
 	free(signal);
+    if (cfg.verbose != NULL) {
+        fclose(cfg.verbose);
+    }
 	warble_free(&cfg);
 }
 
@@ -419,10 +425,10 @@ MU_TEST(testReedSolomon) {
 	int64_t next = 1;
 	for(i = 0; i < sizeof(message); i++) {
 		message[i] = warble_rand(&next) & 255;
-		printf("message[%d]=%d\n", i, message[i]);
+		//printf("message[%d]=%d\n", i, message[i]);
 	}
 	correct_reed_solomon *rs = correct_reed_solomon_create(
-		correct_rs_primitive_polynomial_ccsds, 1, 1, sizeof(block) - sizeof(message));
+    correct_rs_primitive_polynomial_ccsds, 1, 1, sizeof(block) - sizeof(message));
 	correct_reed_solomon_encode(rs, message, sizeof(message), block);
 	correct_reed_solomon_decode(rs, block, sizeof(block), message_decoded);
 	correct_reed_solomon_destroy(rs);
@@ -513,16 +519,16 @@ MU_TEST(testDecodingRealAudio1) {
 MU_TEST_SUITE(test_suite) {
 
 	MU_RUN_TEST(test1khz);
-	//MU_RUN_TEST(testGenerateSignal);
+	MU_RUN_TEST(testGenerateSignal);
 	MU_RUN_TEST(testFeedSignal1);
 	//MU_RUN_TEST(testWriteSignal); // debug purpose
-	//MU_RUN_TEST(testWithSolomonShort);
-	//MU_RUN_TEST(testWithSolomonLong);
-	//MU_RUN_TEST(testInterleave);
-	//MU_RUN_TEST(testWithSolomonError);
-	//MU_RUN_TEST(testWithSolomonErrorInSignal);
+	MU_RUN_TEST(testWithSolomonShort);
+	MU_RUN_TEST(testWithSolomonLong);
+	MU_RUN_TEST(testInterleave);
+	MU_RUN_TEST(testWithSolomonError);
+	MU_RUN_TEST(testWithSolomonErrorInSignal);
 	//MU_RUN_TEST(testDecodingRealAudio1);
-	//MU_RUN_TEST(testReedSolomon);
+	MU_RUN_TEST(testReedSolomon);
 }
 
 int main(int argc, char** argv) {
