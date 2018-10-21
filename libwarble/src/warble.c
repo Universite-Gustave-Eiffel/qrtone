@@ -128,6 +128,7 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
     this->cross_correlation_last_check = 0;
 	this->payloadSize = payloadSize;
 	this->snr_trigger = snr_trigger;
+    this->cross_correlation_accuracy = 1;
 	this->distance = warble_reed_solomon_distance(this->payloadSize);
 	if(this->payloadSize > WARBLE_RS_P && this->distance % WARBLE_RS_P > 0) {
 		// The last cutted message is smaller than WARBLE_RS_P
@@ -331,7 +332,7 @@ enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int32_t sign
         for (i = 0; i < signal_length; i++) {
             double sumproduct = 0;
             // correlation from cached signal
-            for (j = 0; j < warble->chirp_length; j++) {
+            for (j = 0; j < warble->chirp_length; j+=warble->cross_correlation_accuracy) {
                 sumproduct += (warble->signal_cache[warble->signal_cache_size - signal_length - warble->chirp_length + i + j] / max) * warble->trigger_cache[j];
             }
             warble->cross_correlation_cache[warble->cross_correlation_cache_size - signal_length + i] = sumproduct / warble->word_length;
@@ -367,9 +368,11 @@ enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int32_t sign
 	}
     if(warble->triggerSampleIndexBegin > 0) {
 		// Target pitch contain the pitch peak ( 0.25 to start from hanning filter lobe)
+        // Compute absolute position
         int64_t targetPitch = warble->triggerSampleIndexBegin + warble->chirp_length + (warble->parsed_cursor + 1) * warble->word_length + 0.25 * warble->word_length;
 
 		// If the peak is fully contained in cached signal
+        // Compute relative position of target pitch with begining of cache array
         int32_t cache_begin_index = targetPitch - (signal_cache_end_index - warble->signal_cache_size);
         int32_t cache_length = warble->word_length / 2;
 		if(cache_begin_index + cache_length <= warble->signal_cache_size) {
