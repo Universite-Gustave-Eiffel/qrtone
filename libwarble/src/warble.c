@@ -358,14 +358,18 @@ enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int32_t sign
                 warble->triggerSampleIndexBegin = signal_cache_end_index - warble->cross_correlation_cache_size - warble->chirp_length + maxCorrelationIndex;
                 warble->parsed_cursor = -1;
                 // Compute normalizing constant
-                // inequality between expected pitch frequencies leq will be reduced thanks to this
+                // inequality between expected pitch frequencies leq will be reduced thanks to normalizing constant
                 double rms[WARBLE_PITCH_COUNT];
+                double rmsChirp[WARBLE_PITCH_COUNT];
                 int32_t cache_begin_index = MAX(0, warble->triggerSampleIndexBegin - (signal_cache_end_index - warble->signal_cache_size));
                 int32_t cache_length = MIN(warble->chirp_length, warble->signal_cache_size - cache_begin_index);
+                warble_generalized_goertzel(warble->trigger_cache, warble->chirp_length, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rmsChirp);
                 warble_generalized_goertzel(&(warble->signal_cache[cache_begin_index]), cache_length, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rms);
                 double max = rms[warble_get_highest_index(rms, 0, WARBLE_PITCH_COUNT)];
+                double maxChirp = rmsChirp[warble_get_highest_index(rmsChirp, 0, WARBLE_PITCH_COUNT)];
                 for (i = 0; i < WARBLE_PITCH_COUNT; i++) {
-                    warble->spectrum_normalizing_constant[i] = 1 / (rms[i] / max);
+                    const double originalChirp = maxChirp / rmsChirp[i];
+                    warble->spectrum_normalizing_constant[i] = 1 / ((rms[i] * originalChirp) / max);
                 }
             }
         }        
