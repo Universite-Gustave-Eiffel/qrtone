@@ -75,7 +75,7 @@ void warble_generalized_goertzel(const double* signal, int32_t s_length,double s
 	for(id_freq = 0; id_freq < f_length; id_freq++) {
 		// for a single frequency :
 		// precompute the constants
-		double pik_term = 2 * M_PI *(freqs[id_freq] * samplingRateFactor) / (s_length);
+		double pik_term = WARBLE_2PI *(freqs[id_freq] * samplingRateFactor) / (s_length);
 		double cos_pik_term2 = cos(pik_term) * 2;
 		warblecomplex cc = CX_EXP(NEW_CX(pik_term, 0));
 		// state variables
@@ -120,11 +120,12 @@ int32_t warble_reed_solomon_distance(int32_t length) {
 void warble_init(warble* this, double sampleRate, double firstFrequency,
 	double frequencyMultiplication,
 	int32_t frequencyIncrement, double word_time,
-	int32_t payloadSize, double snr_trigger)  {
+	int32_t payloadSize, double snr_trigger, FILE* verbose)  {
+    this->verbose = verbose;
 	this->sampleRate = sampleRate;
-    this->triggerSampleIndex = -1;
     this->parsed_cursor = -1;
     this->triggerSampleIndexBegin = -1;
+    this->cross_correlation_last_check = 0;
 	this->payloadSize = payloadSize;
 	this->snr_trigger = snr_trigger;
 	this->distance = warble_reed_solomon_distance(this->payloadSize);
@@ -144,11 +145,14 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 	this->word_length = (int32_t)(sampleRate * word_time);
 	// Increase probability to have a window begining at 25% of the pitch (capture the lobe peak)
 	this->window_length = (int32_t)((sampleRate * (word_time / 2.)));
-	this->signal_cache = malloc(sizeof(double) * this->word_length * 2);
-    memset(this->signal_cache, 0, sizeof(double) * this->word_length * 2);
-    this->cross_correlation_cache = malloc(sizeof(double) * this->word_length * 2);
-    memset(this->cross_correlation_cache, 0, sizeof(double) * this->word_length * 2);
-    this->trigger_cache = malloc(sizeof(double) * this->word_length);
+    this->chirp_length = this->word_length;
+    this->signal_cache_size = this->chirp_length + this->window_length;
+	this->signal_cache = malloc(sizeof(double) * this->signal_cache_size);
+    memset(this->signal_cache, 0, sizeof(double) * this->signal_cache_size);
+    this->cross_correlation_cache_size = this->chirp_length * 2;
+    this->cross_correlation_cache = malloc(sizeof(double) * this->cross_correlation_cache_size);
+    memset(this->cross_correlation_cache, 0, sizeof(double) * this->cross_correlation_cache_size);
+    this->trigger_cache = malloc(sizeof(double) * this->chirp_length);
 	//this->paritySize =  wordSize - 1 - payloadSize / 2;
 	this->parsed = malloc(sizeof(int8_t) * (this->block_length) + 1);
 	memset(this->parsed, 0, sizeof(int8_t) * (this->block_length) + 1);
@@ -170,15 +174,23 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
 	// Generate log chirp into cache
     // low frequency to high frequency
 	double f1_div_f0 = this->frequencies[WARBLE_PITCH_COUNT - 1] / this->frequencies[0];
-	for (i = 0; i < this->word_length / 2; i++) {
-		const double window = 0.5 * (1 - cos((WARBLE_2PI * i) / (this->word_length - 1)));
-        this->trigger_cache[i] = window * sin(WARBLE_2PI * word_time / log(f1_div_f0) * this->frequencies[0] * (pow(f1_div_f0, ((double)i / sampleRate) / word_time) - 1.0));
+    double chirp_time = (this->chirp_length / 2) / sampleRate;
+	for (i = 0; i < this->chirp_length / 2; i++) {
+		const double window = 0.5 * (1 - cos((WARBLE_2PI * i) / (this->chirp_length - 1)));
+        this->trigger_cache[i] = window * sin(WARBLE_2PI * chirp_time / log(f1_div_f0) * this->frequencies[0] * (pow(f1_div_f0, ((double)i / sampleRate) / chirp_time) - 1.0));
 	}
     // high frequency to low frequency
     f1_div_f0 = this->frequencies[0] / this->frequencies[WARBLE_PITCH_COUNT - 1];
-    for (i = this->word_length / 2; i < this->word_length; i++) {
-        const double window = 0.5 * (1 - cos((WARBLE_2PI * i) / (this->word_length - 1)));
-        this->trigger_cache[i] = -1 * window * sin(WARBLE_2PI * word_time / log(f1_div_f0) * this->frequencies[WARBLE_PITCH_COUNT - 1] * (pow(f1_div_f0, ((double)i / sampleRate) / word_time) - 1.0));
+    int32_t inext = this->chirp_length / 2;
+    for (i = inext; i < this->chirp_length; i++) {
+        const double window = 0.5 * (1 - cos((WARBLE_2PI * i) / (this->chirp_length - 1)));
+        this->trigger_cache[i] = -1 * window * sin(WARBLE_2PI * chirp_time / log(f1_div_f0) * this->frequencies[WARBLE_PITCH_COUNT - 1] * (pow(f1_div_f0, ((double)(i - inext) / sampleRate) / chirp_time) - 1.0));
+    }
+    if (this->verbose != NULL) {
+        fprintf(this->verbose, "sample_rate=%g\n", sampleRate);
+        fprintf(this->verbose, "word_length=%d\n", this->word_length);
+        fprintf(this->verbose, "chirp_length=%d\n", this->chirp_length);
+        fprintf(this->verbose, "ccorrelation=[]\n");
     }
 }
 
@@ -203,9 +215,8 @@ int warble_get_highest_index(double* rms, const int from, const int to) {
 
 void warble_clean_parse(warble* warble) {
 	warble->triggerSampleIndexBegin = -1;
-	warble->triggerSampleRMS = -1;
     warble->parsed_cursor = -1;
-    memset(warble->cross_correlation_cache, 0, sizeof(double) * warble->word_length * 2);
+    memset(warble->cross_correlation_cache, 0, sizeof(double) * warble->cross_correlation_cache_size);
 }
 
 int8_t spectrumToChar(warble *warble, double* rms) {
@@ -230,10 +241,10 @@ int32_t partition(double* arr, int32_t low, int32_t high)
         if (arr[j] <= pivot)
         {
             i++;
-            swapdouble(&arr[i], &arr[j]);
+            swapdouble(&(arr[i]), &(arr[j]));
         }
     }
-    swapdouble(&arr[i + 1], &arr[high]);
+    swapdouble(&(arr[i + 1]), &(arr[high]));
     return (i + 1);
 }
 
@@ -269,79 +280,102 @@ double median_value(double* cross_correlation, int32_t arsize) {
     double* sorted = malloc(sizeof(double) * arsize);
     int32_t i;
     for (i = 0; i < arsize; i++) {
-        sorted[i] = abs(cross_correlation[i]);
+        sorted[i] = fabs(cross_correlation[i]);
     }
-    memcpy(sorted, cross_correlation, sizeof(double) * arsize);
     quick_sort(sorted, 0, arsize);
+    double retval;
     if (arsize % 2 == 0) {
-        return((sorted[arsize / 2] + sorted[arsize / 2 - 1]) / 2.0);
+        retval = ((sorted[arsize / 2] + sorted[arsize / 2 - 1]) / 2.0);
     } else {
-        return sorted[arsize / 2];
+        retval = sorted[arsize / 2];
     }
     free(sorted);
+    return retval;
 }
+
+double avg_value(double* cross_correlation, int32_t arsize) {
+    int32_t i;
+    double sum = 0;
+    for (i = 0; i < arsize; i++) {
+        sum += fabs(cross_correlation[i]);
+    }
+    return sum / arsize;
+}
+
 
 enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int32_t signal_length, int64_t sample_index) {
     if (signal_length > warble->window_length) {
         return WARBLE_FEED_ERROR;
-    }
-    int32_t signal_cache_size = warble->word_length * 2;
-    
+    }    
     // Move signal cache samples
-    memcpy(warble->signal_cache, &warble->signal_cache[signal_length], sizeof(double) * (signal_cache_size - signal_length));
+    //memcpy(warble->signal_cache, &warble->signal_cache[signal_length], sizeof(double) * (warble->signal_cache_size - signal_length));
+    memmove(warble->signal_cache, &(warble->signal_cache[signal_length]), sizeof(double) * (warble->signal_cache_size - signal_length));
     // Copy window to signal cache
-    memcpy(&warble->signal_cache[signal_cache_size - signal_length], signal, sizeof(double) * signal_length);
+    memcpy(&(warble->signal_cache[warble->signal_cache_size - signal_length]), signal, sizeof(double) * signal_length);
     int64_t signal_cache_end_index = sample_index + signal_length;
     // If we are still on the first trigger time
-	//int wordIndex = warble->triggerSampleIndexBegin < 0 ? -1 : (int)((sample_index - warble->triggerSampleIndexBegin + (warble->window_length / 2)) / (double)warble->word_length);
-	if(warble->triggerSampleIndexBegin < 0) {
-        int32_t cross_correlation_cache_size = warble->word_length * 2;
+	if(warble->triggerSampleIndexBegin < 0 && sample_index >= warble->chirp_length) {
         // Move cross-correlation samples
-        memcpy(warble->cross_correlation_cache, &warble->cross_correlation_cache[signal_length], sizeof(double) * (cross_correlation_cache_size - signal_length));
+        memmove(warble->cross_correlation_cache, &(warble->cross_correlation_cache[signal_length]), sizeof(double) * (warble->cross_correlation_cache_size - signal_length));
         int32_t i;
         int32_t j;
         // Compute max value of signal cache for normalize
         double max = -1e12;
-        for (i = 0; i < signal_cache_size; i++) {
-            max = MAX(max, abs(warble->signal_cache));
+        for (i = 0; i < warble->signal_cache_size; i++) {
+            max = MAX(max, fabs(warble->signal_cache[i]));
+        }
+        if (max == 0) {
+            max = 1;
         }
         // Compute cross-correlation for the new samples
         for (i = 0; i < signal_length; i++) {
             double sumproduct = 0;
             // correlation from cached signal
-            for (j = 0; j < warble->word_length; j++) {
-                sumproduct += (warble->signal_cache[signal_cache_size - signal_length - warble->word_length + i + j] / max) * warble->trigger_cache[j];
+            for (j = 0; j < warble->chirp_length; j++) {
+                sumproduct += (warble->signal_cache[warble->signal_cache_size - signal_length - warble->chirp_length + i + j] / max) * warble->trigger_cache[j];
             }
-            warble->cross_correlation_cache[cross_correlation_cache_size - signal_length + i] = sumproduct / warble->word_length;
+            warble->cross_correlation_cache[warble->cross_correlation_cache_size - signal_length + i] = sumproduct / warble->word_length;
         }
-        // Compute median value of absolute correlation
-        double median_ccorrelation = median_value(warble->cross_correlation_cache, cross_correlation_cache_size - warble->word_length);
-        // Looking for triggering pitch
-        // Compare median value with max value
-        double maxCorrelation = -1;
-        int32_t maxCorrelationIndex = -1;
-        for (i = 0; i < cross_correlation_cache_size - warble->word_length; i++) {
-            if (warble->cross_correlation_cache[i] > maxCorrelation) {
-                maxCorrelation = warble->cross_correlation_cache[i];
-                maxCorrelationIndex = i;
+        if (warble->verbose != NULL) {
+            fprintf(warble->verbose, "ccorrelation+=[%g", warble->cross_correlation_cache[i]);
+            for (i = warble->cross_correlation_cache_size - signal_length + 1; i < warble->cross_correlation_cache_size; i++) {
+                fprintf(warble->verbose, ",%g", warble->cross_correlation_cache[i]);
             }
+            fprintf(warble->verbose, "]\n");
         }
-        if (median_ccorrelation / maxCorrelation > warble->snr_trigger) {
-            // Found trigger pitch
-            warble->triggerSampleIndexBegin = signal_cache_end_index - cross_correlation_cache_size + maxCorrelationIndex;
-            warble->parsed_cursor = -1;
-        }
+        // Cross correlation result must only be evaluated when at least a full chirp is analyzed 
+        if (sample_index + signal_length > warble->cross_correlation_last_check + warble->chirp_length) {
+            warble->cross_correlation_last_check = sample_index + signal_length;
+            // Looking for triggering pitch
+            // Compare median value with max value
+            double maxCorrelation = warble->cross_correlation_cache[0];
+            int32_t maxCorrelationIndex = 0;
+            for (i = 0; i < warble->cross_correlation_cache_size; i++) {
+                if (warble->cross_correlation_cache[i] > maxCorrelation) {
+                    maxCorrelation = warble->cross_correlation_cache[i];
+                    maxCorrelationIndex = i;
+                }
+            }
+            // Compute median value of absolute correlation        
+            double median_ccorrelation = avg_value(warble->cross_correlation_cache, warble->cross_correlation_cache_size - warble->chirp_length);
+            if (median_ccorrelation > 0 && 20 * log10(maxCorrelation / median_ccorrelation) > warble->snr_trigger) {
+                // Found trigger pitch
+                warble->triggerSampleIndexBegin = signal_cache_end_index - warble->cross_correlation_cache_size - warble->chirp_length + maxCorrelationIndex;
+                warble->parsed_cursor = -1;
+            }
+        }        
 	}
-    if(warble->triggerSampleIndexBegin != 0) {
-		// Target pitch contain the pitch peak
-
-        int64_t targetPitch = warble->triggerSampleIndex + warble->word_length + (warble->parsed_cursor + 1) * warble->word_length;
+    if(warble->triggerSampleIndexBegin > 0) {
+		// Target pitch contain the pitch peak ( 0.25 to start from hanning filter lobe)
+        int64_t targetPitch = warble->triggerSampleIndexBegin + warble->chirp_length + (warble->parsed_cursor + 1) * warble->word_length + 0.25 * warble->word_length;
 
 		// If the peak is fully contained in cached signal
-		if(targetPitch + warble->word_length < signal_cache_end_index) {
+        int32_t cache_begin_index = targetPitch - (signal_cache_end_index - warble->signal_cache_size);
+        int32_t cache_length = warble->word_length / 2;
+		if(cache_begin_index + cache_length <= warble->signal_cache_size) {
             warble->parsed_cursor++;
 			double rms[WARBLE_PITCH_COUNT];
-			warble_generalized_goertzel(&(warble->signal_cache[signal_cache_end_index - targetPitch]), warble->word_length / 2, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rms);
+			warble_generalized_goertzel(&(warble->signal_cache[cache_begin_index]), cache_length, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rms);
 			warble->parsed[warble->parsed_cursor] = spectrumToChar(warble, rms);
 			if(warble->parsed_cursor == warble->block_length) {
 				warble_clean_parse(warble);
@@ -359,7 +393,7 @@ int32_t warble_feed_window_size(warble *warble) {
 
 int32_t warble_generate_window_size(warble *warble) {
     // Window size is chirp + message
-	return (1 + warble->block_length) * warble->word_length;
+	return warble->chirp_length + (warble->block_length) * warble->word_length;
 }
 
 void warble_generate_pitch(double* signal_out, int32_t length, double sample_rate, double frequency, double power_peak) {
@@ -458,10 +492,10 @@ void warble_generate_signal(warble *warble,double power_peak, int8_t* words, dou
 	int s = 0;
 	// Trigger chirp
 	int32_t i;
-	for (i = 0; i < warble->word_length; i++) {
+	for (i = 0; i < warble->chirp_length; i++) {
 		signal_out[i] += warble->trigger_cache[i] * power_peak;
 	}
-	s += warble->word_length;
+	s += warble->chirp_length;
 
 	// Other pitchs
 
@@ -470,6 +504,9 @@ void warble_generate_signal(warble *warble,double power_peak, int8_t* words, dou
 		warble_char_to_frequencies(warble, words[i], &freq1, &freq2);
 		warble_generate_pitch(&(signal_out[s]), warble->word_length, warble->sampleRate, freq1, power_peak);
 		warble_generate_pitch(&(signal_out[s]), warble->word_length, warble->sampleRate, freq2, power_peak);
+        if (warble->verbose != NULL) {
+            fprintf(warble->verbose, "index.append((%d, %g, %g))\n", s, freq1, freq2);
+        }
 		s += warble->word_length;
 	}
 }
@@ -510,15 +547,10 @@ double* warble_cfg_get_frequencies(warble *warble) {
     return warble->frequencies;
 }
 
-int64_t warble_cfg_get_triggerSampleIndex(warble *warble) {
-    return warble->triggerSampleIndex;
-}
 int64_t warble_cfg_get_triggerSampleIndexBegin(warble *warble) {
     return warble->triggerSampleIndexBegin;
 }
-double warble_cfg_get_triggerSampleRMS(warble *warble) {
-    return warble->triggerSampleRMS;
-}
+
 
 int32_t warble_cfg_get_word_length(warble *warble) {
     return warble->word_length;

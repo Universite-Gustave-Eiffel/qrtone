@@ -55,6 +55,8 @@
 
 #define MULT 1.0594630943591
 
+#define DEBUG_SCRIPT_PATH fopen("C:\\Users\\cumu\\ownCloud2\\ifsttar\\documents\\projets\\energic_od\\android\\openwarble\\intercorrelatetest\\debug.py","w")
+
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
@@ -94,7 +96,7 @@ MU_TEST(testGenerateSignal) {
 	double powerPeak = powerRMS * sqrt(2);
 	int8_t payload[] = "parrot";
 
-	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, sizeof(payload), DEFAULT_SNR);
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, sizeof(payload), DEFAULT_SNR, NULL);
 
 	size_t windowSize = warble_generate_window_size(&cfg);
 	double* signal = malloc(sizeof(double) * windowSize);
@@ -138,7 +140,7 @@ MU_TEST(testWriteSignal) {
 	int blankBefore = (int)(44100 * 0.55);
 	int blankAfter = (int)(44100 * 0.6);
 
-	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (uint8_t)sizeof(payload), DEFAULT_SNR);
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, (uint8_t)sizeof(payload), DEFAULT_SNR, NULL);
 
 	size_t signal_size = warble_generate_window_size(&cfg) + blankBefore + blankAfter;
 	double* signal = malloc(sizeof(double) * signal_size);
@@ -177,8 +179,7 @@ MU_TEST(testFeedSignal1) {
 	int blankBefore = (int)(44100 * 0.13);
 	int blankAfter = (int)(44100 * 0.2);
 
-	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, sizeof(payload), DEFAULT_SNR);
-
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, sizeof(payload), DEFAULT_SNR, DEBUG_SCRIPT_PATH);
 	size_t signal_size = warble_generate_window_size(&cfg) + blankBefore + blankAfter;
 	double* signal = malloc(sizeof(double) * signal_size);
 	memset(signal, 0, sizeof(double) * signal_size);
@@ -191,11 +192,12 @@ MU_TEST(testFeedSignal1) {
 
 	// Replaces zeroes with pitchs
 	warble_generate_signal(&cfg, powerPeak, words, &(signal[blankBefore]));
-	int offset;
+	int64_t offset;
 	int res;
 	// Check with all possible offset in the wave (detect window index errors)
-	for(offset = 0; offset < cfg.window_length; offset++) {
-		int i;
+    // cfg.window_length
+	for(offset = 0; offset < 1; offset++) {
+		int64_t i;
 		for(i=offset; i < signal_size - cfg.window_length; i+=cfg.window_length) {
 			res = warble_feed(&cfg, &(signal[i]), cfg.window_length, i);
 			if (res == WARBLE_FEED_MESSAGE_COMPLETE) {
@@ -208,6 +210,9 @@ MU_TEST(testFeedSignal1) {
 		}
 	}
 	free(signal);
+    if (cfg.verbose != NULL) {
+        fclose(cfg.verbose);
+    }
 	warble_free(&cfg);
 }
 
@@ -224,7 +229,7 @@ MU_TEST(testWithSolomonShort) {
 	int blankBefore = (int)(44100 * 0.13);
 	int blankAfter = (int)(44100 * 0.2);
 
-	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, sizeof(payload), DEFAULT_SNR);
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, sizeof(payload), DEFAULT_SNR, NULL);
 
 	size_t signal_size = warble_generate_window_size(&cfg) + blankBefore + blankAfter;
 	double* signal = malloc(sizeof(double) * signal_size);
@@ -284,7 +289,7 @@ MU_TEST(testWithSolomonLong) {
 	int blankBefore = (int)(44100 * 0.13);
 	int blankAfter = (int)(44100 * 0.2);
 
-	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, sizeof(payload), DEFAULT_SNR);
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, sizeof(payload), DEFAULT_SNR, NULL);
 
 	size_t signal_size = warble_generate_window_size(&cfg) + blankBefore + blankAfter;
 	double* signal = malloc(sizeof(double) * signal_size);
@@ -325,7 +330,7 @@ MU_TEST(testWithSolomonError) {
 	int8_t* decoded_payload = malloc(sizeof(payload));
 	memset(decoded_payload, 0, sizeof(payload));
 
-	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, sizeof(payload), DEFAULT_SNR);
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, sizeof(payload), DEFAULT_SNR, NULL);
 
 	// Encode message
 	int8_t* words = malloc(sizeof(int8_t) * cfg.block_length + 1);
@@ -361,7 +366,7 @@ MU_TEST(testWithSolomonErrorInSignal) {
 	int blankBefore = (int)(44100 * 0.13);
 	int blankAfter = (int)(44100 * 0.2);
 
-	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, sizeof(payload), DEFAULT_SNR);
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, sizeof(payload), DEFAULT_SNR, NULL);
 
 	size_t signal_size = warble_generate_window_size(&cfg) + blankBefore + blankAfter;
 	double* signal = malloc(sizeof(double) * signal_size);
@@ -465,7 +470,7 @@ MU_TEST(testDecodingRealAudio1) {
 	int8_t* decoded_payload = malloc(sizeof(int8_t) * payload_len + 1);
 	memset(decoded_payload, 0, sizeof(int8_t) * payload_len + 1);
 
-	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, payload_len, DEFAULT_SNR);
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, payload_len, DEFAULT_SNR, NULL);
 
 
 	// Encode test message
@@ -508,16 +513,16 @@ MU_TEST(testDecodingRealAudio1) {
 MU_TEST_SUITE(test_suite) {
 
 	MU_RUN_TEST(test1khz);
-	MU_RUN_TEST(testGenerateSignal);
+	//MU_RUN_TEST(testGenerateSignal);
 	MU_RUN_TEST(testFeedSignal1);
 	//MU_RUN_TEST(testWriteSignal); // debug purpose
-	MU_RUN_TEST(testWithSolomonShort);
-	MU_RUN_TEST(testWithSolomonLong);
-	MU_RUN_TEST(testInterleave);
-	MU_RUN_TEST(testWithSolomonError);
-	MU_RUN_TEST(testWithSolomonErrorInSignal);
-	MU_RUN_TEST(testDecodingRealAudio1);
-	MU_RUN_TEST(testReedSolomon);
+	//MU_RUN_TEST(testWithSolomonShort);
+	//MU_RUN_TEST(testWithSolomonLong);
+	//MU_RUN_TEST(testInterleave);
+	//MU_RUN_TEST(testWithSolomonError);
+	//MU_RUN_TEST(testWithSolomonErrorInSignal);
+	//MU_RUN_TEST(testDecodingRealAudio1);
+	//MU_RUN_TEST(testReedSolomon);
 }
 
 int main(int argc, char** argv) {

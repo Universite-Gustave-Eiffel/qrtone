@@ -39,6 +39,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <stdio.h>
 
 
 #define WARBLE_PITCH_COUNT 32  // Number of used frequency bands
@@ -63,16 +64,19 @@ typedef struct _warble {
 	int8_t* parsed;                 /**< parsed words of length wordTriggerCount+payloadSize+paritySize */
     int32_t parsed_cursor;          /**< Index of the last recognized word from signal */
 	int32_t* shuffleIndex;		    /**< Shuffle index, used to (de)shuffle words sent/received after/before reed solomon */
-	double* signal_cache;			/**< Cache of audio data of size 2 * word_length */
+	double* signal_cache;			/**< Cache of audio data*/
+    int32_t signal_cache_size;
     double* cross_correlation_cache;/**< Cache of cross correlation values */
+    int32_t cross_correlation_cache_size;
+    int64_t cross_correlation_last_check; /**< Cross correlation result must only be evaluated when at least a full chirp is analyzed */
 	double* trigger_cache;			/**< Cache of triggering chirp of size word_length */
 	double frequencies[WARBLE_PITCH_COUNT];            /**< Computed pitch frequencies length is WARBLE_PITCH_COUNT */
-	int64_t triggerSampleIndex;     /**< Best Sample index of first trigger */
-	int64_t triggerSampleIndexBegin;/**< Sample index begining of first trigger */
+	int64_t triggerSampleIndexBegin;/**< Sample index begining of chirp */
 	double snr_trigger;				/**< Signal to noise (dB) that trigger a message */
-	double triggerSampleRMS;		/**< Highest RMS of first trigger */
 	int32_t word_length;			/** pitch length in samples*/
+    int32_t chirp_length;           /** chirp length in samples*/
 	int32_t window_length;			/** Window length of the signal provided to warble_feed **/
+    FILE* verbose;                  /** Destination for verbose output (debug purpose)*/
 } warble;
 
 /**
@@ -116,7 +120,7 @@ int8_t spectrumToChar(warble *warble, double* rms);
 void warble_init(warble* this, double sample_rate, double first_frequency,
 	double frequency_multiplication,
 	int32_t frequency_increment, double word_time,
-	int32_t message_size, double snr_trigger);
+	int32_t message_size, double snr_trigger, FILE* verbose);
 
 /**
 * Free buffer in object
@@ -195,11 +199,7 @@ int32_t* warble_cfg_get_shuffleIndex(warble *warble);
 
 double* warble_cfg_get_frequencies(warble *warble);
 
-int64_t warble_cfg_get_triggerSampleIndex(warble *warble);
-
 int64_t warble_cfg_get_triggerSampleIndexBegin(warble *warble);
-
-double warble_cfg_get_triggerSampleRMS(warble *warble);
 
 int32_t warble_cfg_get_word_length(warble *warble);
 
