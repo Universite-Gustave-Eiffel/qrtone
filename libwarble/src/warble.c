@@ -153,7 +153,7 @@ void warble_init(warble* this, double sampleRate, double firstFrequency,
     this->triggerSampleIndexBegin = -1;
 	this->payloadSize = payloadSize;
 	this->snr_trigger = snr_trigger;
-    this->cross_correlation_accuracy = 1;
+    this->cross_correlation_accuracy = 4;
 	this->distance = warble_reed_solomon_distance(this->payloadSize);
 	if(this->payloadSize > WARBLE_RS_P && this->distance % WARBLE_RS_P > 0) {
 		// The last cutted message is smaller than WARBLE_RS_P

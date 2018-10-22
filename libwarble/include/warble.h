@@ -67,7 +67,7 @@ typedef struct _warble {
     int32_t signal_cache_size;
     double* cross_correlation_cache;                            /**< Cache of cross correlation values */
     int32_t cross_correlation_cache_size;
-    int32_t cross_correlation_accuracy;                         /**< Step size in the inner loop of cross correlation */ 
+    int32_t cross_correlation_accuracy;                         /**< Step size in the inner loop of cross correlation, lower value cost more cpu cycles */ 
 	double* trigger_cache;			                            /**< Cache of triggering chirp of size word_length */
 	double frequencies[WARBLE_PITCH_COUNT];                     /**< Computed pitch frequencies length is WARBLE_PITCH_COUNT */
 	int64_t triggerSampleIndexBegin;                            /**< Sample index begining of chirp */

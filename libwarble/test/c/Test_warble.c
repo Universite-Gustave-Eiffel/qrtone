@@ -62,7 +62,7 @@
 
 #define CHECK(a) if(!a) return -1
 
-#define DEFAULT_SNR 10
+#define DEFAULT_SNR 20
 
 MU_TEST(test1khz) {
 	const double sampleRate = 44100;
@@ -478,7 +478,7 @@ MU_TEST(testDecodingRealAudio1) {
 	int8_t* decoded_payload = malloc(sizeof(int8_t) * payload_len + 1);
 	memset(decoded_payload, 0, sizeof(int8_t) * payload_len + 1);
 
-	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, payload_len, 20, NULL); // DEBUG_SCRIPT_PATH
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, payload_len, DEFAULT_SNR, NULL); // DEBUG_SCRIPT_PATH
 
 
 	// Encode test message
