@@ -42,12 +42,9 @@ public class Configuration {
   public static final double DEFAULT_AUDIBLE_FIRST_FREQUENCY = 1760;
   public static final double DEFAULT_INAUDIBLE_FIRST_FREQUENCY = 18200;
   public static final int DEFAULT_INAUDIBLE_STEP = 120;
-  public static final int DEFAULT_FIRST_TRIGGER = 9;
-  public static final int DEFAULT_SECOND_TRIGGER = 25;
-  public static final double DEFAULT_TRIGGER_SNR = 3;
+  public static final double DEFAULT_TRIGGER_SNR = 20;
 
   public final int payloadSize;
-  public final int[] triggerFrequencies;
   public final double sampleRate;
   public final double firstFrequency;
   public final int frequencyIncrement;
@@ -55,9 +52,8 @@ public class Configuration {
   public final double wordTime;
   public final double triggerSnr;
 
-  public Configuration(int payloadSize, int[] triggerFrequencies, double sampleRate, double firstFrequency, int frequencyIncrement, double frequencyMulti, double wordTime, double triggerSnr) {
+  public Configuration(int payloadSize, double sampleRate, double firstFrequency, int frequencyIncrement, double frequencyMulti, double wordTime, double triggerSnr) {
     this.payloadSize = payloadSize;
-    this.triggerFrequencies = triggerFrequencies;
     this.sampleRate = sampleRate;
     this.firstFrequency = firstFrequency;
     this.frequencyIncrement = frequencyIncrement;
@@ -73,7 +69,7 @@ public class Configuration {
    * @return Default configuration for this profile
    */
   public static Configuration getAudible(int payloadSize, double sampleRate) {
-    return new Configuration(payloadSize, new int[]{DEFAULT_FIRST_TRIGGER, DEFAULT_SECOND_TRIGGER}, sampleRate, DEFAULT_AUDIBLE_FIRST_FREQUENCY,
+    return new Configuration(payloadSize, sampleRate, DEFAULT_AUDIBLE_FIRST_FREQUENCY,
             0, MULT_SEMITONE, DEFAULT_WORD_TIME, DEFAULT_TRIGGER_SNR);
   }
 
@@ -85,7 +81,7 @@ public class Configuration {
    * @return Default configuration for this profile
    */
   public static Configuration getInaudible(int payloadSize, double sampleRate) {
-    return new Configuration(payloadSize, new int[]{DEFAULT_FIRST_TRIGGER, DEFAULT_SECOND_TRIGGER}, sampleRate, DEFAULT_INAUDIBLE_FIRST_FREQUENCY,
+    return new Configuration(payloadSize, sampleRate, DEFAULT_INAUDIBLE_FIRST_FREQUENCY,
             DEFAULT_INAUDIBLE_STEP, 0, DEFAULT_WORD_TIME, DEFAULT_TRIGGER_SNR);
   }
 }

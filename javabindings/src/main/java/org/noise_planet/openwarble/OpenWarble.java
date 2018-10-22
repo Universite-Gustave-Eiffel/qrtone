@@ -36,10 +36,8 @@ package org.noise_planet.openwarble;
 import org.renjin.gcc.runtime.BytePtr;
 import org.renjin.gcc.runtime.DoublePtr;
 import org.renjin.gcc.runtime.Ptr;
-import org.renjin.gcc.runtime.IntPtr;
 
 import java.util.Arrays;
-import java.util.List;
 
 
 public class OpenWarble {
@@ -53,7 +51,7 @@ public class OpenWarble {
   public OpenWarble(Configuration c) {
     cfg = warble.warble_create();
     warble.warble_init(cfg, c.sampleRate, c.firstFrequency, c.frequencyMulti, c.frequencyIncrement, c.wordTime,
-            c.payloadSize, new IntPtr(c.triggerFrequencies), c.triggerFrequencies.length, c.triggerSnr);
+            c.payloadSize, c.triggerSnr, BytePtr.NULL);
     windowLength = warble.warble_cfg_get_window_length(cfg);
     messageSampleLength = warble.warble_generate_window_size(cfg);
   }
@@ -88,7 +86,7 @@ public class OpenWarble {
   }
 
   private void pushFixedSamples(double[] samples) {
-    int res = warble.warble_feed(cfg, new DoublePtr(samples), sampleIndex);
+    int res = warble.warble_feed(cfg, new DoublePtr(samples),samples.length, sampleIndex);
     if(res != 0 && callback != null) {
       if(res == -1) {
         callback.onError(sampleIndex);
