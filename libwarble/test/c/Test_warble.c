@@ -478,7 +478,7 @@ MU_TEST(testDecodingRealAudio1) {
 	int8_t* decoded_payload = malloc(sizeof(int8_t) * payload_len + 1);
 	memset(decoded_payload, 0, sizeof(int8_t) * payload_len + 1);
 
-	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, payload_len, 20, DEBUG_SCRIPT_PATH);
+	warble_init(&cfg, sample_rate, 1760, MULT, 0, word_length, payload_len, 20, NULL); // DEBUG_SCRIPT_PATH
 
 
 	// Encode test message
@@ -489,6 +489,7 @@ MU_TEST(testDecodingRealAudio1) {
 	int j;
 	double fexp0, fexp1, f0, f1;
 	int res = WARBLE_FEED_ERROR;
+    int errorCount = 0;
 	for (i = 0; i < signal_size - cfg.window_length; i += cfg.window_length) {
         res = warble_feed(&cfg, &(signal[i]), cfg.window_length, i);
 		if (res == WARBLE_FEED_MESSAGE_COMPLETE) {
@@ -496,8 +497,12 @@ MU_TEST(testDecodingRealAudio1) {
 			for(j=0; j<cfg.block_length;j++) {
 				warble_char_to_frequencies(&cfg, words[j], &fexp0, &fexp1);
 				warble_char_to_frequencies(&cfg, cfg.parsed[j], &f0, &f1);
-				mu_assert_double_eq(fexp0, f0, 0.1);
-				mu_assert_double_eq(fexp1, f1, 0.1);
+                if (fexp0 != f0) {
+                    errorCount++;
+                }
+                if (fexp1 != f1) {
+                    errorCount++;
+                }
 			}
 			// Decode and fix parsed words
 			mu_assert(warble_reed_decode_solomon(&cfg, cfg.parsed, decoded_payload) > 0, "Can't fix error with reed solomon");
@@ -507,14 +512,11 @@ MU_TEST(testDecodingRealAudio1) {
 
 	mu_assert_int_eq(WARBLE_FEED_MESSAGE_COMPLETE, res);
 
-    int errorCount = 0;
-	for (j = 0; j<cfg.payloadSize; j++) {
-        if (expected_payload[j] != decoded_payload[j]) {
-            errorCount++;
-        }
-		//mu_assert_int_eq(expected_payload[j], decoded_payload[j]);
-	}
-    
+
+    for (j = 0; j<cfg.payloadSize; j++) {
+        mu_assert_int_eq(expected_payload[j], decoded_payload[j]);
+    }
+
 	free(decoded_payload);
 	free(signal);
 	free(words);
@@ -527,17 +529,17 @@ MU_TEST(testDecodingRealAudio1) {
 
 MU_TEST_SUITE(test_suite) {
 
-	//MU_RUN_TEST(test1khz);
-	//MU_RUN_TEST(testGenerateSignal);
-	//MU_RUN_TEST(testFeedSignal1);
+	MU_RUN_TEST(test1khz);
+	MU_RUN_TEST(testGenerateSignal);
+	MU_RUN_TEST(testFeedSignal1);
 	//MU_RUN_TEST(testWriteSignal); // debug purpose
-	//MU_RUN_TEST(testWithSolomonShort);
-	//MU_RUN_TEST(testWithSolomonLong);
-	//MU_RUN_TEST(testInterleave);
-	//MU_RUN_TEST(testWithSolomonError);
-	//MU_RUN_TEST(testWithSolomonErrorInSignal);
+	MU_RUN_TEST(testWithSolomonShort);
+	MU_RUN_TEST(testWithSolomonLong);
+	MU_RUN_TEST(testInterleave);
+	MU_RUN_TEST(testWithSolomonError);
+	MU_RUN_TEST(testWithSolomonErrorInSignal);
 	MU_RUN_TEST(testDecodingRealAudio1);
-	//MU_RUN_TEST(testReedSolomon);
+	MU_RUN_TEST(testReedSolomon);
 }
 
 int main(int argc, char** argv) {

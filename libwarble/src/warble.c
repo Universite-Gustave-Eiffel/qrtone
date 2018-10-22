@@ -67,6 +67,32 @@ void warble_fisher_yates_shuffle_index(int n, int* index) {
 	}
 }
 
+void warble_print_chars(warble* this, uint8_t* block, int32_t block_size) {
+    int32_t i;
+    fprintf(this->verbose, "[");
+    for (i = 0; i < block_size; i++)
+    {
+        if (i > 0) {
+            fprintf(this->verbose, ",");
+        }
+        fprintf(this->verbose, "0x%x", block[i] & 0xff);
+    }
+    fprintf(this->verbose, "]\n");
+}
+
+void warble_print_double(warble* this, double* block, int32_t block_size) {
+    int32_t i;
+    fprintf(this->verbose, "[");
+    for (i = 0; i < block_size; i++)
+    {
+        if (i > 0) {
+            fprintf(this->verbose, ",");
+        }
+        fprintf(this->verbose, "%g", block[i]);
+    }
+    fprintf(this->verbose, "]\n");
+}
+
 void warble_generalized_goertzel(const double* signal, int32_t s_length,double sampleRate,const double* freqs, int32_t f_length, double* outFreqsPower) {
 	int32_t id_freq;
 	// Fix frequency using the sampleRate of the signal
@@ -357,14 +383,11 @@ enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int32_t sign
             for (j = 0; j < warble->chirp_length; j += warble->cross_correlation_accuracy) {
                 sumproduct += (warble->signal_cache[warble->signal_cache_size - signal_length - warble->chirp_length + i + j] / max) * warble->trigger_cache[j];
             }
-            warble->cross_correlation_cache[warble->cross_correlation_cache_size - signal_length + i] = sumproduct / warble->word_length;
+            warble->cross_correlation_cache[warble->cross_correlation_cache_size - signal_length + i] = sumproduct / (warble->chirp_length / warble->cross_correlation_accuracy);
         }
         if (warble->verbose != NULL) {
-            fprintf(warble->verbose, "ccorrelation+=[%g", warble->cross_correlation_cache[i]);
-            for (i = warble->cross_correlation_cache_size - signal_length + 1; i < warble->cross_correlation_cache_size; i++) {
-                fprintf(warble->verbose, ",%g", warble->cross_correlation_cache[i]);
-            }
-            fprintf(warble->verbose, "]\n");
+            fprintf(warble->verbose, "ccorrelation+=");
+            warble_print_double(warble, &(warble->cross_correlation_cache[warble->cross_correlation_cache_size - signal_length]), signal_length);
         }
         // Looking for triggering pitch
         int32_t maxCorrelationIndex = warble_get_highest_index(warble->cross_correlation_cache, 0, warble->cross_correlation_cache_size);
@@ -382,6 +405,8 @@ enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int32_t sign
                 warble->parsed_cursor = -1;
                 if (warble->verbose != NULL) {
                     fprintf(warble->verbose, "# chirp at %.3f s\n", warble->triggerSampleIndexBegin / warble->sampleRate);
+                    fprintf(warble->verbose, "frequencies=");
+                    warble_print_double(warble, warble->frequencies, WARBLE_PITCH_COUNT);
                 }
             }
         }
@@ -397,21 +422,25 @@ enum WARBLE_FEED_RESULT warble_feed(warble *warble, double* signal, int32_t sign
         int32_t cache_begin_index = (int32_t)(targetPitch - (signal_cache_end_index - warble->signal_cache_size));
         int32_t cache_length = warble->word_length / 2;
         int32_t i;
-		if(cache_begin_index - 2*pitch_lobe_offset >= 0 && cache_begin_index + cache_length <= warble->signal_cache_size) {
+		if(cache_begin_index - 2*pitch_lobe_offset >= 0 && cache_begin_index + cache_length + pitch_lobe_offset <= warble->signal_cache_size) {
             warble->parsed_cursor++;
 			double rms[WARBLE_PITCH_COUNT];
             double rms_reference[WARBLE_PITCH_COUNT];
             // RMS between two pitch
-            warble_generalized_goertzel(&(warble->signal_cache[cache_begin_index - 2 * pitch_lobe_offset]), 2 * pitch_lobe_offset, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rms_reference);
+            warble_generalized_goertzel(&(warble->signal_cache[cache_begin_index + cache_length]), pitch_lobe_offset, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rms_reference);
             // RMS of Pitch peak lobe
 			warble_generalized_goertzel(&(warble->signal_cache[cache_begin_index]), cache_length, warble->sampleRate, warble->frequencies, WARBLE_PITCH_COUNT, rms);
-            if (warble->verbose != NULL) {
-                fprintf(warble->verbose, "# word %d: reference at %.3f lobe at %.3f s\n", warble->parsed_cursor, (targetPitch - 2 * pitch_lobe_offset) / warble->sampleRate,targetPitch / warble->sampleRate);
-            }
             for (i = 0; i < WARBLE_PITCH_COUNT; i++) {
                 rms[i] = rms[i] - rms_reference[i];
             }
-			warble->parsed[warble->parsed_cursor] = spectrumToChar(rms);
+            if (warble->verbose != NULL) {
+                int f0index = warble_get_highest_index(rms, 0, WARBLE_PITCH_ROOT);
+                int f1index = warble_get_highest_index(rms, WARBLE_PITCH_ROOT, WARBLE_PITCH_COUNT) - WARBLE_PITCH_ROOT;
+                fprintf(warble->verbose, "# word %d: reference at %.3f s lobe at %.3f s found: [%.0f, %.0f]\n", warble->parsed_cursor, (targetPitch - 2 * pitch_lobe_offset) / warble->sampleRate, targetPitch / warble->sampleRate, warble->frequencies[f0index], warble->frequencies[f1index]);
+                fprintf(warble->verbose, "spectrum=");
+                warble_print_double(warble, rms, WARBLE_PITCH_COUNT);
+            }
+            warble->parsed[warble->parsed_cursor] = spectrumToChar(rms);
 			if(warble->parsed_cursor == warble->block_length - 1) {
 				warble_clean_parse(warble);
 				return WARBLE_FEED_MESSAGE_COMPLETE;
@@ -461,19 +490,6 @@ void warble_unswap_chars(uint8_t* input_string, int32_t* index, int32_t n) {
 	}
 }
 
-void warble_print_chars(warble* this, uint8_t* block, int32_t block_size) {
-    int32_t i;
-    fprintf(this->verbose, "[");
-    for (i = 0; i < block_size; i++)
-    {
-        if (i > 0) {
-            fprintf(this->verbose, ",");
-        }
-        fprintf(this->verbose, "0x%x", block[i] & 0xff);
-    }
-    fprintf(this->verbose, "]\n");    
-}
-
 void warble_reed_encode_solomon(warble *warble, uint8_t* msg, uint8_t* block) {
 	// Split message if its size > WARBLE_RS_P
 	int msg_cursor;
@@ -495,13 +511,13 @@ void warble_reed_encode_solomon(warble *warble, uint8_t* msg, uint8_t* block) {
 	}
 	if(warble->payloadSize > warble->rs_message_length) {
         if (warble->verbose != NULL) {
-            fprintf(warble->verbose, "# Swap message\n");
+            fprintf(warble->verbose, "# Swap message\noriginal=");
             warble_print_chars(warble, block, warble->block_length);
         }
 		// Interleave message in order to spread consecutive errors on multiple reed solomon messages (increase robustness)
 		warble_swap_chars(block, warble->shuffleIndex, warble->block_length);
         if (warble->verbose != NULL) {
-            fprintf(warble->verbose, "# message swaped\n");
+            fprintf(warble->verbose, "# message swaped\noriginal_shuffle=");
             warble_print_chars(warble, block, warble->block_length);
         }
 	}
@@ -514,7 +530,7 @@ int warble_reed_decode_solomon(warble *warble, uint8_t* words, uint8_t* msg) {
 	int remaining = warble->payloadSize % warble->rs_message_length;
 	if (warble->payloadSize > warble->rs_message_length) {
         if (warble->verbose != NULL) {
-            fprintf(warble->verbose, "# unswap message\n");
+            fprintf(warble->verbose, "# unswap message\ndecoded_shuffle=");
             warble_print_chars(warble, words, warble->block_length);
         }
 
@@ -522,7 +538,7 @@ int warble_reed_decode_solomon(warble *warble, uint8_t* words, uint8_t* msg) {
 		warble_unswap_chars(words, warble->shuffleIndex, warble->block_length);
 
         if (warble->verbose != NULL) {
-            fprintf(warble->verbose, "# message unswaped\n");
+            fprintf(warble->verbose, "# message unswaped\ndecoded=");
             warble_print_chars(warble, words, warble->block_length);
         }
 	}
