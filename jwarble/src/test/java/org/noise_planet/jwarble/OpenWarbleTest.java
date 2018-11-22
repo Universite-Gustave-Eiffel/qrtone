@@ -6,6 +6,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class OpenWarbleTest {
+
     @Test
     public void generalized_goertzel() throws Exception {
         double sampleRate = 44100;

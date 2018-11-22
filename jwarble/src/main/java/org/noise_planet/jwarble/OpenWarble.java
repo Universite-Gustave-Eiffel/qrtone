@@ -33,11 +33,14 @@
 
 package org.noise_planet.jwarble;
 
-import java.awt.*;
-
 public class OpenWarble {
 
     public static final double M2PI = Math.PI * 2;
+    private Configuration configuration;
+
+    public OpenWarble(Configuration configuration) {
+        this.configuration = configuration;
+    }
 
     private MessageCallback callback = null;
 
@@ -101,6 +104,13 @@ public class OpenWarble {
 
     }
 
+    public static void generate_pitch(double[] signal_out, final int location,final int length, double sample_rate, double frequency, double power_peak) {
+        double t_step = 1 / sample_rate;
+        for(int i=location; i < location + length; i++) {
+		    final double window = 0.5 * (1 - Math.cos((M2PI * (i - location)) / (length - 1)));
+            signal_out[i] += Math.sin(i * t_step * M2PI * frequency) * power_peak * window;
+        }
+    }
 
     public MessageCallback getCallback() {
         return callback;
