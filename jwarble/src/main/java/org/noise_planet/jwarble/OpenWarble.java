@@ -37,9 +37,27 @@ public class OpenWarble {
 
     public static final double M2PI = Math.PI * 2;
     private Configuration configuration;
+    public final static int NUM_FREQUENCIES = 12;
+    final double[] frequencies = new double[NUM_FREQUENCIES];
+    final int block_length;
+    final int word_length;
+    final int chirp_length;
+    final int messageSamples;
 
     public OpenWarble(Configuration configuration) {
         this.configuration = configuration;
+        block_length = configuration.payloadSize;
+        word_length = (int)(configuration.sampleRate * configuration.wordTime);
+        chirp_length = word_length;
+        messageSamples = chirp_length + block_length * word_length;
+        // Precompute pitch frequencies
+        for(int i = 0; i < NUM_FREQUENCIES; i++) {
+            if(configuration.frequencyIncrement != 0) {
+                frequencies[i] = configuration.firstFrequency + i * configuration.frequencyIncrement;
+            } else {
+                frequencies[i] = configuration.firstFrequency * Math.pow(configuration.frequencyMulti, i * 2);
+            }
+        }
     }
 
     private MessageCallback callback = null;
@@ -110,6 +128,34 @@ public class OpenWarble {
 		    final double window = 0.5 * (1 - Math.cos((M2PI * (i - location)) / (length - 1)));
             signal_out[i] += Math.sin(i * t_step * M2PI * frequency) * power_peak * window;
         }
+    }
+
+    public static void generate_chirp(double[] signal_out, final int location,final int length, double sample_rate, double frequencyStart, double frequencyEnd, double power_peak) {
+        double f1_div_f0 = frequencyEnd / frequencyStart;
+        double chirp_time = length / sample_rate;
+        for (int i = location; i < location + length; i++) {
+            // Generate log chirp into cache
+            // low frequency to high frequency
+            final double window = 0.5 * (1 - Math.cos((M2PI * (i - location)) / (length - 1)));
+            signal_out[i] += window * Math.sin(M2PI * chirp_time / Math.log(f1_div_f0) * frequencyStart * (Math.pow(f1_div_f0, ((double) (i - location) / sample_rate) / chirp_time) - 1.0));
+        }
+    }
+
+    public double[] generate_signal(double powerPeak, byte[] words) {
+        double[] signal = new double[messageSamples];
+        int location = 0;
+        generate_chirp(signal, 0, chirp_length, configuration.sampleRate, configuration.firstFrequency, frequencies[frequencies.length - 1], powerPeak);
+        location += chirp_length;
+        for(int idword = 0; idword < block_length; idword++) {
+            int code = Hamming12_8.encode(words[idword]);
+            for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
+                if((code & (1 << idfreq)) != 0) {
+                    generate_pitch(signal, location, word_length ,configuration.sampleRate, frequencies[idfreq], powerPeak);
+                }
+            }
+            location+=word_length;
+        }
+        return signal;
     }
 
     public MessageCallback getCallback() {

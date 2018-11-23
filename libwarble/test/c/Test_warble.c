@@ -134,7 +134,7 @@ MU_TEST(testWriteSignal) {
 	// import base58
 	// import struct
 	// s = struct.Struct('b').unpack
-	// payload = map((lambda v : s(v)[0], base58.b58decode("QmXjkFQjnD8i8ntmwehoAHBfJEApETx8ebScyVzAHqgjpD"))
+	// payload = map(lambda v : s(v)[0], base58.b58decode("QmXjkFQjnD8i8ntmwehoAHBfJEApETx8ebScyVzAHqgjpD"))
 	int8_t payload[] = {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36,
 		-100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
 	int blankBefore = (int)(44100 * 0.55);

@@ -36,7 +36,7 @@ package org.noise_planet.jwarble;
 /**
  * Hamming 12,8 algorithm . On 12 bits transfer, 8 bits are for data and 4 bits for error correcting code
  * @see "https://github.com/RobotRoom/Hamming"
- *
+ * @author nicolas
  */
 public class Hamming12_8 {
     private static final byte[] parity128 = new byte[] {
@@ -109,7 +109,7 @@ public class Hamming12_8 {
     }
 
     public static int encode(byte value) {
-        return value << 4 | parity128[value];
+        return value << 4 | parity128[value - Byte.MIN_VALUE];
     }
 
     public static CorrectResult decode(int value) {
@@ -122,7 +122,7 @@ public class Hamming12_8 {
             return new CorrectResult(CorrectResultCode.FAIL_CORRECTION, (byte)0); // Non-recoverable error
         }
 
-        final byte syndrome = (byte)(parity128[value] ^ parity);
+        final byte syndrome = (byte)(parity128[value - Byte.MIN_VALUE] ^ parity);
 
         if (syndrome != 0)
         {
