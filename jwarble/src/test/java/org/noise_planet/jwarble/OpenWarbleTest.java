@@ -125,9 +125,6 @@ public class OpenWarbleTest {
         System.arraycopy(signal, 0, allSignal, blanckSamples, signal.length);
         double[] chirp = new double[openWarble.getChirp_length()];
         OpenWarble.generate_chirp(chirp, 0, chirp.length, sampleRate, openWarble.frequencies[0], openWarble.frequencies[openWarble.frequencies.length - 1], 1);
-        //writeToFile("/home/nicolas/ownCloud/ifsttar/documents/projets/noisecapture/android/openwarble/intercorrelatetest/signal.raw", allSignal);
-        //writeToFile("/home/nicolas/ownCloud/ifsttar/documents/projets/noisecapture/android/openwarble/intercorrelatetest/chirpfft.raw", openWarble.chirpFFT);
-        //writeToFile("/home/nicolas/ownCloud/ifsttar/documents/projets/noisecapture/android/openwarble/intercorrelatetest/chirp.raw", chirp);
         int realSize = allSignal.length + chirp.length - 1;
         double[] in2 = new double[OpenWarble.nextFastSize(allSignal.length + chirp.length - 1) * 2];
         double[] in1 = new double[in2.length];
@@ -145,12 +142,18 @@ public class OpenWarbleTest {
             in1[i * 2 + 1] = cc.i;
         }
         fftTool.complexInverse(in1, true);
-        int startIndex = (realSize - allSignal.length) / 2;
+        int startIndex = (realSize - allSignal.length);
         double[] result = new double[allSignal.length];
+        double maxValue = Double.MIN_VALUE;
+        int maxIndex = -1;
         for(int i=0; i < result.length; i++) {
-            result[i] = in1[startIndex * 2 + i * 2];
+            result[i] = in1[startIndex + i * 2];
+            if(result[i] > maxValue) {
+                maxValue = result[i];
+                maxIndex = i;
+            }
         }
-        writeToFile("/home/nicolas/ownCloud/ifsttar/documents/projets/noisecapture/android/openwarble/intercorrelatetest/convolution.raw", result);
+        Assert.assertEquals(blanckSamples, maxIndex - openWarble.chirp_length / 2);
     }
 
 
