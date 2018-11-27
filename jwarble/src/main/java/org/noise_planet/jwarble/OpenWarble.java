@@ -215,6 +215,7 @@ public class OpenWarble {
             for(int i=0; i < signalCache.length; i++) {
                 convolutionCache[startConvolutionCache + i] = fft[startIndex + i * 2];
             }
+            // Find max value
             double maxValue = Double.MIN_VALUE;
             int maxIndex = -1;
             for(int i=chirp_length / 2; i < convolutionCache.length - chirp_length; i++) {
@@ -223,8 +224,25 @@ public class OpenWarble {
                     maxIndex = i;
                 }
             }
-
-            System.out.println(String.format("Max index:%d value:%.2f cacheIndex:%d/%d cacheIndex+Chirp:%d", maxIndex  - chirp_length / 2 + (pushedSamples - convolutionCache.length), maxValue, maxIndex,convolutionCache.length, maxIndex+chirp_length));
+            // Count all peaks near max value
+            double oldWeightedAvg = 0;
+            boolean increase = false;
+            int peakCount = 0;
+            for(int i = Math.max(0, maxIndex - chirp_length / 2); i < maxIndex + chirp_length / 2; i++) {
+                double weightedAvg = convolutionCache[i];
+                double value = weightedAvg - oldWeightedAvg;
+                if(convolutionCache[i] > 0 && ((value > 0  && !increase) || (value < 0 && increase))) {
+                    if(convolutionCache[i - 1] > maxValue * configuration.convolutionPeakRatio) {
+                        peakCount++;
+                    }
+                }
+                increase = value > 0;
+                oldWeightedAvg = weightedAvg;
+            }
+            if(peakCount == 1) {
+                System.out.println(String.format("Max index:%d value:%.2f cacheIndex:%d/%d cacheIndex+Chirp:%d", maxIndex - chirp_length / 2 + (pushedSamples - convolutionCache.length), maxValue, maxIndex, convolutionCache.length, maxIndex + chirp_length));
+                triggerSampleIndexBegin = maxIndex - chirp_length / 2;
+            }
             if(unitTestCallback != null) {
                 unitTestCallback.onConvolution(convolutionCache);
             }

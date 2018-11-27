@@ -150,30 +150,29 @@ public class OpenWarbleTest {
         }
         Assert.assertEquals(blankSamples, maxIndex - openWarble.chirp_length / 2);
         // Find peaks
-        int avg = 4;
-        int count = 0;
-        for(int iavg = 0; iavg < avg; iavg++) {
-            count += (avg - iavg);
-        }
+        int avg = 5;
         double oldWeightedAvg = 0;
         boolean increase = false;
         double[] weighteddata = new double[result.length];
-        for(int i = Math.max(avg, maxIndex - openWarble.chirp_length / 2); i < maxIndex + openWarble.chirp_length / 2; i++) {
-            double weightedAvg = 0;
-            for(int iavg = 0; iavg < avg; iavg++) {
-                weightedAvg += result[i-iavg] * (avg - iavg);
-            }
-            weightedAvg /= count;
+        double[] peaks = new double[result.length];
+        for(int i = Math.max(0, maxIndex - openWarble.chirp_length / 2); i < Math.min(maxIndex + openWarble.chirp_length / 2, result.length); i++) {
+            double weightedAvg = result[i];
+            //for(int iavg = 0; iavg < avg; iavg++) {
+            //    weightedAvg += result[i-iavg];
+            //}
+            //weightedAvg /= avg;
             double value = weightedAvg - oldWeightedAvg;
-            weighteddata[i] = value;
-            if((value > 0  && !increase) || (value < 0 && increase)) {
+            weighteddata[i] = weightedAvg;
+            if(result[i] > 0 && ((value > 0  && !increase) || (value < 0 && increase))) {
                 // Slope change
-                System.out.println("Slope change at " + i);
+                //System.out.println("Slope change at " + i);
+                peaks[i - 1] = 400;
             }
             increase = value > 0;
             oldWeightedAvg = weightedAvg;
         }
-        writeToFile("/home/nicolas/ownCloud/ifsttar/documents/projets/noisecapture/android/openwarble/intercorrelatetest/weighteddata.raw", weighteddata);
+        //writeToFile("/home/nicolas/ownCloud/ifsttar/documents/projets/noisecapture/android/openwarble/intercorrelatetest/weighteddata.raw", weighteddata);
+        //writeToFile("/home/nicolas/ownCloud/ifsttar/documents/projets/noisecapture/android/openwarble/intercorrelatetest/peaks.raw", peaks);
     }
 
 
