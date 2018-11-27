@@ -50,6 +50,7 @@ public class OpenWarble {
     final int chirp_length;
     final int messageSamples;
     double[] signalCache;
+    double[] convolutionCache;
     public double[] chirpFFT;
     public enum PROCESS_RESPONSE {PROCESS_IDLE, PROCESS_ERROR, PROCESS_PITCH, PROCESS_COMPLETE}
     private long triggerSampleIndexBegin = -1;
@@ -65,6 +66,7 @@ public class OpenWarble {
         chirp_length = word_length;
         messageSamples = chirp_length + block_length * word_length;
         signalCache = new double[chirp_length + chirp_length];
+        convolutionCache = new double[signalCache.length * 2];
         // Precompute pitch frequencies
         for(int i = 0; i < NUM_FREQUENCIES; i++) {
             if(configuration.frequencyIncrement != 0) {
@@ -173,7 +175,7 @@ public class OpenWarble {
                     signalCache.length);
             pushedSamples+=signalCache.length;
         }
-        if(pushedSamples - processedSamples >= chirp_length) {
+        if(pushedSamples - processedSamples >= signalCache.length) {
             switch (process()) {
                 case PROCESS_PITCH:
                     callback.onPitch(processedSamples);
@@ -188,7 +190,7 @@ public class OpenWarble {
     }
 
     public int getMaxPushSamplesLength() {
-        return Math.min(chirp_length, (int)(chirp_length - (pushedSamples - processedSamples)));
+        return Math.min(signalCache.length, (int)(signalCache.length - (pushedSamples - processedSamples)));
     }
 
     private PROCESS_RESPONSE process() {
@@ -207,16 +209,21 @@ public class OpenWarble {
             }
             fftTool.complexInverse(fft, true);
             int startIndex = (realSize - signalCache.length);
+            // Move convolution cache backward
+            System.arraycopy(convolutionCache, signalCache.length, convolutionCache, 0, convolutionCache.length - signalCache.length);
+            int startConvolutionCache = convolutionCache.length - signalCache.length;
+            for(int i=0; i < signalCache.length; i++) {
+                convolutionCache[startConvolutionCache + i] = fft[startIndex + i * 2];
+            }
             double maxValue = Double.MIN_VALUE;
             int maxIndex = -1;
-            for(int i=0; i < signalCache.length; i++) {
-                double value = fft[startIndex + i * 2];
-                if(value > maxValue) {
-                    maxValue = value;
+            for(int i=0; i < convolutionCache.length; i++) {
+                if(convolutionCache[i] > maxValue) {
+                    maxValue = convolutionCache[i];
                     maxIndex = i;
                 }
             }
-            System.out.println(String.format("Max index:%d value:%.2f", maxIndex  - chirp_length / 2 + (pushedSamples - signalCache.length), maxValue));
+            System.out.println(String.format("Max index:%d value:%.2f cacheIndex:%d/%d cacheIndex+Chirp:%d", maxIndex  - chirp_length / 2 + (pushedSamples - convolutionCache.length), maxValue, maxIndex,convolutionCache.length, maxIndex+chirp_length));
             if(unitTestCallback != null) {
                 unitTestCallback.onConvolution(fft);
             }
