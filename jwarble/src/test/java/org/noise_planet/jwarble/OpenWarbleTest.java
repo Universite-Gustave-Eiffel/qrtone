@@ -137,20 +137,20 @@ public class OpenWarbleTest {
         DoubleFFT_1D fftTool = new DoubleFFT_1D(in1.length / 2);
         fftTool.realForwardFull(in2);
         fftTool.realForwardFull(in1);
-        for(int i = 0; i < in1.length - 1; i+=2) {
-            OpenWarble.Complex c1 = new OpenWarble.Complex(in1[i], in1[i+1]);
-            OpenWarble.Complex c2 = new OpenWarble.Complex(in2[i], in2[i+1]);
+        for(int i = 0; i < in1.length / 2; i++) {
+            OpenWarble.Complex c1 = new OpenWarble.Complex(in1[i * 2], in1[i * 2 + 1]);
+            OpenWarble.Complex c2 = new OpenWarble.Complex(in2[i * 2], in2[i * 2 + 1]);
             OpenWarble.Complex cc = c1.mul(c2);
-            in1[i] = cc.r;
-            in1[i+1] = cc.i;
+            in1[i * 2] = cc.r;
+            in1[i * 2 + 1] = cc.i;
         }
-        fftTool.realInverseFull(in1, true);
+        fftTool.complexInverse(in1, true);
         int startIndex = (realSize - allSignal.length) / 2;
         double[] result = new double[allSignal.length];
         for(int i=0; i < result.length; i++) {
-            result[i] = in1[startIndex + i] + in1[startIndex + i * 2];
+            result[i] = in1[startIndex * 2 + i * 2];
         }
-        writeToFile("/home/nicolas/ownCloud/ifsttar/documents/projets/noisecapture/android/openwarble/intercorrelatetest/convolution.raw", in1);
+        writeToFile("/home/nicolas/ownCloud/ifsttar/documents/projets/noisecapture/android/openwarble/intercorrelatetest/convolution.raw", result);
     }
 
 
