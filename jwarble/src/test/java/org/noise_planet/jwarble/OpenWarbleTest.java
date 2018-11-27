@@ -80,17 +80,18 @@ public class OpenWarbleTest {
         writeToFile("jwarble/target/test.raw", shortSignal);
     }
 
-
+    @Test
     public void testConvolution() throws IOException {
         double sampleRate = 44100;
         double powerPeak = 1; // 90 dBspl
         double blankTime = 1.3;
-        int blanckSamples = (int)(blankTime * sampleRate);
+        int blankSamples = (int)(blankTime * sampleRate);
+        System.out.println("Chirp location :"+blankSamples);
         byte[] payload = "correlation".getBytes();
         OpenWarble openWarble = new OpenWarble(Configuration.getAudible(payload.length, sampleRate));
         double[] signal = openWarble.generate_signal(powerPeak, payload);
-        double[] allSignal = new double[blanckSamples+signal.length];
-        System.arraycopy(signal, 0, allSignal, blanckSamples, signal.length);
+        double[] allSignal = new double[blankSamples+signal.length];
+        System.arraycopy(signal, 0, allSignal, blankSamples, signal.length);
         UtCallback utCallback = new UtCallback();
         openWarble.setUnitTestCallback(utCallback);
         int cursor = 0;
@@ -101,12 +102,6 @@ public class OpenWarbleTest {
             }
             openWarble.pushSamples(Arrays.copyOfRange(allSignal, cursor, cursor+len));
             cursor+=len;
-            for(double val : utCallback.convResult) {
-                if(val > 0) {
-                    System.out.println(Arrays.toString(utCallback.convResult));
-                    break;
-                }
-            }
         }
     }
 
@@ -117,12 +112,12 @@ public class OpenWarbleTest {
         double sampleRate = 44100;
         double powerPeak = 1; // 90 dBspl
         double blankTime = 1.3;
-        int blanckSamples = (int)(blankTime * sampleRate);
+        int blankSamples = (int)(blankTime * sampleRate);
         byte[] payload = "correlation".getBytes();
         OpenWarble openWarble = new OpenWarble(Configuration.getAudible(payload.length, sampleRate));
         double[] signal = openWarble.generate_signal(powerPeak, payload);
-        double[] allSignal = new double[blanckSamples+signal.length];
-        System.arraycopy(signal, 0, allSignal, blanckSamples, signal.length);
+        double[] allSignal = new double[blankSamples+signal.length];
+        System.arraycopy(signal, 0, allSignal, blankSamples, signal.length);
         double[] chirp = new double[openWarble.getChirp_length()];
         OpenWarble.generate_chirp(chirp, 0, chirp.length, sampleRate, openWarble.frequencies[0], openWarble.frequencies[openWarble.frequencies.length - 1], 1);
         int realSize = allSignal.length + chirp.length - 1;
@@ -153,7 +148,7 @@ public class OpenWarbleTest {
                 maxIndex = i;
             }
         }
-        Assert.assertEquals(blanckSamples, maxIndex - openWarble.chirp_length / 2);
+        Assert.assertEquals(blankSamples, maxIndex - openWarble.chirp_length / 2);
     }
 
 

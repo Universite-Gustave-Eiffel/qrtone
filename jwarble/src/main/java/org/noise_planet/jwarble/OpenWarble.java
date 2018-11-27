@@ -74,10 +74,10 @@ public class OpenWarble {
             }
         }
         // Precompute chirp FFT for fast convolution
-        chirpFFT = new double[nextFastSize(chirp_length + signalCache.length - 1)];
+        chirpFFT = new double[nextFastSize(chirp_length + signalCache.length - 1) * 2];
         generate_chirp(chirpFFT, 0, chirp_length, configuration.sampleRate, frequencies[0], frequencies[frequencies.length - 1], 1);
         reverse(chirpFFT, chirp_length);
-        new DoubleFFT_1D(chirpFFT.length).realForward(chirpFFT);
+        new DoubleFFT_1D(chirpFFT.length / 2).realForwardFull(chirpFFT);
     }
 
     public static void reverse(double[] array, int length) {
@@ -173,7 +173,7 @@ public class OpenWarble {
                     signalCache.length);
             pushedSamples+=signalCache.length;
         }
-        if(pushedSamples - processedSamples > chirp_length) {
+        if(pushedSamples - processedSamples >= chirp_length) {
             switch (process()) {
                 case PROCESS_PITCH:
                     callback.onPitch(processedSamples);
@@ -188,24 +188,39 @@ public class OpenWarble {
     }
 
     public int getMaxPushSamplesLength() {
-        return Math.min(signalCache.length, (int)(signalCache.length - (pushedSamples - processedSamples)));
+        return Math.min(chirp_length, (int)(chirp_length - (pushedSamples - processedSamples)));
     }
 
     private PROCESS_RESPONSE process() {
         if(triggerSampleIndexBegin < 0) {
             // Looking for trigger chirp
+            int realSize = signalCache.length + chirp_length - 1;
             double[] fft = Arrays.copyOf(signalCache, chirpFFT.length);
-            DoubleFFT_1D fftTool = new DoubleFFT_1D(signalCache.length);
-            fftTool.realForward(fft);
-            for(int i = 0; i < fft.length; i++) {
-                fft[i] = fft[i] * chirpFFT[i];
+            DoubleFFT_1D fftTool = new DoubleFFT_1D(chirpFFT.length / 2);
+            fftTool.realForwardFull(fft);
+            for(int i = 0; i < signalCache.length / 2; i++) {
+                OpenWarble.Complex c1 = new OpenWarble.Complex(fft[i * 2], fft[i * 2 + 1]);
+                OpenWarble.Complex c2 = new OpenWarble.Complex(chirpFFT[i * 2], chirpFFT[i * 2 + 1]);
+                OpenWarble.Complex cc = c1.mul(c2);
+                fft[i * 2] = cc.r;
+                fft[i * 2 + 1] = cc.i;
             }
-            fftTool.realInverse(fft, false);
-            int startIndex = (fft.length - signalCache.length) / 2;
-            int endIndex = startIndex + signalCache.length;
-            fft = Arrays.copyOfRange(fft, startIndex, endIndex);
-            unitTestCallback.onConvolution(fft);
-            processedSamples += signalCache.length;
+            fftTool.complexInverse(fft, true);
+            int startIndex = (realSize - signalCache.length);
+            double maxValue = Double.MIN_VALUE;
+            int maxIndex = -1;
+            for(int i=0; i < signalCache.length; i++) {
+                double value = fft[startIndex + i * 2];
+                if(value > maxValue) {
+                    maxValue = value;
+                    maxIndex = i;
+                }
+            }
+            System.out.println(String.format("Max index:%d value:%.2f", maxIndex  - chirp_length / 2 + (pushedSamples - signalCache.length), maxValue));
+            if(unitTestCallback != null) {
+                unitTestCallback.onConvolution(fft);
+            }
+            processedSamples = pushedSamples;
         } else {
             // Target pitch contain the pitch peak ( 0.25 to start from hanning filter lobe)
             // Compute absolute position
