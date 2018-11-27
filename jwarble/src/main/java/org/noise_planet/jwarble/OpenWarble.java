@@ -33,9 +33,15 @@
 
 package org.noise_planet.jwarble;
 
+import org.jtransforms.fft.DoubleFFT_1D;
+
+import java.util.Arrays;
+
 public class OpenWarble {
 
     public static final double M2PI = Math.PI * 2;
+    private long pushedSamples = 0;
+    private long processedSamples = 0;
     private Configuration configuration;
     public final static int NUM_FREQUENCIES = 12;
     final double[] frequencies = new double[NUM_FREQUENCIES];
@@ -43,13 +49,22 @@ public class OpenWarble {
     final int word_length;
     final int chirp_length;
     final int messageSamples;
+    double[] signalCache;
+    public double[] chirpFFT;
+    public enum PROCESS_RESPONSE {PROCESS_IDLE, PROCESS_ERROR, PROCESS_PITCH, PROCESS_COMPLETE}
+    private long triggerSampleIndexBegin = -1;
+    int parsed_cursor = 0; // parsed words
+    byte[] parsed;
+    private UnitTestCallback unitTestCallback;
 
     public OpenWarble(Configuration configuration) {
         this.configuration = configuration;
         block_length = configuration.payloadSize;
+        parsed = new byte[configuration.payloadSize];
         word_length = (int)(configuration.sampleRate * configuration.wordTime);
         chirp_length = word_length;
         messageSamples = chirp_length + block_length * word_length;
+        signalCache = new double[chirp_length + chirp_length];
         // Precompute pitch frequencies
         for(int i = 0; i < NUM_FREQUENCIES; i++) {
             if(configuration.frequencyIncrement != 0) {
@@ -58,6 +73,34 @@ public class OpenWarble {
                 frequencies[i] = configuration.firstFrequency * Math.pow(configuration.frequencyMulti, i * 2);
             }
         }
+        // Precompute chirp FFT for fast convolution
+        chirpFFT = new double[nextFastSize(chirp_length + signalCache.length - 1)];
+        generate_chirp(chirpFFT, 0, chirp_length, configuration.sampleRate, frequencies[0], frequencies[frequencies.length - 1], 1);
+        reverse(chirpFFT, chirp_length);
+        new DoubleFFT_1D(chirpFFT.length).realForward(chirpFFT);
+    }
+
+    public static void reverse(double[] array, int length) {
+        for(int i = 0; i < length / 2; i++)
+        {
+            double temp = array[i];
+            array[i] = array[length - i - 1];
+            array[length - i - 1] = temp;
+        }
+    }
+
+    public static int nextFastSize(int n)
+    {
+        while(true) {
+            int m=n;
+            while ( (m%2) == 0 ) m/=2;
+            while ( (m%3) == 0 ) m/=3;
+            while ( (m%5) == 0 ) m/=5;
+            if (m<=1)
+                break; /* n is completely factorable by twos, threes, and fives */
+            n++;
+        }
+        return n;
     }
 
     private MessageCallback callback = null;
@@ -119,10 +162,75 @@ public class OpenWarble {
     }
 
     public void pushSamples(double[] samples) {
-
+        if(samples.length < signalCache.length) {
+            // Move previous samples backward
+            System.arraycopy(signalCache, samples.length, signalCache, 0, signalCache.length - samples.length);
+            System.arraycopy(samples, 0, signalCache, signalCache.length - samples.length, samples.length);
+            pushedSamples+=samples.length;
+        } else {
+            // Copy arrays
+            System.arraycopy(samples, Math.max(0, samples.length - signalCache.length), signalCache, 0,
+                    signalCache.length);
+            pushedSamples+=signalCache.length;
+        }
+        if(pushedSamples - processedSamples > chirp_length) {
+            switch (process()) {
+                case PROCESS_PITCH:
+                    callback.onPitch(processedSamples);
+                    break;
+                case PROCESS_COMPLETE:
+                    callback.onNewMessage(parsed, processedSamples);
+                    break;
+                case PROCESS_ERROR:
+                    callback.onError(processedSamples);
+            }
+        }
     }
 
-    public static void generate_pitch(double[] signal_out, final int location,final int length, double sample_rate, double frequency, double power_peak) {
+    public int getMaxPushSamplesLength() {
+        return Math.min(signalCache.length, (int)(signalCache.length - (pushedSamples - processedSamples)));
+    }
+
+    private PROCESS_RESPONSE process() {
+        if(triggerSampleIndexBegin < 0) {
+            // Looking for trigger chirp
+            double[] fft = Arrays.copyOf(signalCache, chirpFFT.length);
+            DoubleFFT_1D fftTool = new DoubleFFT_1D(signalCache.length);
+            fftTool.realForward(fft);
+            for(int i = 0; i < fft.length; i++) {
+                fft[i] = fft[i] * chirpFFT[i];
+            }
+            fftTool.realInverse(fft, false);
+            int startIndex = (fft.length - signalCache.length) / 2;
+            int endIndex = startIndex + signalCache.length;
+            fft = Arrays.copyOfRange(fft, startIndex, endIndex);
+            unitTestCallback.onConvolution(fft);
+            processedSamples += signalCache.length;
+        } else {
+            // Target pitch contain the pitch peak ( 0.25 to start from hanning filter lobe)
+            // Compute absolute position
+            int pitch_lobe_offset = (int)(0.25 * word_length);
+            long targetPitch = triggerSampleIndexBegin + chirp_length + (parsed_cursor + 1) * word_length + pitch_lobe_offset;
+            if(targetPitch + word_length < pushedSamples) {
+                return PROCESS_RESPONSE.PROCESS_IDLE;
+            }
+        }
+        return PROCESS_RESPONSE.PROCESS_IDLE;
+    }
+
+    public Configuration getConfiguration() {
+        return configuration;
+    }
+
+    public int getWord_length() {
+        return word_length;
+    }
+
+    public int getChirp_length() {
+        return chirp_length;
+    }
+
+    public static void generate_pitch(double[] signal_out, final int location, final int length, double sample_rate, double frequency, double power_peak) {
         double t_step = 1 / sample_rate;
         for(int i=location; i < location + length; i++) {
 		    final double window = 0.5 * (1 - Math.cos((M2PI * (i - location)) / (length - 1)));
@@ -166,7 +274,11 @@ public class OpenWarble {
         this.callback = callback;
     }
 
-    private static final class Complex {
+    public void setUnitTestCallback(UnitTestCallback unitTestCallback) {
+        this.unitTestCallback = unitTestCallback;
+    }
+
+    public static final class Complex {
         public final double r;
         public final double i;
 
@@ -190,5 +302,9 @@ public class OpenWarble {
         Complex exp() {
             return new Complex(Math.cos(r), -Math.sin(r));
         }
+    }
+
+    public interface UnitTestCallback {
+        void onConvolution(double[] convolutionResult);
     }
 }

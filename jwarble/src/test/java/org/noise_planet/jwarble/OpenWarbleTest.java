@@ -1,11 +1,14 @@
 package org.noise_planet.jwarble;
 
+import org.jtransforms.fft.DoubleFFT_1D;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Collections;
 
 import static org.junit.Assert.*;
 
@@ -44,7 +47,21 @@ public class OpenWarbleTest {
             fileOutputStream.close();
         }
     }
-    @Test
+
+
+
+    private static void writeToFile(String path, double[] signal) throws IOException {
+        FileOutputStream fileOutputStream = new FileOutputStream(path);
+        try {
+            ByteBuffer byteBuffer = ByteBuffer.allocate(Double.SIZE / Byte.SIZE);
+            for(int i = 0; i < signal.length; i++) {
+                byteBuffer.putDouble(0, signal[i]);
+                fileOutputStream.write(byteBuffer.array());
+            }
+        } finally {
+            fileOutputStream.close();
+        }
+    }
     public void signalWrite() throws IOException {
         double sampleRate = 44100;
         double powerPeak = 1; // 90 dBspl
@@ -61,5 +78,88 @@ public class OpenWarbleTest {
             shortSignal[i] = (short)((signal[i] / maxValue) * Short.MAX_VALUE);
         }
         writeToFile("jwarble/target/test.raw", shortSignal);
+    }
+
+
+    public void testConvolution() throws IOException {
+        double sampleRate = 44100;
+        double powerPeak = 1; // 90 dBspl
+        double blankTime = 1.3;
+        int blanckSamples = (int)(blankTime * sampleRate);
+        byte[] payload = "correlation".getBytes();
+        OpenWarble openWarble = new OpenWarble(Configuration.getAudible(payload.length, sampleRate));
+        double[] signal = openWarble.generate_signal(powerPeak, payload);
+        double[] allSignal = new double[blanckSamples+signal.length];
+        System.arraycopy(signal, 0, allSignal, blanckSamples, signal.length);
+        UtCallback utCallback = new UtCallback();
+        openWarble.setUnitTestCallback(utCallback);
+        int cursor = 0;
+        while (cursor < allSignal.length) {
+            int len = Math.min(openWarble.getMaxPushSamplesLength(), allSignal.length - cursor);
+            if(len == 0) {
+                break;
+            }
+            openWarble.pushSamples(Arrays.copyOfRange(allSignal, cursor, cursor+len));
+            cursor+=len;
+            for(double val : utCallback.convResult) {
+                if(val > 0) {
+                    System.out.println(Arrays.toString(utCallback.convResult));
+                    break;
+                }
+            }
+        }
+    }
+
+
+
+    @Test
+    public void testPureConvolution() throws IOException {
+        double sampleRate = 44100;
+        double powerPeak = 1; // 90 dBspl
+        double blankTime = 1.3;
+        int blanckSamples = (int)(blankTime * sampleRate);
+        byte[] payload = "correlation".getBytes();
+        OpenWarble openWarble = new OpenWarble(Configuration.getAudible(payload.length, sampleRate));
+        double[] signal = openWarble.generate_signal(powerPeak, payload);
+        double[] allSignal = new double[blanckSamples+signal.length];
+        System.arraycopy(signal, 0, allSignal, blanckSamples, signal.length);
+        double[] chirp = new double[openWarble.getChirp_length()];
+        OpenWarble.generate_chirp(chirp, 0, chirp.length, sampleRate, openWarble.frequencies[0], openWarble.frequencies[openWarble.frequencies.length - 1], 1);
+        //writeToFile("/home/nicolas/ownCloud/ifsttar/documents/projets/noisecapture/android/openwarble/intercorrelatetest/signal.raw", allSignal);
+        //writeToFile("/home/nicolas/ownCloud/ifsttar/documents/projets/noisecapture/android/openwarble/intercorrelatetest/chirpfft.raw", openWarble.chirpFFT);
+        //writeToFile("/home/nicolas/ownCloud/ifsttar/documents/projets/noisecapture/android/openwarble/intercorrelatetest/chirp.raw", chirp);
+        int realSize = allSignal.length + chirp.length - 1;
+        double[] in2 = new double[OpenWarble.nextFastSize(allSignal.length + chirp.length - 1) * 2];
+        double[] in1 = new double[in2.length];
+        System.arraycopy(allSignal, 0, in1, 0, allSignal.length);
+        System.arraycopy(chirp, 0, in2, 0, chirp.length);
+        OpenWarble.reverse(in2, chirp.length);
+        DoubleFFT_1D fftTool = new DoubleFFT_1D(in1.length / 2);
+        fftTool.realForwardFull(in2);
+        fftTool.realForwardFull(in1);
+        for(int i = 0; i < in1.length - 1; i+=2) {
+            OpenWarble.Complex c1 = new OpenWarble.Complex(in1[i], in1[i+1]);
+            OpenWarble.Complex c2 = new OpenWarble.Complex(in2[i], in2[i+1]);
+            OpenWarble.Complex cc = c1.mul(c2);
+            in1[i] = cc.r;
+            in1[i+1] = cc.i;
+        }
+        fftTool.realInverseFull(in1, true);
+        int startIndex = (realSize - allSignal.length) / 2;
+        double[] result = new double[allSignal.length];
+        for(int i=0; i < result.length; i++) {
+            result[i] = in1[startIndex + i] + in1[startIndex + i * 2];
+        }
+        writeToFile("/home/nicolas/ownCloud/ifsttar/documents/projets/noisecapture/android/openwarble/intercorrelatetest/convolution.raw", in1);
+    }
+
+
+
+    private static class UtCallback implements OpenWarble.UnitTestCallback {
+        public double[] convResult;
+        @Override
+        public void onConvolution(double[] convolutionResult) {
+            convResult = convolutionResult;
+        }
     }
 }
