@@ -217,15 +217,16 @@ public class OpenWarble {
             }
             double maxValue = Double.MIN_VALUE;
             int maxIndex = -1;
-            for(int i=0; i < convolutionCache.length; i++) {
+            for(int i=chirp_length / 2; i < convolutionCache.length - chirp_length; i++) {
                 if(convolutionCache[i] > maxValue) {
                     maxValue = convolutionCache[i];
                     maxIndex = i;
                 }
             }
+
             System.out.println(String.format("Max index:%d value:%.2f cacheIndex:%d/%d cacheIndex+Chirp:%d", maxIndex  - chirp_length / 2 + (pushedSamples - convolutionCache.length), maxValue, maxIndex,convolutionCache.length, maxIndex+chirp_length));
             if(unitTestCallback != null) {
-                unitTestCallback.onConvolution(fft);
+                unitTestCallback.onConvolution(convolutionCache);
             }
             processedSamples = pushedSamples;
         } else {

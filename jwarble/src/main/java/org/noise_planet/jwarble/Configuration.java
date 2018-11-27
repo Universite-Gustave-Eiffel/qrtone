@@ -43,6 +43,8 @@ public class Configuration {
   public static final double DEFAULT_INAUDIBLE_FIRST_FREQUENCY = 18200;
   public static final int DEFAULT_INAUDIBLE_STEP = 120;
   public static final double DEFAULT_TRIGGER_SNR = 20;
+  // Peak ratio, when computing correlation, no other peaks must be in the provided percentage
+  public static final double DEFAULT_CONVOLUTION_PEAK_RATIO = 0.8;
 
   public final int payloadSize;
   public final double sampleRate;
@@ -51,8 +53,9 @@ public class Configuration {
   public final double frequencyMulti;
   public final double wordTime;
   public final double triggerSnr;
+  public final double convolutionPeakRatio;
 
-  public Configuration(int payloadSize, double sampleRate, double firstFrequency, int frequencyIncrement, double frequencyMulti, double wordTime, double triggerSnr) {
+  public Configuration(int payloadSize, double sampleRate, double firstFrequency, int frequencyIncrement, double frequencyMulti, double wordTime, double triggerSnr, double convolutionPeakRatio) {
     this.payloadSize = payloadSize;
     this.sampleRate = sampleRate;
     this.firstFrequency = firstFrequency;
@@ -60,6 +63,7 @@ public class Configuration {
     this.frequencyMulti = frequencyMulti;
     this.wordTime = wordTime;
     this.triggerSnr = triggerSnr;
+    this.convolutionPeakRatio = convolutionPeakRatio;
   }
 
   /**
@@ -70,7 +74,7 @@ public class Configuration {
    */
   public static Configuration getAudible(int payloadSize, double sampleRate) {
     return new Configuration(payloadSize, sampleRate, DEFAULT_AUDIBLE_FIRST_FREQUENCY,
-            0, MULT_SEMITONE, DEFAULT_WORD_TIME, DEFAULT_TRIGGER_SNR);
+            0, MULT_SEMITONE, DEFAULT_WORD_TIME, DEFAULT_TRIGGER_SNR, DEFAULT_CONVOLUTION_PEAK_RATIO);
   }
 
 
@@ -82,6 +86,6 @@ public class Configuration {
    */
   public static Configuration getInaudible(int payloadSize, double sampleRate) {
     return new Configuration(payloadSize, sampleRate, DEFAULT_INAUDIBLE_FIRST_FREQUENCY,
-            DEFAULT_INAUDIBLE_STEP, 0, DEFAULT_WORD_TIME, DEFAULT_TRIGGER_SNR);
+            DEFAULT_INAUDIBLE_STEP, 0, DEFAULT_WORD_TIME, DEFAULT_TRIGGER_SNR, DEFAULT_CONVOLUTION_PEAK_RATIO);
   }
 }
