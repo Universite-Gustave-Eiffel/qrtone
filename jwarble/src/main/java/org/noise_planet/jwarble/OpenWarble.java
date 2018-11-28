@@ -65,7 +65,7 @@ public class OpenWarble {
         word_length = (int)(configuration.sampleRate * configuration.wordTime);
         chirp_length = word_length;
         messageSamples = chirp_length + block_length * word_length;
-        signalCache = new double[chirp_length + chirp_length];
+        signalCache = new double[chirp_length * 2];
         convolutionCache = new double[signalCache.length * 2];
         // Precompute pitch frequencies
         for(int i = 0; i < NUM_FREQUENCIES; i++) {
@@ -105,6 +105,10 @@ public class OpenWarble {
         return n;
     }
 
+    public long getTriggerSampleIndexBegin() {
+        return triggerSampleIndexBegin;
+    }
+
     private MessageCallback callback = null;
 
     /**
@@ -117,15 +121,15 @@ public class OpenWarble {
      * @param freqs Array of frequency search in Hz
      * @return rms Rms power by frequencies
      */
-    public static double[] generalized_goertzel(final double[] signal,double sampleRate,final double[] freqs) {
+    public static double[] generalized_goertzel(final double[] signal, int start, int length, double sampleRate,final double[] freqs) {
         double[] outFreqsPower = new double[freqs.length];
         // Fix frequency using the sampleRate of the signal
-        double samplingRateFactor = signal.length / sampleRate;
+        double samplingRateFactor = length / sampleRate;
         // Computation via second-order system
         for(int id_freq = 0; id_freq < freqs.length; id_freq++) {
             // for a single frequency :
             // precompute the constants
-            double pik_term = M2PI * (freqs[id_freq] * samplingRateFactor) / (signal.length);
+            double pik_term = M2PI * (freqs[id_freq] * samplingRateFactor) / length;
             double cos_pik_term2 = Math.cos(pik_term) * 2;
 
             Complex cc = new Complex(pik_term, 0).exp();
@@ -135,21 +139,21 @@ public class OpenWarble {
             double s2 = 0.;
             // 'main' loop
             // number of iterations is (by one) less than the length of signal
-            for(int ind=0; ind < signal.length - 1; ind++) {
+            for(int ind=start; ind < length - 1; ind++) {
                 s0 = signal[ind] + cos_pik_term2 * s1 - s2;
                 s2 = s1;
                 s1 = s0;
             }
             // final computations
-            s0 = signal[signal.length - 1] + cos_pik_term2 * s1 - s2;
+            s0 = signal[start + length - 1] + cos_pik_term2 * s1 - s2;
 
             // complex multiplication substituting the last iteration
             // and correcting the phase for (potentially) non - integer valued
             // frequencies at the same time
             Complex parta = new Complex(s0, 0).sub(new Complex(s1, 0).mul(cc));
-            Complex partb = new Complex(pik_term * (signal.length - 1.), 0).exp();
+            Complex partb = new Complex(pik_term * (length - 1.), 0).exp();
             Complex y = parta.mul(partb);
-            outFreqsPower[id_freq] = Math.sqrt((y.r * y.r  + y.i * y.i) * 2) / signal.length;
+            outFreqsPower[id_freq] = Math.sqrt((y.r * y.r  + y.i * y.i) * 2) / length;
 
         }
         return outFreqsPower;
@@ -175,25 +179,41 @@ public class OpenWarble {
                     signalCache.length);
             pushedSamples+=signalCache.length;
         }
-        if(pushedSamples - processedSamples >= signalCache.length) {
-            switch (process()) {
-                case PROCESS_PITCH:
-                    callback.onPitch(processedSamples);
-                    break;
-                case PROCESS_COMPLETE:
-                    callback.onNewMessage(parsed, processedSamples);
-                    break;
-                case PROCESS_ERROR:
-                    callback.onError(processedSamples);
+        if((triggerSampleIndexBegin < 0 && pushedSamples - processedSamples >= signalCache.length)
+            ||(triggerSampleIndexBegin >= 0 && pushedSamples - processedSamples >= word_length)) {
+            PROCESS_RESPONSE processResponse = PROCESS_RESPONSE.PROCESS_PITCH;
+            while(processResponse == PROCESS_RESPONSE.PROCESS_PITCH || processResponse == PROCESS_RESPONSE.PROCESS_COMPLETE) {
+                processResponse = process();
+                switch (processResponse) {
+                    case PROCESS_PITCH:
+                        if (callback != null) {
+                            callback.onPitch(processedSamples);
+                        }
+                        break;
+                    case PROCESS_COMPLETE:
+                        if (callback != null) {
+                            callback.onNewMessage(parsed, processedSamples);
+                        }
+                        break;
+                    case PROCESS_ERROR:
+                        if (callback != null) {
+                            callback.onError(processedSamples);
+                        }
+                }
             }
         }
     }
 
     public int getMaxPushSamplesLength() {
-        return Math.min(signalCache.length, (int)(signalCache.length - (pushedSamples - processedSamples)));
+        if(triggerSampleIndexBegin < 0) {
+            return Math.min(signalCache.length, (int) (signalCache.length - (pushedSamples - processedSamples)));
+        } else {
+            return Math.min(word_length, (int) (word_length - (pushedSamples - processedSamples)));
+        }
     }
 
     private PROCESS_RESPONSE process() {
+        PROCESS_RESPONSE response = PROCESS_RESPONSE.PROCESS_IDLE;
         if(triggerSampleIndexBegin < 0) {
             // Looking for trigger chirp
             int realSize = signalCache.length + chirp_length - 1;
@@ -240,23 +260,47 @@ public class OpenWarble {
                 oldWeightedAvg = weightedAvg;
             }
             if(peakCount == 1) {
-                System.out.println(String.format("Max index:%d value:%.2f cacheIndex:%d/%d cacheIndex+Chirp:%d", maxIndex - chirp_length / 2 + (pushedSamples - convolutionCache.length), maxValue, maxIndex, convolutionCache.length, maxIndex + chirp_length));
-                triggerSampleIndexBegin = maxIndex - chirp_length / 2;
+                triggerSampleIndexBegin = maxIndex - chirp_length / 2 + (pushedSamples - convolutionCache.length);
+                response = PROCESS_RESPONSE.PROCESS_PITCH;
             }
             if(unitTestCallback != null) {
                 unitTestCallback.onConvolution(convolutionCache);
             }
-            processedSamples = pushedSamples;
-        } else {
+        }
+        if(triggerSampleIndexBegin >= 0) {
             // Target pitch contain the pitch peak ( 0.25 to start from hanning filter lobe)
             // Compute absolute position
             int pitch_lobe_offset = (int)(0.25 * word_length);
-            long targetPitch = triggerSampleIndexBegin + chirp_length + (parsed_cursor + 1) * word_length + pitch_lobe_offset;
-            if(targetPitch + word_length < pushedSamples) {
-                return PROCESS_RESPONSE.PROCESS_IDLE;
+            long targetPitch = triggerSampleIndexBegin + chirp_length + parsed_cursor * word_length + pitch_lobe_offset;
+            if(targetPitch > pushedSamples - signalCache.length && targetPitch + word_length < pushedSamples) {
+                double[] levelsUp = generalized_goertzel(signalCache, (int)(targetPitch - (pushedSamples - signalCache.length)),pitch_lobe_offset, configuration.sampleRate, frequencies);
+                double[] levelsDown = generalized_goertzel(signalCache, (int)(targetPitch + pitch_lobe_offset - (pushedSamples - signalCache.length)),pitch_lobe_offset, configuration.sampleRate, frequencies);
+                int word = 0;
+                for(int i = 0; i < frequencies.length; i++) {
+                    double snr = levelsUp[i] / levelsDown[i];
+                    if(snr >= configuration.triggerSnr) {
+                        // This bit is 1
+                        word |= 1 << i;
+                    }
+                }
+                Hamming12_8.CorrectResult result = Hamming12_8.decode(word);
+                if(result.result == Hamming12_8.CorrectResultCode.FAIL_CORRECTION) {
+                    response = PROCESS_RESPONSE.PROCESS_ERROR;
+                    triggerSampleIndexBegin = -1;
+                } else {
+                    parsed[parsed_cursor] = result.value;
+                    parsed_cursor++;
+                    if(parsed_cursor == parsed.length) {
+                        response = PROCESS_RESPONSE.PROCESS_COMPLETE;
+                        triggerSampleIndexBegin = -1;
+                    } else {
+                        response = PROCESS_RESPONSE.PROCESS_PITCH;
+                    }
+                }
             }
         }
-        return PROCESS_RESPONSE.PROCESS_IDLE;
+        processedSamples = pushedSamples;
+        return response;
     }
 
     public Configuration getConfiguration() {

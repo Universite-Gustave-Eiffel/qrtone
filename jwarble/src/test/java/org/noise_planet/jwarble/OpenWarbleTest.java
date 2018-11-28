@@ -27,7 +27,7 @@ public class OpenWarbleTest {
             audio[s] = Math.sin(OpenWarble.M2PI * signalFrequency * t) * (powerPeak);
         }
 
-        double[] rms = OpenWarble.generalized_goertzel(audio, sampleRate, new double[]{1000.0});
+        double[] rms = OpenWarble.generalized_goertzel(audio,0, audio.length, sampleRate, new double[]{1000.0});
 
         double signal_rms = OpenWarble.compute_rms(audio);
 
@@ -103,6 +103,7 @@ public class OpenWarbleTest {
             openWarble.pushSamples(Arrays.copyOfRange(allSignal, cursor, cursor+len));
             cursor+=len;
         }
+        assertEquals(blankSamples, openWarble.getTriggerSampleIndexBegin());
     }
 
 
