@@ -274,12 +274,12 @@ public class OpenWarble {
         } else {
             // Target pitch contain the pitch peak ( 0.25 to start from hanning filter lobe)
             // Compute absolute position
-            int pitch_lobe_offset = (int)(0.25 * word_length);
+
             long targetPitch = triggerSampleIndexBegin + chirp_length + parsed_cursor * word_length;
             if(targetPitch >= pushedSamples - signalCache.length && targetPitch + word_length <= pushedSamples) {
                 double[] levelsUp = generalized_goertzel(signalCache, (int)(targetPitch - (pushedSamples - signalCache.length)),word_length, configuration.sampleRate, frequencies);
                 double[] levelsDown = generalized_goertzel(signalCache, (int)(targetPitch - (pushedSamples - signalCache.length)),word_length, configuration.sampleRate, frequencies_uptone);
-                //double[] levelsDown = generalized_goertzel(signalCache, (int)(targetPitch + pitch_lobe_offset - (pushedSamples - signalCache.length)),pitch_lobe_offset, configuration.sampleRate, frequencies);
+
                 int word = 0;
                 for(int i = 0; i < frequencies.length; i++) {
                     double snr = 10 * Math.log10(levelsUp[i] / levelsDown[i]);
@@ -292,11 +292,8 @@ public class OpenWarble {
                 if(unitTestCallback != null) {
                     boolean[] freqs = new boolean[frequencies.length];
                     for(int i = 0; i < frequencies.length; i++) {
-                        double snr = levelsUp[i] / levelsDown[i];
-                        if(snr >= configuration.triggerSnr) {
-                            // This bit is 1
-                            freqs[i] = true;
-                        }
+                        double snr = 10 * Math.log10(levelsUp[i] / levelsDown[i]);
+                        freqs[i] = snr >= configuration.triggerSnr;
                     }
                     unitTestCallback.detectWord(result.value, word, freqs);
                 }

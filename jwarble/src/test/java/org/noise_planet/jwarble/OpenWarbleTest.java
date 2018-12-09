@@ -87,10 +87,10 @@ public class OpenWarbleTest {
         double powerPeak = 1; // 90 dBspl
         double blankTime = 1.3;
         int blankSamples = (int)(blankTime * sampleRate);
-        System.out.println("Chirp location :"+blankSamples);
-        byte[] payload = "correlation".getBytes();
+        String expectedPayload = "correlation";
+        byte[] payload = expectedPayload.getBytes();
         OpenWarble openWarble = new OpenWarble(Configuration.getAudible(payload.length, sampleRate));
-        UtCallback utCallback = new UtCallback();
+        UtCallback utCallback = new UtCallback(false);
         UtMessageCallback messageCallback = new UtMessageCallback();
         openWarble.setCallback(messageCallback);
         openWarble.setUnitTestCallback(utCallback);
@@ -107,6 +107,7 @@ public class OpenWarbleTest {
             cursor+=len;
         }
         assertEquals(blankSamples, messageCallback.pitchLocation);
+        assertEquals(expectedPayload, new String(messageCallback.payload));
     }
 
 
@@ -184,9 +185,11 @@ public class OpenWarbleTest {
 
     private static class UtMessageCallback implements MessageCallback {
         public long pitchLocation = -1;
+        public byte[] payload;
 
         @Override
         public void onNewMessage(byte[] payload, long sampleId) {
+            this.payload = payload;
         }
 
         @Override
@@ -204,6 +207,11 @@ public class OpenWarbleTest {
 
     private static class UtCallback implements OpenWarble.UnitTestCallback {
         public double[] convResult;
+        boolean print;
+
+        public UtCallback(boolean print) {
+            this.print = print;
+        }
 
         @Override
         public void onConvolution(double[] convolutionResult) {
@@ -212,30 +220,34 @@ public class OpenWarbleTest {
 
         @Override
         public void generateWord(byte word, int encodedWord, boolean[] frequencies) {
-            StringBuilder sb = new StringBuilder();
-            for(int i=0; i<frequencies.length;i++) {
-                if(frequencies[i]) {
-                    if (sb.length() != 0) {
-                        sb.append(", ");
+            if(print) {
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < frequencies.length; i++) {
+                    if (frequencies[i]) {
+                        if (sb.length() != 0) {
+                            sb.append(", ");
+                        }
+                        sb.append(i);
                     }
-                    sb.append(i);
                 }
+                System.out.println(String.format("New word %d %s", encodedWord, sb.toString()));
             }
-            System.out.println(String.format("New word %d %s",encodedWord, sb.toString()));
         }
 
         @Override
         public void detectWord(byte word, int encodedWord, boolean[] frequencies) {
-            StringBuilder sb = new StringBuilder();
-            for(int i=0; i<frequencies.length;i++) {
-                if(frequencies[i]) {
-                    if (sb.length() != 0) {
-                        sb.append(", ");
+            if(print) {
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < frequencies.length; i++) {
+                    if (frequencies[i]) {
+                        if (sb.length() != 0) {
+                            sb.append(", ");
+                        }
+                        sb.append(i);
                     }
-                    sb.append(i);
                 }
+                System.out.println(String.format("Find word %d %s", encodedWord, sb.toString()));
             }
-            System.out.println(String.format("Find word %d %s",encodedWord, sb.toString()));
         }
     }
 }
