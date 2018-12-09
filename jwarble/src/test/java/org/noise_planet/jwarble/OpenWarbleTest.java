@@ -1,6 +1,7 @@
 package org.noise_planet.jwarble;
 
 import org.jtransforms.fft.DoubleFFT_1D;
+import org.jtransforms.utils.CommonUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -89,13 +90,13 @@ public class OpenWarbleTest {
         System.out.println("Chirp location :"+blankSamples);
         byte[] payload = "correlation".getBytes();
         OpenWarble openWarble = new OpenWarble(Configuration.getAudible(payload.length, sampleRate));
+        UtCallback utCallback = new UtCallback();
+        UtMessageCallback messageCallback = new UtMessageCallback();
+        openWarble.setCallback(messageCallback);
+        openWarble.setUnitTestCallback(utCallback);
         double[] signal = openWarble.generate_signal(powerPeak, payload);
         double[] allSignal = new double[blankSamples+signal.length];
         System.arraycopy(signal, 0, allSignal, blankSamples, signal.length);
-        UtMessageCallback messageCallback = new UtMessageCallback();
-        UtCallback utCallback = new UtCallback();
-        openWarble.setCallback(messageCallback);
-        openWarble.setUnitTestCallback(utCallback);
         int cursor = 0;
         while (cursor < allSignal.length) {
             int len = Math.min(openWarble.getMaxPushSamplesLength(), allSignal.length - cursor);
@@ -124,13 +125,14 @@ public class OpenWarbleTest {
         double[] chirp = new double[openWarble.getChirp_length()];
         OpenWarble.generate_chirp(chirp, 0, chirp.length, sampleRate, openWarble.frequencies[0], openWarble.frequencies[openWarble.frequencies.length - 1], 1);
         int realSize = allSignal.length + chirp.length - 1;
-        double[] in2 = new double[OpenWarble.nextFastSize(allSignal.length + chirp.length - 1) * 2];
+        double[] in2 = new double[CommonUtils.nextPow2(allSignal.length + chirp.length - 1) * 2];
         double[] in1 = new double[in2.length];
         System.arraycopy(allSignal, 0, in1, 0, allSignal.length);
         System.arraycopy(chirp, 0, in2, 0, chirp.length);
         OpenWarble.reverse(in2, chirp.length);
         DoubleFFT_1D fftTool = new DoubleFFT_1D(in1.length / 2);
         fftTool.realForwardFull(in2);
+        long start = System.currentTimeMillis();
         fftTool.realForwardFull(in1);
         for(int i = 0; i < in1.length / 2; i++) {
             OpenWarble.Complex c1 = new OpenWarble.Complex(in1[i * 2], in1[i * 2 + 1]);
@@ -174,6 +176,7 @@ public class OpenWarbleTest {
             increase = value > 0;
             oldWeightedAvg = weightedAvg;
         }
+        System.out.println(String.format("Done in %d", System.currentTimeMillis() - start));
         //writeToFile("/home/nicolas/ownCloud/ifsttar/documents/projets/noisecapture/android/openwarble/intercorrelatetest/weighteddata.raw", weighteddata);
         //writeToFile("/home/nicolas/ownCloud/ifsttar/documents/projets/noisecapture/android/openwarble/intercorrelatetest/peaks.raw", peaks);
     }
@@ -201,9 +204,38 @@ public class OpenWarbleTest {
 
     private static class UtCallback implements OpenWarble.UnitTestCallback {
         public double[] convResult;
+
         @Override
         public void onConvolution(double[] convolutionResult) {
             convResult = convolutionResult;
+        }
+
+        @Override
+        public void generateWord(byte word, int encodedWord, boolean[] frequencies) {
+            StringBuilder sb = new StringBuilder();
+            for(int i=0; i<frequencies.length;i++) {
+                if(frequencies[i]) {
+                    if (sb.length() != 0) {
+                        sb.append(", ");
+                    }
+                    sb.append(i);
+                }
+            }
+            System.out.println(String.format("New word %d %s",encodedWord, sb.toString()));
+        }
+
+        @Override
+        public void detectWord(byte word, int encodedWord, boolean[] frequencies) {
+            StringBuilder sb = new StringBuilder();
+            for(int i=0; i<frequencies.length;i++) {
+                if(frequencies[i]) {
+                    if (sb.length() != 0) {
+                        sb.append(", ");
+                    }
+                    sb.append(i);
+                }
+            }
+            System.out.println(String.format("Find word %d %s",encodedWord, sb.toString()));
         }
     }
 }

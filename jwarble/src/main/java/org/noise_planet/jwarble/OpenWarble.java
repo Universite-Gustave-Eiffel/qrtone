@@ -34,6 +34,7 @@
 package org.noise_planet.jwarble;
 
 import org.jtransforms.fft.DoubleFFT_1D;
+import org.jtransforms.utils.CommonUtils;
 
 import java.util.Arrays;
 
@@ -45,6 +46,8 @@ public class OpenWarble {
     private Configuration configuration;
     public final static int NUM_FREQUENCIES = 12;
     final double[] frequencies = new double[NUM_FREQUENCIES];
+    // Frequencies not used by OpenWarble, one tone over used frequencies, this is base level to detect pitch
+    final double[] frequencies_uptone = new double[NUM_FREQUENCIES];
     final int block_length;
     final int word_length;
     final int chirp_length;
@@ -65,18 +68,20 @@ public class OpenWarble {
         word_length = (int)(configuration.sampleRate * configuration.wordTime);
         chirp_length = word_length;
         messageSamples = chirp_length + block_length * word_length;
-        signalCache = new double[chirp_length * 2];
+        signalCache = new double[chirp_length * 3];
         convolutionCache = new double[signalCache.length * 2];
         // Precompute pitch frequencies
         for(int i = 0; i < NUM_FREQUENCIES; i++) {
             if(configuration.frequencyIncrement != 0) {
-                frequencies[i] = configuration.firstFrequency + i * configuration.frequencyIncrement;
+                frequencies[i] = configuration.firstFrequency + (i * 2) * configuration.frequencyIncrement;
+                frequencies_uptone[i] = configuration.firstFrequency + (i * 2 + 1) * configuration.frequencyIncrement;
             } else {
                 frequencies[i] = configuration.firstFrequency * Math.pow(configuration.frequencyMulti, i * 2);
+                frequencies_uptone[i] = configuration.firstFrequency * Math.pow(configuration.frequencyMulti, i * 2 + 1);
             }
         }
         // Precompute chirp FFT for fast convolution
-        chirpFFT = new double[nextFastSize(chirp_length + signalCache.length - 1) * 2];
+        chirpFFT = new double[CommonUtils.nextPow2(chirp_length + signalCache.length - 1) * 2];
         generate_chirp(chirpFFT, 0, chirp_length, configuration.sampleRate, frequencies[0], frequencies[frequencies.length - 1], 1);
         reverse(chirpFFT, chirp_length);
         new DoubleFFT_1D(chirpFFT.length / 2).realForwardFull(chirpFFT);
@@ -139,7 +144,7 @@ public class OpenWarble {
             double s2 = 0.;
             // 'main' loop
             // number of iterations is (by one) less than the length of signal
-            for(int ind=start; ind < length - 1; ind++) {
+            for(int ind=start; ind < start + length - 1; ind++) {
                 s0 = signal[ind] + cos_pik_term2 * s1 - s2;
                 s2 = s1;
                 s1 = s0;
@@ -270,10 +275,11 @@ public class OpenWarble {
             // Target pitch contain the pitch peak ( 0.25 to start from hanning filter lobe)
             // Compute absolute position
             int pitch_lobe_offset = (int)(0.25 * word_length);
-            long targetPitch = triggerSampleIndexBegin + chirp_length + parsed_cursor * word_length + pitch_lobe_offset;
-            if(targetPitch > pushedSamples - signalCache.length && targetPitch + word_length < pushedSamples) {
-                double[] levelsUp = generalized_goertzel(signalCache, (int)(targetPitch - (pushedSamples - signalCache.length)),pitch_lobe_offset, configuration.sampleRate, frequencies);
-                double[] levelsDown = generalized_goertzel(signalCache, (int)(targetPitch + pitch_lobe_offset - (pushedSamples - signalCache.length)),pitch_lobe_offset, configuration.sampleRate, frequencies);
+            long targetPitch = triggerSampleIndexBegin + chirp_length + parsed_cursor * word_length;
+            if(targetPitch >= pushedSamples - signalCache.length && targetPitch + word_length <= pushedSamples) {
+                double[] levelsUp = generalized_goertzel(signalCache, (int)(targetPitch - (pushedSamples - signalCache.length)),word_length, configuration.sampleRate, frequencies);
+                double[] levelsDown = generalized_goertzel(signalCache, (int)(targetPitch - (pushedSamples - signalCache.length)),word_length, configuration.sampleRate, frequencies_uptone);
+                //double[] levelsDown = generalized_goertzel(signalCache, (int)(targetPitch + pitch_lobe_offset - (pushedSamples - signalCache.length)),pitch_lobe_offset, configuration.sampleRate, frequencies);
                 int word = 0;
                 for(int i = 0; i < frequencies.length; i++) {
                     double snr = levelsUp[i] / levelsDown[i];
@@ -283,6 +289,17 @@ public class OpenWarble {
                     }
                 }
                 Hamming12_8.CorrectResult result = Hamming12_8.decode(word);
+                if(unitTestCallback != null) {
+                    boolean[] freqs = new boolean[frequencies.length];
+                    for(int i = 0; i < frequencies.length; i++) {
+                        double snr = levelsUp[i] / levelsDown[i];
+                        if(snr >= configuration.triggerSnr) {
+                            // This bit is 1
+                            freqs[i] = true;
+                        }
+                    }
+                    unitTestCallback.detectWord(result.value, word, freqs);
+                }
                 if(result.result == Hamming12_8.CorrectResultCode.FAIL_CORRECTION) {
                     response = PROCESS_RESPONSE.PROCESS_ERROR;
                     triggerSampleIndexBegin = -1;
@@ -345,6 +362,13 @@ public class OpenWarble {
                     generate_pitch(signal, location, word_length ,configuration.sampleRate, frequencies[idfreq], powerPeak);
                 }
             }
+            if(unitTestCallback != null) {
+                boolean[] freqs = new boolean[frequencies.length];
+                for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
+                    freqs[idfreq] = (code & (1 << idfreq)) != 0;
+                }
+                unitTestCallback.generateWord(words[idword], code, freqs);
+            }
             location+=word_length;
         }
         return signal;
@@ -390,5 +414,7 @@ public class OpenWarble {
 
     public interface UnitTestCallback {
         void onConvolution(double[] convolutionResult);
+        void generateWord(byte word, int encodedWord, boolean[] frequencies);
+        void detectWord(byte word, int encodedWord, boolean[] frequencies);
     }
 }
