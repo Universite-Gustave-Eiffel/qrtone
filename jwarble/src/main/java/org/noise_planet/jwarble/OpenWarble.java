@@ -187,12 +187,12 @@ public class OpenWarble {
                 switch (processResponse) {
                     case PROCESS_PITCH:
                         if (callback != null) {
-                            callback.onPitch(processedSamples);
+                            callback.onPitch(triggerSampleIndexBegin + parsed_cursor * word_length);
                         }
                         break;
                     case PROCESS_COMPLETE:
                         if (callback != null) {
-                            callback.onNewMessage(parsed, processedSamples);
+                            callback.onNewMessage(parsed, triggerSampleIndexBegin);
                         }
                         break;
                     case PROCESS_ERROR:
@@ -266,8 +266,7 @@ public class OpenWarble {
             if(unitTestCallback != null) {
                 unitTestCallback.onConvolution(convolutionCache);
             }
-        }
-        if(triggerSampleIndexBegin >= 0) {
+        } else {
             // Target pitch contain the pitch peak ( 0.25 to start from hanning filter lobe)
             // Compute absolute position
             int pitch_lobe_offset = (int)(0.25 * word_length);

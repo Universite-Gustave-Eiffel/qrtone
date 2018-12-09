@@ -92,7 +92,9 @@ public class OpenWarbleTest {
         double[] signal = openWarble.generate_signal(powerPeak, payload);
         double[] allSignal = new double[blankSamples+signal.length];
         System.arraycopy(signal, 0, allSignal, blankSamples, signal.length);
+        UtMessageCallback messageCallback = new UtMessageCallback();
         UtCallback utCallback = new UtCallback();
+        openWarble.setCallback(messageCallback);
         openWarble.setUnitTestCallback(utCallback);
         int cursor = 0;
         while (cursor < allSignal.length) {
@@ -103,7 +105,7 @@ public class OpenWarbleTest {
             openWarble.pushSamples(Arrays.copyOfRange(allSignal, cursor, cursor+len));
             cursor+=len;
         }
-        assertEquals(blankSamples, openWarble.getTriggerSampleIndexBegin());
+        assertEquals(blankSamples, messageCallback.pitchLocation);
     }
 
 
@@ -177,6 +179,25 @@ public class OpenWarbleTest {
     }
 
 
+    private static class UtMessageCallback implements MessageCallback {
+        public long pitchLocation = -1;
+
+        @Override
+        public void onNewMessage(byte[] payload, long sampleId) {
+        }
+
+        @Override
+        public void onPitch(long sampleId) {
+            if(pitchLocation < 0) {
+                pitchLocation = sampleId;
+            }
+        }
+
+        @Override
+        public void onError(long sampleId) {
+
+        }
+    }
 
     private static class UtCallback implements OpenWarble.UnitTestCallback {
         public double[] convResult;
