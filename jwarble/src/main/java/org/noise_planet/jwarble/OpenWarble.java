@@ -282,7 +282,7 @@ public class OpenWarble {
                 //double[] levelsDown = generalized_goertzel(signalCache, (int)(targetPitch + pitch_lobe_offset - (pushedSamples - signalCache.length)),pitch_lobe_offset, configuration.sampleRate, frequencies);
                 int word = 0;
                 for(int i = 0; i < frequencies.length; i++) {
-                    double snr = levelsUp[i] / levelsDown[i];
+                    double snr = 10 * Math.log10(levelsUp[i] / levelsDown[i]);
                     if(snr >= configuration.triggerSnr) {
                         // This bit is 1
                         word |= 1 << i;

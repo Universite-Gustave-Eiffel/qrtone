@@ -95,7 +95,7 @@ public class OpenWarbleTest {
         openWarble.setCallback(messageCallback);
         openWarble.setUnitTestCallback(utCallback);
         double[] signal = openWarble.generate_signal(powerPeak, payload);
-        double[] allSignal = new double[blankSamples+signal.length];
+        double[] allSignal = new double[blankSamples+signal.length+blankSamples];
         System.arraycopy(signal, 0, allSignal, blankSamples, signal.length);
         int cursor = 0;
         while (cursor < allSignal.length) {
