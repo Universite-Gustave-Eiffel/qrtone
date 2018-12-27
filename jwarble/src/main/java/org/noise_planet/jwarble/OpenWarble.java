@@ -242,10 +242,12 @@ public class OpenWarble {
             }
             // Find max value
             double maxValue = Double.MIN_VALUE;
+            boolean negative = false;
             int maxIndex = -1;
             for(int i=chirp_length / 2; i < convolutionCache.length - chirp_length; i++) {
-                if(convolutionCache[i] > maxValue) {
-                    maxValue = convolutionCache[i];
+                if(Math.abs(convolutionCache[i]) > maxValue) {
+                    maxValue = Math.abs(convolutionCache[i]);
+                    negative = convolutionCache[i] < 0;
                     maxIndex = i;
                 }
             }
@@ -256,8 +258,9 @@ public class OpenWarble {
             for(int i = Math.max(0, maxIndex - chirp_length / 2); i < maxIndex + chirp_length / 2; i++) {
                 double weightedAvg = convolutionCache[i];
                 double value = weightedAvg - oldWeightedAvg;
-                if(convolutionCache[i] > 0 && ((value > 0  && !increase) || (value < 0 && increase))) {
-                    if(convolutionCache[i - 1] > maxValue * configuration.convolutionPeakRatio) {
+                if(((value > 0  && !increase) || (value < 0 && increase))) {
+                    boolean signalNegative = convolutionCache[i - 1] < 0;
+                    if(((negative && signalNegative) || (!negative && !signalNegative))  && Math.abs(convolutionCache[i - 1]) > maxValue * configuration.convolutionPeakRatio) {
                         peakCount++;
                     }
                 }
@@ -269,7 +272,7 @@ public class OpenWarble {
                 response = PROCESS_RESPONSE.PROCESS_PITCH;
             }
             if(unitTestCallback != null) {
-                unitTestCallback.onConvolution(convolutionCache);
+                unitTestCallback.onConvolution(Arrays.copyOfRange(convolutionCache, startConvolutionCache, convolutionCache.length));
             }
         } else {
             // Target pitch contain the pitch peak ( 0.25 to start from hanning filter lobe)

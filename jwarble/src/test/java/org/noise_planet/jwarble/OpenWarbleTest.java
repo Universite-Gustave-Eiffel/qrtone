@@ -5,11 +5,18 @@ import org.jtransforms.utils.CommonUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.BufferedInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.ShortBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.*;
 
@@ -49,6 +56,35 @@ public class OpenWarbleTest {
         }
     }
 
+    public static short[] convertBytesToShort(byte[] buffer, int length, ByteOrder byteOrder) {
+        ShortBuffer byteBuffer = ByteBuffer.wrap(buffer, 0, length).order(byteOrder).asShortBuffer();
+        short[] samplesShort = new short[byteBuffer.capacity()];
+        byteBuffer.order();
+        byteBuffer.get(samplesShort);
+        return samplesShort;
+    }
+
+    public static short[] loadShortStream(InputStream inputStream, ByteOrder byteOrder) throws IOException {
+        short[] fullArray = new short[0];
+        byte[] buffer = new byte[4096];
+        int read;
+        // Read input signal up to buffer.length
+        while ((read = inputStream.read(buffer)) != -1) {
+            // Convert bytes into double values. Samples array size is 8 times inferior than buffer size
+            if (read < buffer.length) {
+                buffer = Arrays.copyOfRange(buffer, 0, read);
+            }
+            short[] signal = convertBytesToShort(buffer, buffer.length, byteOrder);
+            short[] nextFullArray = new short[fullArray.length + signal.length];
+            if(fullArray.length > 0) {
+                System.arraycopy(fullArray, 0, nextFullArray, 0, fullArray.length);
+            }
+            System.arraycopy(signal, 0, nextFullArray, fullArray.length, signal.length);
+            fullArray = nextFullArray;
+        }
+        return fullArray;
+    }
+
 
 
     private static void writeToFile(String path, double[] signal) throws IOException {
@@ -63,6 +99,7 @@ public class OpenWarbleTest {
             fileOutputStream.close();
         }
     }
+
     public void signalWrite() throws IOException {
         double sampleRate = 44100;
         double powerPeak = 1; // 90 dBspl
@@ -78,7 +115,7 @@ public class OpenWarbleTest {
         for(int i=0; i<signal.length;i++) {
             shortSignal[i] = (short)((signal[i] / maxValue) * Short.MAX_VALUE);
         }
-        writeToFile("jwarble/target/test.raw", shortSignal);
+        writeToFile("target/test.raw", shortSignal);
     }
 
     @Test
@@ -110,6 +147,46 @@ public class OpenWarbleTest {
         assertEquals(expectedPayload, new String(messageCallback.payload));
     }
 
+
+    @Test
+    public void testWithBackgroundNoise() throws IOException {
+        double sampleRate = 44100;
+        byte[] expectedPayload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
+        OpenWarble openWarble = new OpenWarble(Configuration.getAudible(expectedPayload.length, sampleRate));
+        UtCallback utCallback = new UtCallback(true);
+        UtMessageCallback messageCallback = new UtMessageCallback();
+        openWarble.setCallback(messageCallback);
+        openWarble.setUnitTestCallback(utCallback);
+        InputStream inputStream = OpenWarbleTest.class.getResourceAsStream("with_noise_44100hz_mono_16bits.raw");
+        short[] signal_short = loadShortStream(inputStream, ByteOrder.LITTLE_ENDIAN);
+
+        // Push audio samples to OpenWarble
+        int cursor = 0;
+        while (cursor < signal_short.length) {
+            int len = Math.min(openWarble.getMaxPushSamplesLength(), signal_short.length - cursor);
+            if(len == 0) {
+                break;
+            }
+            double[] window = new double[len];
+            for(int i = cursor; i < cursor + len; i++) {
+                window[i - cursor] = signal_short[i] / (double)Short.MAX_VALUE;
+            }
+            openWarble.pushSamples(window);
+            cursor+=len;
+        }
+        int totsize = 0;
+        for(double[] res : utCallback.convResults) {
+            totsize += res.length;
+        }
+        double[] values = new double[totsize];
+        cursor = 0;
+        for(double[] res : utCallback.convResults) {
+            System.arraycopy(res, 0, values, cursor, res.length);
+            cursor += res.length;
+        }
+        assertEquals(23870, messageCallback.pitchLocation);
+        writeToFile("target/convolve.dat", values);
+    }
 
 
     @Test
@@ -206,7 +283,7 @@ public class OpenWarbleTest {
     }
 
     private static class UtCallback implements OpenWarble.UnitTestCallback {
-        public double[] convResult;
+        public List<double[]> convResults = new ArrayList<>();
         boolean print;
 
         public UtCallback(boolean print) {
@@ -215,7 +292,7 @@ public class OpenWarbleTest {
 
         @Override
         public void onConvolution(double[] convolutionResult) {
-            convResult = convolutionResult;
+            convResults.add(convolutionResult.clone());
         }
 
         @Override
