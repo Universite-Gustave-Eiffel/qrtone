@@ -42,9 +42,9 @@ public class Configuration {
   public static final double DEFAULT_AUDIBLE_FIRST_FREQUENCY = 1760;
   public static final double DEFAULT_INAUDIBLE_FIRST_FREQUENCY = 18200;
   public static final int DEFAULT_INAUDIBLE_STEP = 120;
-  public static final double DEFAULT_TRIGGER_SNR = 20;
-  // Peak ratio, when computing correlation, no other peaks must be in the provided percentage
-  public static final double DEFAULT_CONVOLUTION_PEAK_RATIO = 0.8;
+  public static final double DEFAULT_TRIGGER_SNR = 2;
+  // Peak ratio, when computing SNR, no other peaks must be found in the provided percentage
+  public static final double DEFAULT_DOOR_PEAK_RATIO = 0.8;
 
   public final int payloadSize;
   public final double sampleRate;
@@ -74,7 +74,7 @@ public class Configuration {
    */
   public static Configuration getAudible(int payloadSize, double sampleRate) {
     return new Configuration(payloadSize, sampleRate, DEFAULT_AUDIBLE_FIRST_FREQUENCY,
-            0, MULT_SEMITONE, DEFAULT_WORD_TIME, DEFAULT_TRIGGER_SNR, DEFAULT_CONVOLUTION_PEAK_RATIO);
+            0, MULT_SEMITONE, DEFAULT_WORD_TIME, DEFAULT_TRIGGER_SNR, DEFAULT_DOOR_PEAK_RATIO);
   }
 
 
@@ -86,6 +86,6 @@ public class Configuration {
    */
   public static Configuration getInaudible(int payloadSize, double sampleRate) {
     return new Configuration(payloadSize, sampleRate, DEFAULT_INAUDIBLE_FIRST_FREQUENCY,
-            DEFAULT_INAUDIBLE_STEP, 0, DEFAULT_WORD_TIME, DEFAULT_TRIGGER_SNR, DEFAULT_CONVOLUTION_PEAK_RATIO);
+            DEFAULT_INAUDIBLE_STEP, 0, DEFAULT_WORD_TIME, DEFAULT_TRIGGER_SNR, DEFAULT_DOOR_PEAK_RATIO);
   }
 }

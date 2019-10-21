@@ -1,11 +1,8 @@
 package org.noise_planet.jwarble;
 
-import org.jtransforms.fft.DoubleFFT_1D;
-import org.jtransforms.utils.CommonUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.BufferedInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -14,9 +11,7 @@ import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.*;
 
@@ -100,34 +95,38 @@ public class OpenWarbleTest {
         }
     }
 
+    //@Test
     public void signalWrite() throws IOException {
         double sampleRate = 44100;
         double powerPeak = 1; // 90 dBspl
+        double blankTime = 1.3;
+        int blankSamples = (int)(blankTime * sampleRate);
         byte[] payload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
         OpenWarble openWarble = new OpenWarble(Configuration.getAudible(payload.length, sampleRate));
         double[] signal = openWarble.generate_signal(powerPeak, payload);
-        short[] shortSignal = new short[signal.length];
+        double[] allSignal = new double[blankSamples+signal.length+blankSamples];
+        System.arraycopy(signal, 0, allSignal, blankSamples, signal.length);
+        short[] shortSignal = new short[allSignal.length];
         double maxValue = Double.MIN_VALUE;
-        for (double aSignal : signal) {
+        for (double aSignal : allSignal) {
             maxValue = Math.max(maxValue, aSignal);
         }
         maxValue *= 2;
-        for(int i=0; i<signal.length;i++) {
-            shortSignal[i] = (short)((signal[i] / maxValue) * Short.MAX_VALUE);
+        for(int i=0; i<allSignal.length;i++) {
+            shortSignal[i] = (short)((allSignal[i] / maxValue) * Short.MAX_VALUE);
         }
         writeToFile("target/test.raw", shortSignal);
     }
 
     @Test
-    public void testConvolution() throws IOException {
+    public void testRecognitionWithoutNoise() throws IOException {
         double sampleRate = 44100;
         double powerPeak = 1; // 90 dBspl
         double blankTime = 1.3;
         int blankSamples = (int)(blankTime * sampleRate);
-        String expectedPayload = "correlation";
-        byte[] payload = expectedPayload.getBytes();
+        byte[] payload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
         OpenWarble openWarble = new OpenWarble(Configuration.getAudible(payload.length, sampleRate));
-        UtCallback utCallback = new UtCallback(false);
+        UtCallback utCallback = new UtCallback(true);
         UtMessageCallback messageCallback = new UtMessageCallback();
         openWarble.setCallback(messageCallback);
         openWarble.setUnitTestCallback(utCallback);
@@ -143,122 +142,10 @@ public class OpenWarbleTest {
             openWarble.pushSamples(Arrays.copyOfRange(allSignal, cursor, cursor+len));
             cursor+=len;
         }
-        assertEquals(blankSamples, messageCallback.pitchLocation);
-        assertEquals(expectedPayload, new String(messageCallback.payload));
+        assertTrue(Math.abs(blankSamples - messageCallback.pitchLocation) < openWarble.door_length / 4.0);
+        assertArrayEquals(payload, messageCallback.payload);
+        assertEquals(0, openWarble.getCorrectedErrors());
     }
-
-
-    @Test
-    public void testWithBackgroundNoise() throws IOException {
-        double sampleRate = 44100;
-        byte[] expectedPayload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
-        OpenWarble openWarble = new OpenWarble(Configuration.getAudible(expectedPayload.length, sampleRate));
-        UtCallback utCallback = new UtCallback(true);
-        UtMessageCallback messageCallback = new UtMessageCallback();
-        openWarble.setCallback(messageCallback);
-        openWarble.setUnitTestCallback(utCallback);
-        InputStream inputStream = OpenWarbleTest.class.getResourceAsStream("with_noise_44100hz_mono_16bits.raw");
-        short[] signal_short = loadShortStream(inputStream, ByteOrder.LITTLE_ENDIAN);
-
-        // Push audio samples to OpenWarble
-        int cursor = 0;
-        while (cursor < signal_short.length) {
-            int len = Math.min(openWarble.getMaxPushSamplesLength(), signal_short.length - cursor);
-            if(len == 0) {
-                break;
-            }
-            double[] window = new double[len];
-            for(int i = cursor; i < cursor + len; i++) {
-                window[i - cursor] = signal_short[i] / (double)Short.MAX_VALUE;
-            }
-            openWarble.pushSamples(window);
-            cursor+=len;
-        }
-        int totsize = 0;
-        for(double[] res : utCallback.convResults) {
-            totsize += res.length;
-        }
-        double[] values = new double[totsize];
-        cursor = 0;
-        for(double[] res : utCallback.convResults) {
-            System.arraycopy(res, 0, values, cursor, res.length);
-            cursor += res.length;
-        }
-        assertEquals(23870, messageCallback.pitchLocation);
-        writeToFile("target/convolve.dat", values);
-    }
-
-
-    @Test
-    public void testPureConvolution() throws IOException {
-        double sampleRate = 44100;
-        double powerPeak = 1; // 90 dBspl
-        double blankTime = 1.3;
-        int blankSamples = (int)(blankTime * sampleRate);
-        byte[] payload = "correlation".getBytes();
-        OpenWarble openWarble = new OpenWarble(Configuration.getAudible(payload.length, sampleRate));
-        double[] signal = openWarble.generate_signal(powerPeak, payload);
-        double[] allSignal = new double[blankSamples+signal.length];
-        System.arraycopy(signal, 0, allSignal, blankSamples, signal.length);
-        double[] chirp = new double[openWarble.getChirp_length()];
-        OpenWarble.generate_chirp(chirp, 0, chirp.length, sampleRate, openWarble.frequencies[0], openWarble.frequencies[openWarble.frequencies.length - 1], 1);
-        int realSize = allSignal.length + chirp.length - 1;
-        double[] in2 = new double[CommonUtils.nextPow2(allSignal.length + chirp.length - 1) * 2];
-        double[] in1 = new double[in2.length];
-        System.arraycopy(allSignal, 0, in1, 0, allSignal.length);
-        System.arraycopy(chirp, 0, in2, 0, chirp.length);
-        OpenWarble.reverse(in2, chirp.length);
-        DoubleFFT_1D fftTool = new DoubleFFT_1D(in1.length / 2);
-        fftTool.realForwardFull(in2);
-        long start = System.currentTimeMillis();
-        fftTool.realForwardFull(in1);
-        for(int i = 0; i < in1.length / 2; i++) {
-            OpenWarble.Complex c1 = new OpenWarble.Complex(in1[i * 2], in1[i * 2 + 1]);
-            OpenWarble.Complex c2 = new OpenWarble.Complex(in2[i * 2], in2[i * 2 + 1]);
-            OpenWarble.Complex cc = c1.mul(c2);
-            in1[i * 2] = cc.r;
-            in1[i * 2 + 1] = cc.i;
-        }
-        fftTool.complexInverse(in1, true);
-        int startIndex = (realSize - allSignal.length);
-        double[] result = new double[allSignal.length];
-        double maxValue = Double.MIN_VALUE;
-        int maxIndex = -1;
-        for(int i=0; i < result.length; i++) {
-            result[i] = in1[startIndex + i * 2];
-            if(result[i] > maxValue) {
-                maxValue = result[i];
-                maxIndex = i;
-            }
-        }
-        Assert.assertEquals(blankSamples, maxIndex - openWarble.chirp_length / 2);
-        // Find peaks
-        int avg = 5;
-        double oldWeightedAvg = 0;
-        boolean increase = false;
-        double[] weighteddata = new double[result.length];
-        double[] peaks = new double[result.length];
-        for(int i = Math.max(0, maxIndex - openWarble.chirp_length / 2); i < Math.min(maxIndex + openWarble.chirp_length / 2, result.length); i++) {
-            double weightedAvg = result[i];
-            //for(int iavg = 0; iavg < avg; iavg++) {
-            //    weightedAvg += result[i-iavg];
-            //}
-            //weightedAvg /= avg;
-            double value = weightedAvg - oldWeightedAvg;
-            weighteddata[i] = weightedAvg;
-            if(result[i] > 0 && ((value > 0  && !increase) || (value < 0 && increase))) {
-                // Slope change
-                //System.out.println("Slope change at " + i);
-                peaks[i - 1] = 400;
-            }
-            increase = value > 0;
-            oldWeightedAvg = weightedAvg;
-        }
-        System.out.println(String.format("Done in %d", System.currentTimeMillis() - start));
-        //writeToFile("/home/nicolas/ownCloud/ifsttar/documents/projets/noisecapture/android/openwarble/intercorrelatetest/weighteddata.raw", weighteddata);
-        //writeToFile("/home/nicolas/ownCloud/ifsttar/documents/projets/noisecapture/android/openwarble/intercorrelatetest/peaks.raw", peaks);
-    }
-
 
     private static class UtMessageCallback implements MessageCallback {
         public long pitchLocation = -1;
@@ -283,16 +170,11 @@ public class OpenWarbleTest {
     }
 
     private static class UtCallback implements OpenWarble.UnitTestCallback {
-        public List<double[]> convResults = new ArrayList<>();
+
         boolean print;
 
         public UtCallback(boolean print) {
             this.print = print;
-        }
-
-        @Override
-        public void onConvolution(double[] convolutionResult) {
-            convResults.add(convolutionResult.clone());
         }
 
         @Override
@@ -307,7 +189,7 @@ public class OpenWarbleTest {
                         sb.append(i);
                     }
                 }
-                System.out.println(String.format("New word %d %s", encodedWord, sb.toString()));
+                System.out.println(String.format("New word %02x %s", word, sb.toString()));
             }
         }
 
@@ -323,7 +205,7 @@ public class OpenWarbleTest {
                         sb.append(i);
                     }
                 }
-                System.out.println(String.format("Find word %d %s", encodedWord, sb.toString()));
+                System.out.println(String.format("Find word %02x %s", word, sb.toString()));
             }
         }
     }

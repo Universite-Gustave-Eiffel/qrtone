@@ -33,28 +33,27 @@
 
 package org.noise_planet.jwarble;
 
-import org.jtransforms.fft.DoubleFFT_1D;
-import org.jtransforms.utils.CommonUtils;
-
-import java.util.Arrays;
-
 public class OpenWarble {
 
     public static final double M2PI = Math.PI * 2;
     private long pushedSamples = 0;
     private long processedSamples = 0;
+    private int correctedErrors = 0;
     private Configuration configuration;
     public final static int NUM_FREQUENCIES = 12;
+    public final static int WINDOW_OFFSET_DENOMINATOR = 4;
+    final int frequency_door1;
+    public final static byte door2_check = 'W';
     final double[] frequencies = new double[NUM_FREQUENCIES];
     // Frequencies not used by OpenWarble, one tone over used frequencies, this is base level to detect pitch
     final double[] frequencies_uptone = new double[NUM_FREQUENCIES];
     final int block_length;
     final int word_length;
-    final int chirp_length;
+    final int door_length;
     final int messageSamples;
+    final int windowOffsetLength;
     double[] signalCache;
-    double[] convolutionCache;
-    public double[] chirpFFT;
+    double[] rmsGateHistory;
     public enum PROCESS_RESPONSE {PROCESS_IDLE, PROCESS_ERROR, PROCESS_PITCH, PROCESS_COMPLETE}
     private long triggerSampleIndexBegin = -1;
     int parsed_cursor = 0; // parsed words
@@ -66,10 +65,11 @@ public class OpenWarble {
         block_length = configuration.payloadSize;
         parsed = new byte[configuration.payloadSize];
         word_length = (int)(configuration.sampleRate * configuration.wordTime);
-        chirp_length = word_length;
-        messageSamples = chirp_length + block_length * word_length;
-        signalCache = new double[chirp_length * 3];
-        convolutionCache = new double[signalCache.length * 2];
+        windowOffsetLength = (int)Math.ceil(word_length / (double)WINDOW_OFFSET_DENOMINATOR);
+        door_length = word_length;
+        messageSamples = door_length + door_length + block_length * word_length;
+        signalCache = new double[door_length * 3];
+        rmsGateHistory = new double[WINDOW_OFFSET_DENOMINATOR * 4];
         // Precompute pitch frequencies
         for(int i = 0; i < NUM_FREQUENCIES; i++) {
             if(configuration.frequencyIncrement != 0) {
@@ -80,34 +80,7 @@ public class OpenWarble {
                 frequencies_uptone[i] = configuration.firstFrequency * Math.pow(configuration.frequencyMulti, i * 2 + 1);
             }
         }
-        // Precompute chirp FFT for fast convolution
-        chirpFFT = new double[CommonUtils.nextPow2(chirp_length + signalCache.length - 1) * 2];
-        generate_chirp(chirpFFT, 0, chirp_length, configuration.sampleRate, frequencies[0], frequencies[frequencies.length - 1], 1);
-        reverse(chirpFFT, chirp_length);
-        new DoubleFFT_1D(chirpFFT.length / 2).realForwardFull(chirpFFT);
-    }
-
-    public static void reverse(double[] array, int length) {
-        for(int i = 0; i < length / 2; i++)
-        {
-            double temp = array[i];
-            array[i] = array[length - i - 1];
-            array[length - i - 1] = temp;
-        }
-    }
-
-    public static int nextFastSize(int n)
-    {
-        while(true) {
-            int m=n;
-            while ( (m%2) == 0 ) m/=2;
-            while ( (m%3) == 0 ) m/=3;
-            while ( (m%5) == 0 ) m/=5;
-            if (m<=1)
-                break; /* n is completely factorable by twos, threes, and fives */
-            n++;
-        }
-        return n;
+        frequency_door1 = NUM_FREQUENCIES - 1;
     }
 
     public long getTriggerSampleIndexBegin() {
@@ -184,7 +157,7 @@ public class OpenWarble {
                     signalCache.length);
             pushedSamples+=signalCache.length;
         }
-        if((triggerSampleIndexBegin < 0 && pushedSamples - processedSamples >= signalCache.length)
+        if((triggerSampleIndexBegin < 0 && pushedSamples - processedSamples >= windowOffsetLength)
             ||(triggerSampleIndexBegin >= 0 && pushedSamples - processedSamples >= word_length)) {
             PROCESS_RESPONSE processResponse = PROCESS_RESPONSE.PROCESS_PITCH;
             while(processResponse == PROCESS_RESPONSE.PROCESS_PITCH || processResponse == PROCESS_RESPONSE.PROCESS_COMPLETE) {
@@ -217,68 +190,62 @@ public class OpenWarble {
         }
     }
 
+    public int getCorrectedErrors() {
+        return correctedErrors;
+    }
+
     private PROCESS_RESPONSE process() {
         PROCESS_RESPONSE response = PROCESS_RESPONSE.PROCESS_IDLE;
         if(triggerSampleIndexBegin < 0) {
             // Looking for trigger chirp
-            int realSize = signalCache.length + chirp_length - 1;
-            double[] fft = Arrays.copyOf(signalCache, chirpFFT.length);
-            DoubleFFT_1D fftTool = new DoubleFFT_1D(chirpFFT.length / 2);
-            fftTool.realForwardFull(fft);
-            for(int i = 0; i < signalCache.length / 2; i++) {
-                OpenWarble.Complex c1 = new OpenWarble.Complex(fft[i * 2], fft[i * 2 + 1]);
-                OpenWarble.Complex c2 = new OpenWarble.Complex(chirpFFT[i * 2], chirpFFT[i * 2 + 1]);
-                OpenWarble.Complex cc = c1.mul(c2);
-                fft[i * 2] = cc.r;
-                fft[i * 2 + 1] = cc.i;
-            }
-            fftTool.complexInverse(fft, true);
-            int startIndex = (realSize - signalCache.length);
-            // Move convolution cache backward
-            System.arraycopy(convolutionCache, signalCache.length, convolutionCache, 0, convolutionCache.length - signalCache.length);
-            int startConvolutionCache = convolutionCache.length - signalCache.length;
-            for(int i=0; i < signalCache.length; i++) {
-                convolutionCache[startConvolutionCache + i] = fft[startIndex + i * 2];
+            long cursor = signalCache.length - pushedSamples + processedSamples;
+            while(cursor < signalCache.length - door_length) {
+                final double[] doorFrequencies = new double[] {frequencies[frequency_door1], frequencies_uptone[frequency_door1]};
+                double[] levels = generalized_goertzel(signalCache, (int)cursor, door_length, configuration.sampleRate, doorFrequencies);
+                levels[1] = Math.max(levels[1], 1e-12);
+                levels[0] = Math.max(levels[0], 1e-12);
+                double snr = 10 * Math.log10(levels[0] / levels[1]);
+                System.arraycopy(rmsGateHistory, 1, rmsGateHistory, 0, rmsGateHistory.length - 1);
+                rmsGateHistory[rmsGateHistory.length - 1] = snr;
+                cursor += windowOffsetLength;
+                processedSamples += windowOffsetLength;
             }
             // Find max value
             double maxValue = Double.MIN_VALUE;
             boolean negative = false;
             int maxIndex = -1;
-            for(int i=chirp_length / 2; i < convolutionCache.length - chirp_length; i++) {
-                if(Math.abs(convolutionCache[i]) > maxValue) {
-                    maxValue = Math.abs(convolutionCache[i]);
-                    negative = convolutionCache[i] < 0;
+            for(int i = 0; i < rmsGateHistory.length; i++) {
+                if(Math.abs(rmsGateHistory[i]) > maxValue) {
+                    maxValue = Math.abs(rmsGateHistory[i]);
+                    negative = rmsGateHistory[i] < 0;
                     maxIndex = i;
                 }
             }
             // Count all peaks near max value
-            double oldWeightedAvg = 0;
+            double oldWeightedAvg = rmsGateHistory[0];
             boolean increase = false;
             int peakCount = 0;
-            for(int i = Math.max(0, maxIndex - chirp_length / 2); i < maxIndex + chirp_length / 2; i++) {
-                double weightedAvg = convolutionCache[i];
-                double value = weightedAvg - oldWeightedAvg;
+            for(int i = 1; i < rmsGateHistory.length; i++) {
+                double snr = rmsGateHistory[i];
+                double value = snr - oldWeightedAvg;
                 if(((value > 0  && !increase) || (value < 0 && increase))) {
-                    boolean signalNegative = convolutionCache[i - 1] < 0;
-                    if(((negative && signalNegative) || (!negative && !signalNegative))  && Math.abs(convolutionCache[i - 1]) > maxValue * configuration.convolutionPeakRatio) {
+                    boolean signalNegative = rmsGateHistory[i - 1] < 0;
+                    if(((negative && signalNegative) || (!negative && !signalNegative))  && Math.abs(rmsGateHistory[i - 1]) > maxValue * configuration.convolutionPeakRatio) {
                         peakCount++;
                     }
                 }
                 increase = value > 0;
-                oldWeightedAvg = weightedAvg;
+                oldWeightedAvg = snr;
             }
-            if(peakCount == 1) {
-                triggerSampleIndexBegin = maxIndex - chirp_length / 2 + (pushedSamples - convolutionCache.length);
+            if(peakCount == 1 && (rmsGateHistory.length - maxIndex) * windowOffsetLength >= door_length / 2 ) {
+                triggerSampleIndexBegin = processedSamples - (rmsGateHistory.length - maxIndex) * windowOffsetLength;
                 response = PROCESS_RESPONSE.PROCESS_PITCH;
-            }
-            if(unitTestCallback != null) {
-                unitTestCallback.onConvolution(Arrays.copyOfRange(convolutionCache, startConvolutionCache, convolutionCache.length));
+                correctedErrors = 0;
             }
         } else {
             // Target pitch contain the pitch peak ( 0.25 to start from hanning filter lobe)
             // Compute absolute position
-
-            long targetPitch = triggerSampleIndexBegin + chirp_length + parsed_cursor * word_length;
+            long targetPitch = triggerSampleIndexBegin + door_length + parsed_cursor * word_length;
             if(targetPitch >= pushedSamples - signalCache.length && targetPitch + word_length <= pushedSamples) {
                 double[] levelsUp = generalized_goertzel(signalCache, (int)(targetPitch - (pushedSamples - signalCache.length)),word_length, configuration.sampleRate, frequencies);
                 double[] levelsDown = generalized_goertzel(signalCache, (int)(targetPitch - (pushedSamples - signalCache.length)),word_length, configuration.sampleRate, frequencies_uptone);
@@ -304,9 +271,20 @@ public class OpenWarble {
                     response = PROCESS_RESPONSE.PROCESS_ERROR;
                     triggerSampleIndexBegin = -1;
                 } else {
-                    parsed[parsed_cursor] = result.value;
+                    if(result.result == Hamming12_8.CorrectResultCode.CORRECTED_ERROR) {
+                        correctedErrors += 1;
+                    }
+                    if(parsed_cursor == 0) {
+                        // Validation door
+                        if(result.value != door2_check) {
+                            triggerSampleIndexBegin = -1;
+                        }
+                    } else {
+                        // message
+                        parsed[parsed_cursor-1] = result.value;
+                    }
                     parsed_cursor++;
-                    if(parsed_cursor == parsed.length) {
+                    if(parsed_cursor - 1 == parsed.length) {
                         response = PROCESS_RESPONSE.PROCESS_COMPLETE;
                         triggerSampleIndexBegin = -1;
                     } else {
@@ -314,8 +292,8 @@ public class OpenWarble {
                     }
                 }
             }
+            processedSamples = pushedSamples;
         }
-        processedSamples = pushedSamples;
         return response;
     }
 
@@ -327,39 +305,50 @@ public class OpenWarble {
         return word_length;
     }
 
-    public int getChirp_length() {
-        return chirp_length;
+    public int getDoor_length() {
+        return door_length;
     }
 
     public static void generate_pitch(double[] signal_out, final int location, final int length, double sample_rate, double frequency, double power_peak) {
         double t_step = 1 / sample_rate;
         for(int i=location; i < location + length; i++) {
+            // Apply Hamming window
 		    final double window = 0.5 * (1 - Math.cos((M2PI * (i - location)) / (length - 1)));
             signal_out[i] += Math.sin(i * t_step * M2PI * frequency) * power_peak * window;
-        }
-    }
-
-    public static void generate_chirp(double[] signal_out, final int location,final int length, double sample_rate, double frequencyStart, double frequencyEnd, double power_peak) {
-        double f1_div_f0 = frequencyEnd / frequencyStart;
-        double chirp_time = length / sample_rate;
-        for (int i = location; i < location + length; i++) {
-            // Generate log chirp into cache
-            // low frequency to high frequency
-            final double window = 0.5 * (1 - Math.cos((M2PI * (i - location)) / (length - 1)));
-            signal_out[i] += window * Math.sin(M2PI * chirp_time / Math.log(f1_div_f0) * frequencyStart * (Math.pow(f1_div_f0, ((double) (i - location) / sample_rate) / chirp_time) - 1.0));
         }
     }
 
     public double[] generate_signal(double powerPeak, byte[] words) {
         double[] signal = new double[messageSamples];
         int location = 0;
-        generate_chirp(signal, 0, chirp_length, configuration.sampleRate, configuration.firstFrequency, frequencies[frequencies.length - 1], powerPeak);
-        location += chirp_length;
+        // Pure tone trigger signal
+        generate_pitch(signal, location, door_length ,configuration.sampleRate, frequencies[frequency_door1], powerPeak);
+        location += door_length;
+        // Check special word
+        int code = Hamming12_8.encode(door2_check);
+        for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
+            if((code & (1 << idfreq)) != 0) {
+                generate_pitch(signal, location, door_length ,configuration.sampleRate, frequencies[idfreq], powerPeak / frequencies.length);
+            } else {
+                generate_pitch(signal, location, door_length ,configuration.sampleRate, frequencies_uptone[idfreq], powerPeak / frequencies.length);
+            }
+        }
+        if(unitTestCallback != null) {
+            boolean[] freqs = new boolean[frequencies.length];
+            for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
+                freqs[idfreq] = (code & (1 << idfreq)) != 0;
+            }
+            unitTestCallback.generateWord(door2_check, code, freqs);
+        }
+        location += door_length;
+        // Message
         for(int idword = 0; idword < block_length; idword++) {
-            int code = Hamming12_8.encode(words[idword]);
+            code = Hamming12_8.encode(words[idword]);
             for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
                 if((code & (1 << idfreq)) != 0) {
-                    generate_pitch(signal, location, word_length ,configuration.sampleRate, frequencies[idfreq], powerPeak);
+                    generate_pitch(signal, location, word_length ,configuration.sampleRate, frequencies[idfreq], powerPeak / frequencies.length);
+                } else {
+                    generate_pitch(signal, location, word_length ,configuration.sampleRate, frequencies_uptone[idfreq], powerPeak / frequencies.length);
                 }
             }
             if(unitTestCallback != null) {
@@ -413,7 +402,6 @@ public class OpenWarble {
     }
 
     public interface UnitTestCallback {
-        void onConvolution(double[] convolutionResult);
         void generateWord(byte word, int encodedWord, boolean[] frequencies);
         void detectWord(byte word, int encodedWord, boolean[] frequencies);
     }
