@@ -69,7 +69,7 @@ public class OpenWarble {
         door_length = word_length;
         messageSamples = door_length + door_length + block_length * word_length;
         signalCache = new double[door_length * 3];
-        rmsGateHistory = new double[WINDOW_OFFSET_DENOMINATOR * 4];
+        rmsGateHistory = new double[signalCache.length / windowOffsetLength];
         // Precompute pitch frequencies
         for(int i = 0; i < NUM_FREQUENCIES; i++) {
             if(configuration.frequencyIncrement != 0) {
@@ -246,7 +246,11 @@ public class OpenWarble {
             // Target pitch contain the pitch peak ( 0.25 to start from hanning filter lobe)
             // Compute absolute position
             long targetPitch = triggerSampleIndexBegin + door_length + parsed_cursor * word_length;
-            if(targetPitch >= pushedSamples - signalCache.length && targetPitch + word_length <= pushedSamples) {
+            if(targetPitch < pushedSamples - signalCache.length) {
+                // Missed first pitch
+                response = PROCESS_RESPONSE.PROCESS_ERROR;
+                triggerSampleIndexBegin = -1;
+            } else if(targetPitch + word_length <= pushedSamples) {
                 double[] levelsUp = generalized_goertzel(signalCache, (int)(targetPitch - (pushedSamples - signalCache.length)),word_length, configuration.sampleRate, frequencies);
                 double[] levelsDown = generalized_goertzel(signalCache, (int)(targetPitch - (pushedSamples - signalCache.length)),word_length, configuration.sampleRate, frequencies_uptone);
 
@@ -278,17 +282,21 @@ public class OpenWarble {
                         // Validation door
                         if(result.value != door2_check) {
                             triggerSampleIndexBegin = -1;
+                            response = PROCESS_RESPONSE.PROCESS_ERROR;
+                        } else {
+                            parsed_cursor++;
+                            response = PROCESS_RESPONSE.PROCESS_PITCH;
                         }
                     } else {
                         // message
                         parsed[parsed_cursor-1] = result.value;
-                    }
-                    parsed_cursor++;
-                    if(parsed_cursor - 1 == parsed.length) {
-                        response = PROCESS_RESPONSE.PROCESS_COMPLETE;
-                        triggerSampleIndexBegin = -1;
-                    } else {
-                        response = PROCESS_RESPONSE.PROCESS_PITCH;
+                        parsed_cursor++;
+                        if(parsed_cursor - 1 == parsed.length) {
+                            response = PROCESS_RESPONSE.PROCESS_COMPLETE;
+                            triggerSampleIndexBegin = -1;
+                        } else {
+                            response = PROCESS_RESPONSE.PROCESS_PITCH;
+                        }
                     }
                 }
             }

@@ -12,6 +12,7 @@ import java.nio.ShortBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 
 import static org.junit.Assert.*;
 
@@ -38,7 +39,7 @@ public class OpenWarbleTest {
     }
 
 
-    private static void writeToFile(String path, short[] signal) throws IOException {
+    private static void writeShortToFile(String path, short[] signal) throws IOException {
         FileOutputStream fileOutputStream = new FileOutputStream(path);
         try {
             ByteBuffer byteBuffer = ByteBuffer.allocate(Short.SIZE / Byte.SIZE);
@@ -49,6 +50,19 @@ public class OpenWarbleTest {
         } finally {
             fileOutputStream.close();
         }
+    }
+
+    private static void writeDoubleToFile(String path, double[] signal) throws IOException {
+        short[] shortSignal = new short[signal.length];
+        double maxValue = Double.MIN_VALUE;
+        for (double aSignal : signal) {
+            maxValue = Math.max(maxValue, aSignal);
+        }
+        maxValue *= 2;
+        for(int i=0; i<signal.length;i++) {
+            shortSignal[i] = (short)((signal[i] / maxValue) * Short.MAX_VALUE);
+        }
+        writeShortToFile(path, shortSignal);
     }
 
     public static short[] convertBytesToShort(byte[] buffer, int length, ByteOrder byteOrder) {
@@ -80,44 +94,6 @@ public class OpenWarbleTest {
         return fullArray;
     }
 
-
-
-    private static void writeToFile(String path, double[] signal) throws IOException {
-        FileOutputStream fileOutputStream = new FileOutputStream(path);
-        try {
-            ByteBuffer byteBuffer = ByteBuffer.allocate(Double.SIZE / Byte.SIZE);
-            for(int i = 0; i < signal.length; i++) {
-                byteBuffer.putDouble(0, signal[i]);
-                fileOutputStream.write(byteBuffer.array());
-            }
-        } finally {
-            fileOutputStream.close();
-        }
-    }
-
-    //@Test
-    public void signalWrite() throws IOException {
-        double sampleRate = 44100;
-        double powerPeak = 1; // 90 dBspl
-        double blankTime = 1.3;
-        int blankSamples = (int)(blankTime * sampleRate);
-        byte[] payload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
-        OpenWarble openWarble = new OpenWarble(Configuration.getAudible(payload.length, sampleRate));
-        double[] signal = openWarble.generate_signal(powerPeak, payload);
-        double[] allSignal = new double[blankSamples+signal.length+blankSamples];
-        System.arraycopy(signal, 0, allSignal, blankSamples, signal.length);
-        short[] shortSignal = new short[allSignal.length];
-        double maxValue = Double.MIN_VALUE;
-        for (double aSignal : allSignal) {
-            maxValue = Math.max(maxValue, aSignal);
-        }
-        maxValue *= 2;
-        for(int i=0; i<allSignal.length;i++) {
-            shortSignal[i] = (short)((allSignal[i] / maxValue) * Short.MAX_VALUE);
-        }
-        writeToFile("target/test.raw", shortSignal);
-    }
-
     @Test
     public void testRecognitionWithoutNoise() throws IOException {
         double sampleRate = 44100;
@@ -126,7 +102,7 @@ public class OpenWarbleTest {
         int blankSamples = (int)(blankTime * sampleRate);
         byte[] payload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
         OpenWarble openWarble = new OpenWarble(Configuration.getAudible(payload.length, sampleRate));
-        UtCallback utCallback = new UtCallback(true);
+        UtCallback utCallback = new UtCallback(false);
         UtMessageCallback messageCallback = new UtMessageCallback();
         openWarble.setCallback(messageCallback);
         openWarble.setUnitTestCallback(utCallback);
@@ -142,6 +118,43 @@ public class OpenWarbleTest {
             openWarble.pushSamples(Arrays.copyOfRange(allSignal, cursor, cursor+len));
             cursor+=len;
         }
+        assertTrue(Math.abs(blankSamples - messageCallback.pitchLocation) < openWarble.door_length / 4.0);
+        assertArrayEquals(payload, messageCallback.payload);
+        assertEquals(0, openWarble.getCorrectedErrors());
+    }
+
+
+    @Test
+    public void testRecognitionWithNoise() throws IOException {
+        double sampleRate = 44100;
+        double powerPeak = 1; // 90 dBspl
+        double noisePeak = 0.1;
+        double blankTime = 1.3;
+        int blankSamples = (int)(blankTime * sampleRate);
+        byte[] payload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
+        OpenWarble openWarble = new OpenWarble(Configuration.getAudible(payload.length, sampleRate));
+        UtCallback utCallback = new UtCallback(true);
+        UtMessageCallback messageCallback = new UtMessageCallback();
+        openWarble.setCallback(messageCallback);
+        openWarble.setUnitTestCallback(utCallback);
+        double[] signal = openWarble.generate_signal(powerPeak, payload);
+        double[] allSignal = new double[blankSamples+signal.length+blankSamples];
+        System.arraycopy(signal, 0, allSignal, blankSamples, signal.length);
+        // Average with noise
+        Random rand = new Random(1337);
+        for(int i = 0; i < allSignal.length; i++) {
+            allSignal[i] = (allSignal[i] + rand.nextGaussian() * noisePeak) / 2.0;
+        }
+        int cursor = 0;
+        while (cursor < allSignal.length) {
+            int len = Math.min(openWarble.getMaxPushSamplesLength(), allSignal.length - cursor);
+            if(len == 0) {
+                break;
+            }
+            openWarble.pushSamples(Arrays.copyOfRange(allSignal, cursor, cursor+len));
+            cursor+=len;
+        }
+        writeDoubleToFile("target/test.raw", allSignal);
         assertTrue(Math.abs(blankSamples - messageCallback.pitchLocation) < openWarble.door_length / 4.0);
         assertArrayEquals(payload, messageCallback.payload);
         assertEquals(0, openWarble.getCorrectedErrors());
