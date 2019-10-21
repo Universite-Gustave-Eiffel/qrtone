@@ -4,7 +4,11 @@ import sun.security.util.ArrayUtil;
 
 import java.util.Arrays;
 
-// Optimized L90 implementation (for repeated insertion and query)
+/**
+ * Optimized L90 implementation (for repeated insertion and query)
+ * This class is keeping a bounded ordered list of values
+ * Oldest values are removed from the list
+ */
 public class Percentile {
     private final double[] stack;
     private int stackSize;
@@ -55,7 +59,7 @@ public class Percentile {
             } else {
                 if(index < stackSize) {
                     // Move elements to the right
-                    System.arraycopy(stack, index, stack, index + 1, stackSize);
+                    System.arraycopy(stack, index, stack, index + 1, stackSize - index);
                     for(int i = 0; i < stackSize; i++) {
                         if(indexes[i] >= index) {
                             indexes[i] += 1;
@@ -82,10 +86,10 @@ public class Percentile {
      */
     public double getPercentile(double percentile) {
         if(stackSize % (1 / percentile) > 0) {
-            int rank = Math.min((int) Math.round(stackSize * percentile - 1), stackSize - 1);
+            int rank = Math.max(0, Math.min((int) Math.round(stackSize * percentile - 1), stackSize - 1));
             return stack[rank];
         } else {
-            int rank = Math.min((int) Math.round(stackSize * percentile - 1), stackSize - 1);
+            int rank = Math.max(0, Math.min((int) Math.round(stackSize * percentile - 1), stackSize - 1));
             return (stack[rank] + stack[rank + 1]) / 2.0;
         }
     }

@@ -40,4 +40,20 @@ public class PercentileTest {
         p.add(5);
         assertEquals(pref.evaluate(new double[]{20, 15, 5}, 50), p.getPercentile(0.5), 1e-6);
     }
+
+    @Test
+    public void test3() {
+        org.apache.commons.math3.stat.descriptive.rank.Percentile pref = new org.apache.commons.math3.stat.descriptive.rank.Percentile();
+        Percentile p = new Percentile(5);
+        p.add(20);
+        assertEquals(pref.evaluate(new double[]{20}, 50), p.getPercentile(0.5), 1e-6);
+        p.add(25);
+        assertEquals(pref.evaluate(new double[]{20, 25}, 50), p.getPercentile(0.5), 1e-6);
+        p.add(21);
+        assertEquals(pref.evaluate(new double[]{20, 25, 21}, 50), p.getPercentile(0.5), 1e-6);
+        p.add(22);
+        assertEquals(pref.evaluate(new double[]{20, 25, 21, 22}, 50), p.getPercentile(0.5), 1e-6);
+        p.add(23);
+        assertEquals(pref.evaluate(new double[]{20, 25, 21, 22, 23}, 50), p.getPercentile(0.5), 1e-6);
+    }
 }

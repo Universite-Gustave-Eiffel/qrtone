@@ -39,6 +39,7 @@ public class OpenWarble {
     private long pushedSamples = 0;
     private long processedSamples = 0;
     private int correctedErrors = 0;
+    private Percentile backgroundLevel;
     private Configuration configuration;
     public final static int NUM_FREQUENCIES = 12;
     public final static int WINDOW_OFFSET_DENOMINATOR = 4;
@@ -70,6 +71,7 @@ public class OpenWarble {
         messageSamples = door_length + door_length + block_length * word_length;
         signalCache = new double[door_length * 3];
         rmsGateHistory = new double[signalCache.length / windowOffsetLength];
+        backgroundLevel = new Percentile((int)((2.0 * configuration.sampleRate) / windowOffsetLength));
         // Precompute pitch frequencies
         for(int i = 0; i < NUM_FREQUENCIES; i++) {
             if(configuration.frequencyIncrement != 0) {
@@ -164,8 +166,8 @@ public class OpenWarble {
                 processResponse = process();
                 switch (processResponse) {
                     case PROCESS_PITCH:
-                        if (callback != null) {
-                            callback.onPitch(triggerSampleIndexBegin + parsed_cursor * word_length);
+                        if (callback != null && parsed_cursor > 0) {
+                            callback.onPitch(triggerSampleIndexBegin);
                         }
                         break;
                     case PROCESS_COMPLETE:
@@ -200,11 +202,11 @@ public class OpenWarble {
             // Looking for trigger chirp
             long cursor = signalCache.length - pushedSamples + processedSamples;
             while(cursor < signalCache.length - door_length) {
-                final double[] doorFrequencies = new double[] {frequencies[frequency_door1], frequencies_uptone[frequency_door1]};
+                final double[] doorFrequencies = new double[] {frequencies[frequency_door1]};
                 double[] levels = generalized_goertzel(signalCache, (int)cursor, door_length, configuration.sampleRate, doorFrequencies);
-                levels[1] = Math.max(levels[1], 1e-12);
                 levels[0] = Math.max(levels[0], 1e-12);
-                double snr = 10 * Math.log10(levels[0] / levels[1]);
+                backgroundLevel.add(levels[0]);
+                double snr = 10 * Math.log10(levels[0] / backgroundLevel.getPercentile(0.1));
                 System.arraycopy(rmsGateHistory, 1, rmsGateHistory, 0, rmsGateHistory.length - 1);
                 rmsGateHistory[rmsGateHistory.length - 1] = snr;
                 cursor += windowOffsetLength;
