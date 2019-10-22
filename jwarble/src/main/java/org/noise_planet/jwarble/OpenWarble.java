@@ -46,8 +46,6 @@ public class OpenWarble {
     final int frequency_door1;
     public final static byte door2_check = 'W';
     final double[] frequencies = new double[NUM_FREQUENCIES];
-    // Frequencies not used by OpenWarble, one tone over used frequencies, this is base level to detect pitch
-    final double[] frequencies_uptone = new double[NUM_FREQUENCIES];
     final int block_length;
     final int word_length;
     final int door_length;
@@ -75,11 +73,9 @@ public class OpenWarble {
         // Precompute pitch frequencies
         for(int i = 0; i < NUM_FREQUENCIES; i++) {
             if(configuration.frequencyIncrement != 0) {
-                frequencies[i] = configuration.firstFrequency + (i * 2) * configuration.frequencyIncrement;
-                frequencies_uptone[i] = configuration.firstFrequency + (i * 2 + 1) * configuration.frequencyIncrement;
+                frequencies[i] = configuration.firstFrequency + i * 2 * configuration.frequencyIncrement;
             } else {
                 frequencies[i] = configuration.firstFrequency * Math.pow(configuration.frequencyMulti, i * 2);
-                frequencies_uptone[i] = configuration.firstFrequency * Math.pow(configuration.frequencyMulti, i * 2 + 1);
             }
         }
         frequency_door1 = NUM_FREQUENCIES - 1;
@@ -258,13 +254,12 @@ public class OpenWarble {
                 response = PROCESS_RESPONSE.PROCESS_ERROR;
                 triggerSampleIndexBegin = -1;
             } else if(targetPitch + word_length <= pushedSamples) {
-                double[] levelsUp = generalized_goertzel(signalCache, (int)(targetPitch - (pushedSamples - signalCache.length)),word_length, configuration.sampleRate, frequencies);
-                double[] levelsDown = generalized_goertzel(signalCache, (int)(targetPitch - (pushedSamples - signalCache.length)),word_length, configuration.sampleRate, frequencies_uptone);
+                double[] levelsUp = generalized_goertzel(signalCache, (int)(targetPitch - (pushedSamples - signalCache.length)),word_length / 2, configuration.sampleRate, frequencies);
+                double[] levelsDown = generalized_goertzel(signalCache, (int)(targetPitch - (pushedSamples - signalCache.length)) + word_length / 2,word_length / 2, configuration.sampleRate, frequencies);
 
                 int word = 0;
                 for(int i = 0; i < frequencies.length; i++) {
-                    double snr = 10 * Math.log10(levelsUp[i] / levelsDown[i]);
-                    if(snr >= configuration.triggerSnr) {
+                    if(levelsUp[i] > levelsDown[i]) {
                         // This bit is 1
                         word |= 1 << i;
                     }
@@ -273,8 +268,7 @@ public class OpenWarble {
                 if(unitTestCallback != null) {
                     boolean[] freqs = new boolean[frequencies.length];
                     for(int i = 0; i < frequencies.length; i++) {
-                        double snr = 10 * Math.log10(levelsUp[i] / levelsDown[i]);
-                        freqs[i] = snr >= configuration.triggerSnr;
+                        freqs[i] = levelsUp[i] > levelsDown[i];
                     }
                     unitTestCallback.detectWord(result.value, word, freqs);
                 }
@@ -343,9 +337,9 @@ public class OpenWarble {
         int code = Hamming12_8.encode(door2_check);
         for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
             if((code & (1 << idfreq)) != 0) {
-                generate_pitch(signal, location, door_length ,configuration.sampleRate, frequencies[idfreq], powerPeak / frequencies.length);
+                generate_pitch(signal, location, door_length / 2 ,configuration.sampleRate, frequencies[idfreq], powerPeak / frequencies.length);
             } else {
-                generate_pitch(signal, location, door_length ,configuration.sampleRate, frequencies_uptone[idfreq], powerPeak / frequencies.length);
+                generate_pitch(signal, location + door_length / 2, door_length / 2 ,configuration.sampleRate, frequencies[idfreq], powerPeak / frequencies.length);
             }
         }
         if(unitTestCallback != null) {
@@ -361,9 +355,9 @@ public class OpenWarble {
             code = Hamming12_8.encode(words[idword]);
             for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
                 if((code & (1 << idfreq)) != 0) {
-                    generate_pitch(signal, location, word_length ,configuration.sampleRate, frequencies[idfreq], powerPeak / frequencies.length);
+                    generate_pitch(signal, location, word_length / 2 ,configuration.sampleRate, frequencies[idfreq], powerPeak / frequencies.length);
                 } else {
-                    generate_pitch(signal, location, word_length ,configuration.sampleRate, frequencies_uptone[idfreq], powerPeak / frequencies.length);
+                    generate_pitch(signal, location + word_length / 2, word_length / 2 ,configuration.sampleRate, frequencies[idfreq], powerPeak / frequencies.length);
                 }
             }
             if(unitTestCallback != null) {
