@@ -145,16 +145,18 @@ public class OpenWarbleTest {
         for(int i = 0; i < allSignal.length; i++) {
             allSignal[i] = (allSignal[i] + rand.nextGaussian() * noisePeak) / 2.0;
         }
+        long start = System.nanoTime();
         int cursor = 0;
         while (cursor < allSignal.length) {
             int len = Math.min(openWarble.getMaxPushSamplesLength(), allSignal.length - cursor);
-            if(len == 0) {
+            if (len == 0) {
                 break;
             }
-            openWarble.pushSamples(Arrays.copyOfRange(allSignal, cursor, cursor+len));
-            cursor+=len;
+            openWarble.pushSamples(Arrays.copyOfRange(allSignal, cursor, cursor + len));
+            cursor += len;
         }
-        writeDoubleToFile("target/test.raw", allSignal);
+        System.out.println(String.format("Execution time %.3f seconds", (System.nanoTime() - start) / 1e9));
+        //writeDoubleToFile("target/test.raw", allSignal);
         assertTrue(Math.abs(blankSamples - messageCallback.pitchLocation) < openWarble.door_length / 4.0);
         assertArrayEquals(payload, messageCallback.payload);
         assertEquals(0, openWarble.getCorrectedErrors());

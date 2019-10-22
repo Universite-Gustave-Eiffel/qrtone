@@ -34,7 +34,7 @@
 package org.noise_planet.jwarble;
 
 public class OpenWarble {
-
+    private static final int BACKGROUND_LVL_SIZE = 20;
     public static final double M2PI = Math.PI * 2;
     private long pushedSamples = 0;
     private long processedSamples = 0;
@@ -71,7 +71,7 @@ public class OpenWarble {
         messageSamples = door_length + door_length + block_length * word_length;
         signalCache = new double[door_length * 3];
         rmsGateHistory = new double[signalCache.length / windowOffsetLength];
-        backgroundLevel = new Percentile((int)((2.0 * configuration.sampleRate) / windowOffsetLength));
+        backgroundLevel = new Percentile(BACKGROUND_LVL_SIZE);
         // Precompute pitch frequencies
         for(int i = 0; i < NUM_FREQUENCIES; i++) {
             if(configuration.frequencyIncrement != 0) {
@@ -201,48 +201,53 @@ public class OpenWarble {
         if(triggerSampleIndexBegin < 0) {
             // Looking for trigger chirp
             long cursor = signalCache.length - pushedSamples + processedSamples;
-            while(cursor < signalCache.length - door_length) {
-                final double[] doorFrequencies = new double[] {frequencies[frequency_door1]};
-                double[] levels = generalized_goertzel(signalCache, (int)cursor, door_length, configuration.sampleRate, doorFrequencies);
-                levels[0] = Math.max(levels[0], 1e-12);
-                backgroundLevel.add(levels[0]);
-                double snr = 10 * Math.log10(levels[0] / backgroundLevel.getPercentile(0.1));
-                System.arraycopy(rmsGateHistory, 1, rmsGateHistory, 0, rmsGateHistory.length - 1);
-                rmsGateHistory[rmsGateHistory.length - 1] = snr;
-                cursor += windowOffsetLength;
-                processedSamples += windowOffsetLength;
-            }
-            // Find max value
-            double maxValue = Double.MIN_VALUE;
-            boolean negative = false;
-            int maxIndex = -1;
-            for(int i = 0; i < rmsGateHistory.length; i++) {
-                if(Math.abs(rmsGateHistory[i]) > maxValue) {
-                    maxValue = Math.abs(rmsGateHistory[i]);
-                    negative = rmsGateHistory[i] < 0;
-                    maxIndex = i;
+            if(cursor < signalCache.length - door_length) {
+                while (cursor < signalCache.length - door_length) {
+                    final double[] doorFrequencies = new double[]{frequencies[frequency_door1]};
+                    double[] levels = generalized_goertzel(signalCache, (int) cursor, door_length, configuration.sampleRate, doorFrequencies);
+                    levels[0] = Math.max(levels[0], 1e-12);
+                    backgroundLevel.add(levels[0]);
+                    // Signal noise ratio computed with L90 background noise
+                    double snr = 10 * Math.log10(levels[0] / backgroundLevel.getPercentile(0.1));
+                    System.arraycopy(rmsGateHistory, 1, rmsGateHistory, 0, rmsGateHistory.length - 1);
+                    rmsGateHistory[rmsGateHistory.length - 1] = snr;
+                    cursor += windowOffsetLength;
+                    processedSamples += windowOffsetLength;
                 }
-            }
-            // Count all peaks near max value
-            double oldWeightedAvg = rmsGateHistory[0];
-            boolean increase = false;
-            int peakCount = 0;
-            for(int i = 1; i < rmsGateHistory.length; i++) {
-                double snr = rmsGateHistory[i];
-                double value = snr - oldWeightedAvg;
-                if(((value > 0  && !increase) || (value < 0 && increase))) {
-                    boolean signalNegative = rmsGateHistory[i - 1] < 0;
-                    if(((negative && signalNegative) || (!negative && !signalNegative))  && Math.abs(rmsGateHistory[i - 1]) > maxValue * configuration.convolutionPeakRatio) {
-                        peakCount++;
+                // Find max value
+                double maxValue = Double.MIN_VALUE;
+                boolean negative = false;
+                int maxIndex = -1;
+                for (int i = 0; i < rmsGateHistory.length; i++) {
+                    if (Math.abs(rmsGateHistory[i]) > maxValue) {
+                        maxValue = Math.abs(rmsGateHistory[i]);
+                        negative = rmsGateHistory[i] < 0;
+                        maxIndex = i;
                     }
                 }
-                increase = value > 0;
-                oldWeightedAvg = snr;
-            }
-            if(peakCount == 1 && (rmsGateHistory.length - maxIndex) * windowOffsetLength >= door_length / 2 ) {
-                triggerSampleIndexBegin = processedSamples - (rmsGateHistory.length - maxIndex) * windowOffsetLength;
-                response = PROCESS_RESPONSE.PROCESS_PITCH;
-                correctedErrors = 0;
+                // Count all peaks near max value
+                double oldSnr = rmsGateHistory[Math.max(0, maxIndex - WINDOW_OFFSET_DENOMINATOR / 2 - 1)];
+                boolean increase = rmsGateHistory[Math.max(0, maxIndex - WINDOW_OFFSET_DENOMINATOR / 2)] > oldSnr;
+                int peakCount = 0;
+                for (int i = Math.max(0, maxIndex - WINDOW_OFFSET_DENOMINATOR / 2); i < Math.min(rmsGateHistory.length, maxIndex + WINDOW_OFFSET_DENOMINATOR / 2); i++) {
+                    double snr = rmsGateHistory[i];
+                    double value = snr - oldSnr;
+                    if (((value > 0 && !increase) || (value < 0 && increase))) {
+                        boolean signalNegative = rmsGateHistory[i - 1] < 0;
+                        if (((negative && signalNegative) || (!negative && !signalNegative)) && Math.abs(rmsGateHistory[i - 1]) > maxValue * configuration.convolutionPeakRatio) {
+                            peakCount++;
+                        }
+                    }
+                    increase = value > 0;
+                    oldSnr = snr;
+                }
+                if (peakCount == 1 && maxIndex < rmsGateHistory.length - 2) {
+                    triggerSampleIndexBegin = processedSamples - (rmsGateHistory.length - maxIndex) * windowOffsetLength;
+                    response = PROCESS_RESPONSE.PROCESS_PITCH;
+                    correctedErrors = 0;
+                    parsed_cursor = 0;
+                    //System.out.println(String.format("TRIGGER %.3f-%.3f s %.3f snr", triggerSampleIndexBegin / configuration.sampleRate,(triggerSampleIndexBegin+door_length) / configuration.sampleRate, maxValue));
+                }
             }
         } else {
             // Target pitch contain the pitch peak ( 0.25 to start from hanning filter lobe)
