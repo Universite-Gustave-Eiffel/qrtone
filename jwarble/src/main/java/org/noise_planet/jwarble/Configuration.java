@@ -42,7 +42,7 @@ public class Configuration {
   public static final double DEFAULT_AUDIBLE_FIRST_FREQUENCY = 1760;
   public static final double DEFAULT_INAUDIBLE_FIRST_FREQUENCY = 18200;
   public static final int DEFAULT_INAUDIBLE_STEP = 120;
-  public static final double DEFAULT_TRIGGER_SNR = 2;
+  public static final double DEFAULT_TRIGGER_SNR = 15;
   // Peak ratio, when computing SNR, no other peaks must be found in the provided percentage
   public static final double DEFAULT_DOOR_PEAK_RATIO = 0.8;
 

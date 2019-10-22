@@ -121,6 +121,7 @@ public class OpenWarbleTest {
         assertTrue(Math.abs(blankSamples - messageCallback.pitchLocation) < openWarble.door_length / 4.0);
         assertArrayEquals(payload, messageCallback.payload);
         assertEquals(0, openWarble.getCorrectedErrors());
+        //writeDoubleToFile("target/source.raw", allSignal);
     }
 
 

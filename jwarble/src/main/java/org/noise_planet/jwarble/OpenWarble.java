@@ -192,6 +192,10 @@ public class OpenWarble {
         return correctedErrors;
     }
 
+    private double getSnr(double level) {
+        return 10 * Math.log10(level / backgroundLevel.getPercentile(0.1));
+    }
+
     private PROCESS_RESPONSE process() {
         PROCESS_RESPONSE response = PROCESS_RESPONSE.PROCESS_IDLE;
         if(triggerSampleIndexBegin < 0) {
@@ -200,13 +204,11 @@ public class OpenWarble {
             if(cursor < signalCache.length - door_length) {
                 while (cursor < signalCache.length - door_length) {
                     final double[] doorFrequencies = new double[]{frequencies[frequency_door1]};
-                    double[] levels = generalized_goertzel(signalCache, (int) cursor, door_length, configuration.sampleRate, doorFrequencies);
+                    double[] levels = generalized_goertzel(signalCache, (int) cursor + door_length / 2 - windowOffsetLength, windowOffsetLength, configuration.sampleRate, doorFrequencies);
                     levels[0] = Math.max(levels[0], 1e-12);
                     backgroundLevel.add(levels[0]);
-                    // Signal noise ratio computed with L90 background noise
-                    double snr = 10 * Math.log10(levels[0] / backgroundLevel.getPercentile(0.1));
                     System.arraycopy(rmsGateHistory, 1, rmsGateHistory, 0, rmsGateHistory.length - 1);
-                    rmsGateHistory[rmsGateHistory.length - 1] = snr;
+                    rmsGateHistory[rmsGateHistory.length - 1] = levels[0];
                     cursor += windowOffsetLength;
                     processedSamples += windowOffsetLength;
                 }
@@ -237,12 +239,12 @@ public class OpenWarble {
                     increase = value > 0;
                     oldSnr = snr;
                 }
-                if (peakCount == 1 && maxIndex < rmsGateHistory.length - 2) {
+                if (peakCount == 1 && maxIndex < rmsGateHistory.length - 2 && getSnr(maxValue) > configuration.triggerSnr) {
                     triggerSampleIndexBegin = processedSamples - (rmsGateHistory.length - maxIndex) * windowOffsetLength;
                     response = PROCESS_RESPONSE.PROCESS_PITCH;
                     correctedErrors = 0;
                     parsed_cursor = 0;
-                    //System.out.println(String.format("TRIGGER %.3f-%.3f s %.3f snr", triggerSampleIndexBegin / configuration.sampleRate,(triggerSampleIndexBegin+door_length) / configuration.sampleRate, maxValue));
+                    System.out.println(String.format("TRIGGER %.3f-%.3f s %.3f snr", triggerSampleIndexBegin / configuration.sampleRate,(triggerSampleIndexBegin+door_length) / configuration.sampleRate, maxValue));
                 }
             }
         } else {
