@@ -34,7 +34,7 @@
 package org.noise_planet.jwarble;
 
 public class OpenWarble {
-    private static final int BACKGROUND_LVL_SIZE = 20;
+    private static final int BACKGROUND_LVL_SIZE = 32;
     public static final double M2PI = Math.PI * 2;
     private long pushedSamples = 0;
     private long processedSamples = 0;
