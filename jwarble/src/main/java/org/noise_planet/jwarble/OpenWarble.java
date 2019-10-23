@@ -261,7 +261,7 @@ public class OpenWarble {
             if(cursor < signalCache.length - door_length) {
                 while (cursor < signalCache.length - door_length) {
                     final double[] doorFrequencies = new double[]{frequencies[frequency_door1]};
-                    double[] levels = generalized_goertzel(signalCache, (int) cursor + door_length / 2 - windowOffsetLength, windowOffsetLength, configuration.sampleRate, doorFrequencies);
+                    double[] levels = generalized_goertzel(signalCache, (int) cursor + door_length / 4, door_length / 2, configuration.sampleRate, doorFrequencies);
                     levels[0] = Math.max(levels[0], 1e-12);
                     backgroundLevel.add(levels[0]);
                     System.arraycopy(rmsGateHistory, 1, rmsGateHistory, 0, rmsGateHistory.length - 1);
@@ -296,7 +296,7 @@ public class OpenWarble {
                     increase = value > 0;
                     oldSnr = snr;
                 }
-                if (peakCount == 1 && maxIndex < rmsGateHistory.length - (door_length / windowOffsetLength) && getSnr(maxValue) > configuration.triggerSnr) {
+                if (peakCount == 1 && getSnr(maxValue) > configuration.triggerSnr) {
                     triggerSampleIndexBegin = processedSamples - (rmsGateHistory.length - maxIndex) * windowOffsetLength;
                     response = PROCESS_RESPONSE.PROCESS_PITCH;
                     correctedErrors = 0;
