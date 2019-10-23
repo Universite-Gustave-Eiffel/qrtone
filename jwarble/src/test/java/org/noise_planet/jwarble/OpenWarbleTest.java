@@ -192,7 +192,6 @@ public class OpenWarbleTest {
             cursor+=len;
         }
         assertArrayEquals(expectedPayload, messageCallback.payload);
-        assertEquals(0, openWarble.getCorrectedErrors());
     }
 
     private static class UtMessageCallback implements MessageCallback {
@@ -242,7 +241,7 @@ public class OpenWarbleTest {
         }
 
         @Override
-        public void detectWord(byte word, int encodedWord, boolean[] frequencies) {
+        public void detectWord(Hamming12_8.CorrectResult result, int encodedWord, boolean[] frequencies) {
             if(print) {
                 StringBuilder sb = new StringBuilder();
                 for (int i = 0; i < frequencies.length; i++) {
@@ -253,7 +252,20 @@ public class OpenWarbleTest {
                         sb.append(i);
                     }
                 }
-                System.out.println(String.format("Find word %02x %s", word, sb.toString()));
+                if (result.result == Hamming12_8.CorrectResultCode.CORRECTED_ERROR) {
+                    int code = Hamming12_8.encode(result.value);
+                    StringBuilder wrongFrequencies = new StringBuilder();
+                    for(int idfreq = 0; idfreq < OpenWarble.NUM_FREQUENCIES; idfreq++) {
+                        if ((code & (1 << idfreq)) != 0 && !frequencies[idfreq]) {
+                            wrongFrequencies.append(idfreq);
+                        } else if((code & (1 << idfreq)) == 0 && frequencies[idfreq]) {
+                            wrongFrequencies.append(idfreq);
+                        }
+                    }
+                    System.out.println(String.format("Fixed new word %02x %s [%s]", result.value, sb.toString(), wrongFrequencies.toString()));
+                } else {
+                    System.out.println(String.format("New word %02x %s", result.value, sb.toString()));
+                }
             }
         }
     }

@@ -33,6 +33,8 @@
 
 package org.noise_planet.jwarble;
 
+import java.util.Arrays;
+
 public class OpenWarble {
     private static final int BACKGROUND_LVL_SIZE = 32;
     public static final double M2PI = Math.PI * 2;
@@ -202,6 +204,55 @@ public class OpenWarble {
         return 10 * Math.log10(level / backgroundLevel.getPercentile(0.1));
     }
 
+    /**
+     * @param targetPitch Sample index
+     */
+    private Hamming12_8.CorrectResult decode(long targetPitch, Byte expected, double[] score, boolean trace) {
+        double[] levelsUp = generalized_goertzel(signalCache, (int) (targetPitch - (pushedSamples - signalCache.length)), word_length / 2, configuration.sampleRate, (parsed_cursor + 1) % 2 == 0 ? frequencies : frequencies_uptone);
+        double[] levelsDown = generalized_goertzel(signalCache, (int) (targetPitch - (pushedSamples - signalCache.length)) + word_length / 2, word_length / 2, configuration.sampleRate, (parsed_cursor + 1) % 2 == 0 ? frequencies : frequencies_uptone);
+
+        int word = 0;
+        boolean[] freqs = null;
+        int code = 0;
+        if(trace) {
+            freqs = new boolean[frequencies.length];
+        }
+        if(expected != null) {
+            code = Hamming12_8.encode(expected);
+        }
+        for (int i = 0; i < frequencies.length; i++) {
+            if (levelsUp[i] > levelsDown[i]) {
+                // This bit is 1
+                word |= 1 << i;
+                if(trace) {
+                    freqs[i] = true;
+                }
+                if(score != null) {
+                    double snr = 10 * Math.log10(levelsUp[i] / levelsDown[i]);
+                    if((code & (1 << i)) != 0) {
+                        score[i] = snr;
+                    } else {
+                        score[i] = -snr;
+                    }
+                }
+            } else if(score != null) {
+                double snr = 10 * Math.log10(levelsDown[i] / levelsUp[i]);
+                if((code & (1 << i)) == 0) {
+                    score[i] = snr;
+                } else {
+                    score[i] = -snr;
+                }
+            }
+        }
+        Hamming12_8.CorrectResult result = Hamming12_8.decode(word);
+
+        if (trace) {
+            unitTestCallback.detectWord(result, word, freqs);
+        }
+
+        return result;
+    }
+
     private PROCESS_RESPONSE process() {
         PROCESS_RESPONSE response = PROCESS_RESPONSE.PROCESS_IDLE;
         if(triggerSampleIndexBegin < 0) {
@@ -245,7 +296,7 @@ public class OpenWarble {
                     increase = value > 0;
                     oldSnr = snr;
                 }
-                if (peakCount == 1 && maxIndex < rmsGateHistory.length - 2 && getSnr(maxValue) > configuration.triggerSnr) {
+                if (peakCount == 1 && maxIndex < rmsGateHistory.length - (door_length / windowOffsetLength) && getSnr(maxValue) > configuration.triggerSnr) {
                     triggerSampleIndexBegin = processedSamples - (rmsGateHistory.length - maxIndex) * windowOffsetLength;
                     response = PROCESS_RESPONSE.PROCESS_PITCH;
                     correctedErrors = 0;
@@ -261,46 +312,50 @@ public class OpenWarble {
                 // Missed first pitch
                 response = PROCESS_RESPONSE.PROCESS_ERROR;
                 triggerSampleIndexBegin = -1;
-            } else if(targetPitch + word_length <= pushedSamples) {
-                double[] levelsUp = generalized_goertzel(signalCache, (int)(targetPitch - (pushedSamples - signalCache.length)),word_length / 2, configuration.sampleRate, (parsed_cursor + 1) % 2 == 0 ? frequencies : frequencies_uptone);
-                double[] levelsDown = generalized_goertzel(signalCache, (int)(targetPitch - (pushedSamples - signalCache.length)) + word_length / 2,word_length / 2, configuration.sampleRate, (parsed_cursor + 1) % 2 == 0 ? frequencies : frequencies_uptone);
-
-                int word = 0;
-                for(int i = 0; i < frequencies.length; i++) {
-                    if(levelsUp[i] > levelsDown[i]) {
-                        // This bit is 1
-                        word |= 1 << i;
-                    }
-                }
-                Hamming12_8.CorrectResult result = Hamming12_8.decode(word);
-                if(unitTestCallback != null) {
-                    boolean[] freqs = new boolean[frequencies.length];
-                    for(int i = 0; i < frequencies.length; i++) {
-                        freqs[i] = levelsUp[i] > levelsDown[i];
-                    }
-                    unitTestCallback.detectWord(result.value, word, freqs);
-                }
-                if(result.result == Hamming12_8.CorrectResultCode.FAIL_CORRECTION) {
-                    response = PROCESS_RESPONSE.PROCESS_ERROR;
-                    triggerSampleIndexBegin = -1;
-                } else {
-                    if(result.result == Hamming12_8.CorrectResultCode.CORRECTED_ERROR) {
-                        correctedErrors += 1;
-                    }
-                    if(parsed_cursor == 0) {
-                        // Validation door
-                        if(result.value != door2_check) {
-                            triggerSampleIndexBegin = -1;
-                            response = PROCESS_RESPONSE.PROCESS_ERROR;
-                        } else {
-                            parsed_cursor++;
-                            response = PROCESS_RESPONSE.PROCESS_PITCH;
+            } else if(targetPitch + word_length + word_length / 2 <= pushedSamples) {
+                if (parsed_cursor == 0) {
+                    // Validation gate - the expected word is known
+                    // Find the most appropriate sample index by computing the sample offset score
+                    // This is the most cpu intensive task, but triggered only when a message is found
+                    Hamming12_8.CorrectResult result = null;
+                    double[] score = new double[frequencies.length];
+                    double bestScore = Double.MIN_VALUE;
+                    int bestScoreOffset = 0;
+                    int step = (int)Math.ceil((1.0 / frequencies[0]) * configuration.sampleRate);
+                    for(int offset = -door_length / 2; offset < (door_length / 2) - step; offset += step) {
+                        Hamming12_8.CorrectResult offsetResult = decode(targetPitch + offset, door2_check, score, false);
+                        if(offsetResult.value == door2_check) {
+                            Arrays.sort(score);
+                            double median = score.length % 2 == 0 ? (score[(score.length - 1) / 2] + score[(score.length - 1) / 2 + 1]) / 2.0 : score[score.length / 2];
+                            if(bestScore < median) {
+                                bestScore = median;
+                                bestScoreOffset = offset;
+                                result = offsetResult;
+                            }
                         }
+                    }
+                    triggerSampleIndexBegin = triggerSampleIndexBegin + bestScoreOffset;
+                    if (result == null || result.result == Hamming12_8.CorrectResultCode.FAIL_CORRECTION ||
+                            door2_check != result.value) {
+                        response = PROCESS_RESPONSE.PROCESS_ERROR;
+                        triggerSampleIndexBegin = -1;
                     } else {
-                        // message
-                        parsed[parsed_cursor-1] = result.value;
+                        response = PROCESS_RESPONSE.PROCESS_PITCH;
                         parsed_cursor++;
-                        if(parsed_cursor - 1 == parsed.length) {
+                    }
+                } else {
+                    Hamming12_8.CorrectResult result = decode(targetPitch, null, null, unitTestCallback != null);
+                    if (result.result == Hamming12_8.CorrectResultCode.FAIL_CORRECTION) {
+                        response = PROCESS_RESPONSE.PROCESS_ERROR;
+                        triggerSampleIndexBegin = -1;
+                    } else {
+                        if (result.result == Hamming12_8.CorrectResultCode.CORRECTED_ERROR) {
+                            correctedErrors += 1;
+                        }
+                        // message
+                        parsed[parsed_cursor - 1] = result.value;
+                        parsed_cursor++;
+                        if (parsed_cursor - 1 == parsed.length) {
                             response = PROCESS_RESPONSE.PROCESS_COMPLETE;
                             triggerSampleIndexBegin = -1;
                         } else {
@@ -421,6 +476,6 @@ public class OpenWarble {
 
     public interface UnitTestCallback {
         void generateWord(byte word, int encodedWord, boolean[] frequencies);
-        void detectWord(byte word, int encodedWord, boolean[] frequencies);
+        void detectWord(Hamming12_8.CorrectResult result, int encodedWord, boolean[] frequencies);
     }
 }
