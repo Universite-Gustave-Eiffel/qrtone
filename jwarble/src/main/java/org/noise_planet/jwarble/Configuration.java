@@ -39,6 +39,7 @@ package org.noise_planet.jwarble;
 public class Configuration {
   public static final double MULT_SEMITONE = 1.0594630943592952646;
   public static final double DEFAULT_WORD_TIME = 0.0872;
+  public static final double DEFAULT_WORD_SILENCE = 0.033; // Silence before a new word
   public static final double DEFAULT_AUDIBLE_FIRST_FREQUENCY = 1760;
   public static final double DEFAULT_INAUDIBLE_FIRST_FREQUENCY = 18200;
   public static final int DEFAULT_INAUDIBLE_STEP = 120;
@@ -52,16 +53,18 @@ public class Configuration {
   public final int frequencyIncrement;
   public final double frequencyMulti;
   public final double wordTime;
+  public final double wordSilence;
   public final double triggerSnr;
   public final double convolutionPeakRatio;
 
-  public Configuration(int payloadSize, double sampleRate, double firstFrequency, int frequencyIncrement, double frequencyMulti, double wordTime, double triggerSnr, double convolutionPeakRatio) {
+  public Configuration(int payloadSize, double sampleRate, double firstFrequency, int frequencyIncrement, double frequencyMulti, double wordTime, double wordSilence, double triggerSnr, double convolutionPeakRatio) {
     this.payloadSize = payloadSize;
     this.sampleRate = sampleRate;
     this.firstFrequency = firstFrequency;
     this.frequencyIncrement = frequencyIncrement;
     this.frequencyMulti = frequencyMulti;
     this.wordTime = wordTime;
+    this.wordSilence = wordSilence;
     this.triggerSnr = triggerSnr;
     this.convolutionPeakRatio = convolutionPeakRatio;
   }
@@ -74,18 +77,18 @@ public class Configuration {
    */
   public static Configuration getAudible(int payloadSize, double sampleRate) {
     return new Configuration(payloadSize, sampleRate, DEFAULT_AUDIBLE_FIRST_FREQUENCY,
-            0, MULT_SEMITONE, DEFAULT_WORD_TIME, DEFAULT_TRIGGER_SNR, DEFAULT_DOOR_PEAK_RATIO);
+            0, MULT_SEMITONE, DEFAULT_WORD_TIME, DEFAULT_WORD_SILENCE, DEFAULT_TRIGGER_SNR, DEFAULT_DOOR_PEAK_RATIO);
   }
 
 
   /**
    * Inaudible data communication (from 18200 Hz to 22040 hz)
-   * @param payloadSize Payload size in bytes. Must be greater or equal to 44100 Hz (Nyquist frequency)
-   * @param sampleRate Sampling rate in Hz
+   * @param payloadSize Payload size in bytes.
+   * @param sampleRate Sampling rate in Hz. Must be greater or equal to 44100 Hz (Nyquist frequency)
    * @return Default configuration for this profile
    */
   public static Configuration getInaudible(int payloadSize, double sampleRate) {
     return new Configuration(payloadSize, sampleRate, DEFAULT_INAUDIBLE_FIRST_FREQUENCY,
-            DEFAULT_INAUDIBLE_STEP, 0, DEFAULT_WORD_TIME, DEFAULT_TRIGGER_SNR, DEFAULT_DOOR_PEAK_RATIO);
+            DEFAULT_INAUDIBLE_STEP, 0, DEFAULT_WORD_TIME, DEFAULT_WORD_SILENCE, DEFAULT_TRIGGER_SNR, DEFAULT_DOOR_PEAK_RATIO);
   }
 }
