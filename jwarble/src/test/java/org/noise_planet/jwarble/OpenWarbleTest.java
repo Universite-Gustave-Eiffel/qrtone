@@ -1,5 +1,6 @@
 package org.noise_planet.jwarble;
 
+import com.backblaze.erasure.Galois;
 import com.backblaze.erasure.ReedSolomon;
 import org.junit.Assert;
 import org.junit.Test;
@@ -307,65 +308,118 @@ public class OpenWarbleTest {
 
     @Test
     public void testRSEncode() {
-        byte [] [] dataShards = new byte [] [] {
-                new byte [] { 0, 1 },
-                new byte [] { 1, 2 },
-                new byte [] { 1, 3 },
-                new byte [] { 2, 4 },
-                new byte [] { 3, 5 }
-        };
-        int parityCount = 5;
-        final int dataCount = dataShards.length;
-        final int totalCount = dataCount + parityCount;
-        final int shardLength = dataShards[0].length;
-        byte [] [] allShards = new byte [totalCount] [];
-        final int dataLength = dataShards[0].length;
-        for (int i = 0; i < dataCount; i++) {
-            allShards[i] = Arrays.copyOf(dataShards[i], dataLength);
-        }
-        for (int i = dataCount; i < totalCount; i++) {
-            allShards[i] = new byte [dataLength];
-        }
-        // Encode.
-        ReedSolomon codec = ReedSolomon.create(dataCount, parityCount);
-        codec.encodeParity(allShards, 0, dataLength);
+        double sampleRate = 44100;
+        byte[] expectedPayload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
+        OpenWarble openWarble = new OpenWarble(Configuration.getAudible(expectedPayload.length, sampleRate));
+        byte[] blocks = openWarble.encodeReedSolomon(expectedPayload);
 
-        // Make a copy to decode with.
-        byte [] [] testShards = new byte [totalCount] [];
-        boolean [] shardPresent = new boolean [totalCount];
-
-        for (int i = 0; i < totalCount; i++) {
-            testShards[i] = Arrays.copyOf(allShards[i], shardLength);
-            shardPresent[i] = true;
+        /////////////////////////////////////////////////////////
+        // Create crc check matrix
+        int reedSolomonLength = expectedPayload.length + OpenWarble.WARBLE_RS_DISTANCE * openWarble.shardSize;
+        boolean[] bytesPresent = new boolean[reedSolomonLength];
+        // Fill with true as padding bytes are known to be 0
+        Arrays.fill(bytesPresent, true);
+        int crcCursor = reedSolomonLength;
+        int contentCursor = 0;
+        while(contentCursor < reedSolomonLength) {
+            final byte expectedCrc = blocks[crcCursor];
+            final byte crc = OpenWarble.crc8(blocks, contentCursor, Math.min(contentCursor + openWarble.crcBlockLength, reedSolomonLength));
+            if(expectedCrc != crc) {
+                Arrays.fill(bytesPresent, contentCursor ,contentCursor+openWarble.crcBlockLength, false);
+            }
+            contentCursor += openWarble.crcBlockLength;
+            crcCursor += 1;
         }
 
+        // Check encoding
+        ReedSolomon reedSolomon = ReedSolomon.create(OpenWarble.WARBLE_RS_P, OpenWarble.WARBLE_RS_DISTANCE);
+        byte [] [] dataShards = new byte [OpenWarble.WARBLE_RS_P+OpenWarble.WARBLE_RS_DISTANCE] [];
+        // Data bytes
+        int cursor = 0;
+        int block = 0;
+        while (block < OpenWarble.WARBLE_RS_P) {
+            dataShards[block] = new byte[openWarble.shardSize];
+            if(cursor < expectedPayload.length) {
+                System.arraycopy(blocks, cursor, dataShards[block], 0,
+                        Math.min(expectedPayload.length - cursor, openWarble.shardSize));
+                cursor += openWarble.shardSize;
+            }
+            block +=1;
+        }
+        // Parity bytes
+        cursor = expectedPayload.length;
+        for(int parityBlock = OpenWarble.WARBLE_RS_P; parityBlock <  OpenWarble.WARBLE_RS_P + OpenWarble.WARBLE_RS_DISTANCE; parityBlock++) {
+            dataShards[parityBlock] = Arrays.copyOfRange(blocks, cursor, cursor + openWarble.shardSize);
+            cursor += openWarble.shardSize;
+        }
+        System.out.println(Arrays.toString(Arrays.copyOfRange(blocks, expectedPayload.length, blocks.length)));
+        assertTrue(reedSolomon.isParityCorrect(dataShards, 0, openWarble.shardSize));
     }
 
+    @Test
+    public void crcTest() {
+        byte[] expectedPayload = new byte[]{18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
+        byte base = OpenWarble.crc8(expectedPayload, 0, expectedPayload.length);
+        AtomicLong next = new AtomicLong(1337);
+        for(int i=0; i < expectedPayload.length; i++) {
+            byte[] alteredPayload = Arrays.copyOf(expectedPayload, expectedPayload.length);
+            alteredPayload[i] = (byte) (OpenWarble.warble_rand(next) % 255);
+            assertNotEquals(base, OpenWarble.crc8(alteredPayload, 0, alteredPayload.length));
+        }
+    }
 
     @Test
-    public void testRSEncode2() {
-        double sampleRate = 44100;
-        byte[] expectedPayload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118};
-        OpenWarble openWarble = new OpenWarble(Configuration.getAudible(expectedPayload.length, sampleRate));
-        byte [] [] dataShards = new byte [OpenWarble.WARBLE_RS_P+OpenWarble.WARBLE_RS_DISTANCE] [];
-        byte[] blocks = Arrays.copyOf(expectedPayload, openWarble.block_length);
-        for(int block = 0; block < OpenWarble.WARBLE_RS_P; block++) {
-            int from = block * openWarble.shardSize;
-            int to = block * openWarble.shardSize + openWarble.shardSize;
-            dataShards[block] = Arrays.copyOfRange(blocks, from, to);
+    public void testCorruption() {
+        ReedSolomon reedSolomon = ReedSolomon.create(4, 2);
+        byte[] [] shards = {
+                new byte[] {'A', 'B', 'C', 'D'},
+                new byte[] {'E', 'F', 'G', 'H'},
+                new byte[] {'I', 'J', 'K', 'L'},
+                new byte[] {'M', 'N', 'O', 'P'},
+                new byte[] {0, 0, 0, 0},
+                new byte[] {0, 0, 0, 0}
+        };
+        reedSolomon.encodeParity(shards, 0, shards[0].length);
+        System.out.println("Original: ");
+        for(byte[] shard : shards) {
+            for(byte b : shard) {
+                System.out.print(String.format("%2x ", b));
+            }
+            System.out.print("\n");
         }
-        for(int block = OpenWarble.WARBLE_RS_P; block <  dataShards.length; block++) {
-            dataShards[block] = new byte[openWarble.shardSize];
-        }
-        ReedSolomon codec = ReedSolomon.create(OpenWarble.WARBLE_RS_P, OpenWarble.WARBLE_RS_DISTANCE);
-        codec.encodeParity(dataShards, 0, openWarble.shardSize);
+        assertTrue(reedSolomon.isParityCorrect(shards, 0, shards[0].length));
 
-        // Copy parity in block array
-        int cursor = expectedPayload.length;
-        for(int block = OpenWarble.WARBLE_RS_P; block <  dataShards.length; block++) {
-            System.arraycopy(dataShards[block], 0, blocks, cursor, OpenWarble.WARBLE_RS_DISTANCE);
-            cursor += OpenWarble.WARBLE_RS_DISTANCE;
+        // Corrupt in diagonal
+        shards[0][0] = 'B';
+        shards[1][1] = 'O';
+        shards[2][2] = 'R';
+        shards[3][3] = 'G';
+
+        assertFalse(reedSolomon.isParityCorrect(shards, 0, shards[0].length));
+
+
+        System.out.println("Corrupted: ");
+        for(byte[] shard : shards) {
+            for(byte b : shard) {
+                System.out.print(String.format("%2x ", b));
+            }
+            System.out.print("\n");
         }
-        System.out.println(Arrays.toString(blocks));
+
+        byte[] [] repair_shards = new byte[shards.length][];
+        int c = 0;
+        for(int i=0; i<shards.length; i++) {
+            repair_shards[i] = new byte[] {shards[i][c]};
+        }
+
+        reedSolomon.decodeMissing(repair_shards, new boolean[] {false, true, true, true, true, true}, 0, 1);
+
+        System.out.println("Fixed: ");
+        for(byte[] shard : repair_shards) {
+            for(byte b : shard) {
+                System.out.print(String.format("%2x ", b));
+            }
+            System.out.print("\n");
+        }
     }
 }
