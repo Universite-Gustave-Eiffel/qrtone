@@ -33,10 +33,18 @@
 
 package org.noise_planet.jwarble;
 
+import com.backblaze.erasure.ReedSolomon;
+
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class OpenWarble {
     private static final int BACKGROUND_LVL_SIZE = 32;
+
+    // In order to fix at least 20% of error, the maximum message length attached to a reed solomon(255,32)
+    // code is 10 Bytes for a 4 distance (can correct up to 2 symbols)
+    public static final int WARBLE_RS_P = 10;
+    public static final int WARBLE_RS_DISTANCE = 4;
     public static final double M2PI = Math.PI * 2;
     private long pushedSamples = 0;
     private long processedSamples = 0;
@@ -50,7 +58,8 @@ public class OpenWarble {
     final double[] frequencies = new double[NUM_FREQUENCIES];
     // Frequencies one tone over used frequencies on pair words
     final double[] frequencies_uptone = new double[NUM_FREQUENCIES];
-    final int block_length;
+    final int block_length; // Full payload + all parity bytes
+    final int shardSize; // Number of Reed Solomon parts
     final int word_length;
     final int silence_length;
     final int door_length;
@@ -63,10 +72,25 @@ public class OpenWarble {
     int parsed_cursor = 0; // parsed words
     byte[] parsed;
     private UnitTestCallback unitTestCallback;
+    int[] shuffleIndex;
 
     public OpenWarble(Configuration configuration) {
         this.configuration = configuration;
-        block_length = configuration.payloadSize;
+        // Reed Solomon initialization
+        if(configuration.reedSolomonEncode) {
+            shardSize = Math.max(1, (int)Math.ceil(configuration.payloadSize / (float)WARBLE_RS_P));
+            int padding = WARBLE_RS_P - configuration.payloadSize % WARBLE_RS_P;
+            block_length = configuration.payloadSize + WARBLE_RS_DISTANCE * shardSize;
+            // Compute index shuffling of messages
+            shuffleIndex = new int[block_length];
+            for(int i = 0; i < block_length; i++) {
+                shuffleIndex[i] = i;
+            }
+            fisherYatesShuffleIndex(block_length, shuffleIndex);
+        } else {
+            block_length = configuration.payloadSize;
+            shardSize = configuration.payloadSize;
+        }
         parsed = new byte[configuration.payloadSize];
         word_length = (int)(configuration.sampleRate * configuration.wordTime);
         silence_length = (int)(configuration.sampleRate * configuration.wordSilence);
@@ -87,6 +111,10 @@ public class OpenWarble {
             }
         }
         frequency_door1 = NUM_FREQUENCIES - 1;
+    }
+
+    int warbleReedSolomonDistance(int length) {
+        return (int)Math.max(4, Math.min(WARBLE_RS_DISTANCE, Math.pow(2, Math.round(Math.log(length / 3.) / Math.log(2)))));
     }
 
     public long getTriggerSampleIndexBegin() {
@@ -434,6 +462,68 @@ public class OpenWarble {
             location+=word_length;
         }
         return signal;
+    }
+
+    /**
+     * Encode and interleave using reed solomon algorithm
+     * @param payload data to encode
+     * @return Encoded data
+     */
+    public byte[] encodeReedSolomon(byte[] payload) {
+        return payload;
+    }
+
+    /**
+     * deinterleave and decode using reed solomon algorithm
+     * @param blocks data to decode
+     * @return Decoded data
+     */
+    public byte[] decodeReedSolomon(byte[] blocks) {
+        return blocks;
+    }
+
+    /**
+     * Pseudo random generator
+     * @param next Seed
+     * @return pseudo-random value
+     */
+    public static int warble_rand(AtomicLong next) {
+	    next.set(next.get() * 1103515245L + 12345L);
+        return (int)(((next.get() / 65536) & 0xFFFF  % 32768));
+    }
+
+    /**
+     * randomly swap specified integer
+     * @param n
+     * @param index
+     */
+    void fisherYatesShuffleIndex(int n, int[] index) {
+        int i;
+        AtomicLong rnd_cache = new AtomicLong(n);
+        for (i = index.length - 1; i > 0; i--) {
+            index[index.length - 1 - i] = warble_rand(rnd_cache) % (i + 1);
+        }
+    }
+
+    void swapChars(byte[] inputString, int[] index) {
+        int i;
+        for (i = inputString.length - 1; i > 0; i--)
+        {
+            int v = index[inputString.length - 1 - i];
+            byte tmp = inputString[i];
+            inputString[i] = inputString[v];
+            inputString[v] = tmp;
+        }
+    }
+
+    void unswapChars(byte[] inputString, int[] index) {
+        int i;
+        for (i = 1; i < inputString.length; i++) {
+            int v = index[inputString.length - i - 1];
+            byte tmp = inputString[i];
+            inputString[i] = inputString[v];
+            inputString[v] = tmp;
+        }
     }
 
     public MessageCallback getCallback() {

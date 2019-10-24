@@ -1,5 +1,6 @@
 package org.noise_planet.jwarble;
 
+import com.backblaze.erasure.ReedSolomon;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.*;
 
@@ -101,7 +103,7 @@ public class OpenWarbleTest {
         double blankTime = 1.3;
         int blankSamples = (int)(blankTime * sampleRate);
         byte[] payload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
-        OpenWarble openWarble = new OpenWarble(Configuration.getAudible(payload.length, sampleRate));
+        OpenWarble openWarble = new OpenWarble(Configuration.getAudible(payload.length, sampleRate, false));
         UtCallback utCallback = new UtCallback(false);
         UtMessageCallback messageCallback = new UtMessageCallback();
         openWarble.setCallback(messageCallback);
@@ -133,7 +135,7 @@ public class OpenWarbleTest {
         double blankTime = 1.3;
         int blankSamples = (int)(blankTime * sampleRate);
         byte[] payload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
-        OpenWarble openWarble = new OpenWarble(Configuration.getAudible(payload.length, sampleRate));
+        OpenWarble openWarble = new OpenWarble(Configuration.getAudible(payload.length, sampleRate, false));
         UtCallback utCallback = new UtCallback(false);
         UtMessageCallback messageCallback = new UtMessageCallback();
         openWarble.setCallback(messageCallback);
@@ -168,7 +170,7 @@ public class OpenWarbleTest {
     public void testWithRecordedAudio() throws IOException {
         double sampleRate = 44100;
         byte[] expectedPayload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
-        OpenWarble openWarble = new OpenWarble(Configuration.getAudible(expectedPayload.length, sampleRate));
+        OpenWarble openWarble = new OpenWarble(Configuration.getAudible(expectedPayload.length, sampleRate, false));
         UtCallback utCallback = new UtCallback(true);
         UtMessageCallback messageCallback = new UtMessageCallback();
         openWarble.setCallback(messageCallback);
@@ -268,5 +270,102 @@ public class OpenWarbleTest {
                 }
             }
         }
+    }
+
+    @Test
+    public void randTest() {
+        // This specific random must give the same results regardless of the platform/compiler
+        int[] expected= new int[] {1199,22292,14258,30291,11005,15335,22572,27361,8276,27653};
+        AtomicLong seed = new AtomicLong(1337);
+        for(int expectedValue : expected) {
+            assertEquals(expectedValue, OpenWarble.warble_rand(seed));
+        }
+    }
+
+    @Test(expected = AssertionError.class)
+    public void testShuffle1() {
+        double sampleRate = 44100;
+        byte[] expectedPayload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93};
+        OpenWarble openWarble = new OpenWarble(Configuration.getAudible(expectedPayload.length, sampleRate));
+        expectedPayload = Arrays.copyOf(expectedPayload, openWarble.block_length);
+        byte[] test = Arrays.copyOf(expectedPayload, expectedPayload.length);
+        openWarble.swapChars(test, openWarble.shuffleIndex);
+        assertArrayEquals(expectedPayload, test);
+    }
+
+    @Test
+    public void testShuffle() {
+        double sampleRate = 44100;
+        byte[] expectedPayload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93};
+        OpenWarble openWarble = new OpenWarble(Configuration.getAudible(expectedPayload.length, sampleRate));
+        expectedPayload = Arrays.copyOf(expectedPayload, openWarble.block_length);
+        byte[] test = Arrays.copyOf(expectedPayload, expectedPayload.length);
+        openWarble.swapChars(test, openWarble.shuffleIndex);
+        openWarble.unswapChars(test, openWarble.shuffleIndex);
+        assertArrayEquals(expectedPayload, test);
+    }
+
+    @Test
+    public void testRSEncode() {
+        byte [] [] dataShards = new byte [] [] {
+                new byte [] { 0, 1 },
+                new byte [] { 1, 2 },
+                new byte [] { 1, 3 },
+                new byte [] { 2, 4 },
+                new byte [] { 3, 5 }
+        };
+        int parityCount = 5;
+        final int dataCount = dataShards.length;
+        final int totalCount = dataCount + parityCount;
+        final int shardLength = dataShards[0].length;
+        byte [] [] allShards = new byte [totalCount] [];
+        final int dataLength = dataShards[0].length;
+        for (int i = 0; i < dataCount; i++) {
+            allShards[i] = Arrays.copyOf(dataShards[i], dataLength);
+        }
+        for (int i = dataCount; i < totalCount; i++) {
+            allShards[i] = new byte [dataLength];
+        }
+        // Encode.
+        ReedSolomon codec = ReedSolomon.create(dataCount, parityCount);
+        codec.encodeParity(allShards, 0, dataLength);
+
+        // Make a copy to decode with.
+        byte [] [] testShards = new byte [totalCount] [];
+        boolean [] shardPresent = new boolean [totalCount];
+
+        for (int i = 0; i < totalCount; i++) {
+            testShards[i] = Arrays.copyOf(allShards[i], shardLength);
+            shardPresent[i] = true;
+        }
+
+    }
+
+
+    @Test
+    public void testRSEncode2() {
+        double sampleRate = 44100;
+        byte[] expectedPayload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118};
+        OpenWarble openWarble = new OpenWarble(Configuration.getAudible(expectedPayload.length, sampleRate));
+        byte [] [] dataShards = new byte [OpenWarble.WARBLE_RS_P+OpenWarble.WARBLE_RS_DISTANCE] [];
+        byte[] blocks = Arrays.copyOf(expectedPayload, openWarble.block_length);
+        for(int block = 0; block < OpenWarble.WARBLE_RS_P; block++) {
+            int from = block * openWarble.shardSize;
+            int to = block * openWarble.shardSize + openWarble.shardSize;
+            dataShards[block] = Arrays.copyOfRange(blocks, from, to);
+        }
+        for(int block = OpenWarble.WARBLE_RS_P; block <  dataShards.length; block++) {
+            dataShards[block] = new byte[openWarble.shardSize];
+        }
+        ReedSolomon codec = ReedSolomon.create(OpenWarble.WARBLE_RS_P, OpenWarble.WARBLE_RS_DISTANCE);
+        codec.encodeParity(dataShards, 0, openWarble.shardSize);
+
+        // Copy parity in block array
+        int cursor = expectedPayload.length;
+        for(int block = OpenWarble.WARBLE_RS_P; block <  dataShards.length; block++) {
+            System.arraycopy(dataShards[block], 0, blocks, cursor, OpenWarble.WARBLE_RS_DISTANCE);
+            cursor += OpenWarble.WARBLE_RS_DISTANCE;
+        }
+        System.out.println(Arrays.toString(blocks));
     }
 }
