@@ -564,9 +564,9 @@ public class OpenWarble {
      * deinterleave and decode using reed solomon algorithm
      * @param blocks data to decode
      * @return Decoded data
-     * @throws IllegalArgumentException if the provided data cannot be repaired
      */
-    public byte[] decodeReedSolomon(byte[] blocks, AtomicInteger fixedError) throws IllegalArgumentException {
+    public ReedSolomonResult decodeReedSolomon(byte[] blocks) {
+        int fixedErrors = 0;
         ReedSolomon reedSolomon = ReedSolomon.create(WARBLE_RS_P, WARBLE_RS_DISTANCE);
         byte[][] dataShards = new byte[WARBLE_RS_P + WARBLE_RS_DISTANCE][];
 
@@ -583,7 +583,7 @@ public class OpenWarble {
             // Check crc
             final int crcIndex = configuration.payloadSize +
                     OpenWarble.WARBLE_RS_DISTANCE * shardSize + idColumn;
-            final byte got = OpenWarble.crc8(blocks, startPayload, endPayload);
+            byte got = OpenWarble.crc8(blocks, startPayload, endPayload);
             final byte expected = blocks[crcIndex];
             if (expected != got) {
                 final int startParity = configuration.payloadSize + idColumn * OpenWarble.WARBLE_RS_DISTANCE;
@@ -598,7 +598,7 @@ public class OpenWarble {
                 // Copy parity
                 for (int parityIndex = startParity; parityIndex < endParity; parityIndex++) {
                     final int blockId = (parityIndex - startParity) % OpenWarble.WARBLE_RS_DISTANCE;
-                    dataShards[blockId][0] = blocks[parityIndex];
+                    dataShards[OpenWarble.WARBLE_RS_P + blockId][0] = blocks[parityIndex];
                 }
                 // Maybe the CRC byte is wrong
                 // We can check if our payload+parity are good
@@ -622,7 +622,8 @@ public class OpenWarble {
                         for (int row = 0; row < WARBLE_RS_P; row++) {
                             crcInput[row] = dataShards[row][0];
                         }
-                        if (crc8(crcInput, 0, crcInput.length) == expected) {
+                        got = crc8(crcInput, 0, Math.min(OpenWarble.WARBLE_RS_P, endPayload - startPayload));
+                        if (got == expected) {
                             for (int row = 0; row < OpenWarble.WARBLE_RS_P; row++) {
                                 if (!shardPresent[row]) {
                                     // Copy data to block
@@ -631,22 +632,27 @@ public class OpenWarble {
                             }
                             // Error(s) fixed !
                             errorFixed = true;
-                            if(fixedError != null) {
-                                fixedError.incrementAndGet();
-                            }
+                            fixedErrors += 1;
                             break;
                         } else {
+                            // Nothing has been fixed
+                            // Restore bytes to original state
+                            for (int c = 0; c < tryCursor + 1; c++) {
+                                dataShards[tryTable[c]][0] = blocks[startPayload + tryTable[c]];
+                            }
                             // Compute the next possible missing shards situation
                             tryCursor = nextErrorState(tryCursor, tryTable, WARBLE_RS_P);
                         }
                     }
                     if(!errorFixed) {
-                        throw new IllegalArgumentException("Could not correct the errors in the message.");
+                        return new ReedSolomonResult(fixedErrors, ReedSolomonResultCode.FAIL_CORRECTION, null);
                     }
                 }
             }
         }
-        return Arrays.copyOfRange(blocks, 0, configuration.payloadSize);
+        return new ReedSolomonResult(fixedErrors,
+                fixedErrors == 0 ? ReedSolomonResultCode.NO_ERRORS : ReedSolomonResultCode.CORRECTED_ERROR,
+                Arrays.copyOfRange(blocks, 0, configuration.payloadSize));
     }
 
     /**
@@ -734,5 +740,19 @@ public class OpenWarble {
     public interface UnitTestCallback {
         void generateWord(byte word, int encodedWord, boolean[] frequencies);
         void detectWord(Hamming12_8.CorrectResult result, int encodedWord, boolean[] frequencies);
+    }
+
+    public enum ReedSolomonResultCode {NO_ERRORS, CORRECTED_ERROR, FAIL_CORRECTION}
+
+    public static final class ReedSolomonResult {
+        public final int fixedErrors;
+        public final ReedSolomonResultCode code;
+        public final byte[] payload;
+
+        public ReedSolomonResult(int fixedErrors, ReedSolomonResultCode code, byte[] payload) {
+            this.fixedErrors = fixedErrors;
+            this.code = code;
+            this.payload = payload;
+        }
     }
 }
