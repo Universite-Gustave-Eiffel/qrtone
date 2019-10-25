@@ -174,6 +174,13 @@ public class OpenWarble {
         return Math.sqrt(sum / signal.length);
     }
 
+    /**
+     * Checksum of bytes (could be used only up to 64 bytes)
+     * @param payload payload to crc
+     * @param from payload index to begin crc
+     * @param to excluded index to end crc
+     * @return crc value
+     */
     public static byte crc8(byte[] payload, int from, int to) {
         int crc8 = 0;
         for (int i=from; i < to; i++) {
@@ -478,65 +485,46 @@ public class OpenWarble {
     }
 
     /**
-     * Using crc bytes at the end of blocks, generate a reedSolomon array
-     * @param blocks Array same
-     * @return
-     */
-    protected boolean[] createCRCMatrix(byte[] blocks) {
-        int reedSolomonLength = configuration.payloadSize + OpenWarble.WARBLE_RS_DISTANCE * shardSize;
-        boolean[] bytesPresent = new boolean[reedSolomonLength];
-        // Fill with true as padding bytes are known to be 0
-        Arrays.fill(bytesPresent, true);
-        int crcCursor = reedSolomonLength;
-        int contentCursor = 0;
-        while(contentCursor < reedSolomonLength) {
-            final byte expectedCrc = blocks[crcCursor];
-            final byte crc = OpenWarble.crc8(blocks, contentCursor, Math.min(contentCursor + crcBlockLength, reedSolomonLength));
-            if(expectedCrc != crc) {
-                Arrays.fill(bytesPresent, contentCursor ,contentCursor+crcBlockLength, false);
-            }
-            contentCursor += crcBlockLength;
-            crcCursor += 1;
-        }
-        return bytesPresent;
-    }
-
-    /**
      * Encode and interleave using reed solomon algorithm
      * @param payload data to encode
      * @return Encoded data
      */
     public byte[] encodeReedSolomon(byte[] payload) {
-        byte [] [] dataShards = new byte [OpenWarble.WARBLE_RS_P+OpenWarble.WARBLE_RS_DISTANCE] [];
+        byte [] [] dataShards = new byte[OpenWarble.WARBLE_RS_P + OpenWarble.WARBLE_RS_DISTANCE][];
         byte[] blocks = Arrays.copyOf(payload, block_length);
+        // Init empty shards arrays
+        for (int block = 0; block < OpenWarble.WARBLE_RS_P + OpenWarble.WARBLE_RS_DISTANCE; block++) {
+            dataShards[block] = new byte[shardSize];
+        }
         // Push payload
-        for(int block = 0; block < OpenWarble.WARBLE_RS_P; block++) {
-            dataShards[block] = new byte[shardSize];
+        for (int payloadIndex = 0; payloadIndex < payload.length; payloadIndex++) {
+            final int blockId = payloadIndex % OpenWarble.WARBLE_RS_P;
+            final int column = payloadIndex / OpenWarble.WARBLE_RS_P;
+            dataShards[blockId][column] = payload[payloadIndex];
         }
-        for(int payloadIndex=0; payloadIndex < payload.length; payloadIndex++) {
 
-        }
-        // Push empty parity bytes
-        for(int block = OpenWarble.WARBLE_RS_P; block <  dataShards.length; block++) {
-            dataShards[block] = new byte[shardSize];
-        }
+        // Compute parity
         ReedSolomon codec = ReedSolomon.create(OpenWarble.WARBLE_RS_P, OpenWarble.WARBLE_RS_DISTANCE);
         codec.encodeParity(dataShards, 0, shardSize);
 
-        // Copy parity bytes
+        final int totalShards = OpenWarble.WARBLE_RS_P+OpenWarble.WARBLE_RS_DISTANCE;
+
+        // Copy parity bytes from RS structure to blocks
         int cursor = payload.length;
-        for(int block = OpenWarble.WARBLE_RS_P; block <  dataShards.length; block++) {
-            System.arraycopy(dataShards[block], 0, blocks, cursor, shardSize);
-            cursor += shardSize;
+        for (int column = 0; column < shardSize; column++) {
+            for(int row = OpenWarble.WARBLE_RS_P; row < totalShards; row++) {
+                blocks[cursor++] = dataShards[row][column];
+            }
         }
 
         // Add crc bytes
-        int crcCursor=0;
-        final int crcEnd = cursor;
-        while (crcCursor < crcEnd ) {
-            blocks[cursor] = crc8(blocks, crcCursor, Math.min(crcCursor + crcBlockLength, crcEnd));
-            crcCursor += crcBlockLength;
-            cursor += 1;
+        int parityCursor = payload.length + OpenWarble.WARBLE_RS_DISTANCE * shardSize;
+        byte[] crcInput = new byte[totalShards];
+        for (int column = 0; column < shardSize; column++) {
+            for(int row = 0; row < OpenWarble.WARBLE_RS_P; row++) {
+                crcInput[row] = dataShards[row][column];
+            }
+            blocks[parityCursor++] = crc8(crcInput, 0, crcInput.length);
         }
 
         return blocks;
@@ -546,9 +534,95 @@ public class OpenWarble {
      * deinterleave and decode using reed solomon algorithm
      * @param blocks data to decode
      * @return Decoded data
+     * @throws IllegalArgumentException if the provided data cannot be repaired
      */
-    public byte[] decodeReedSolomon(byte[] blocks) {
-        return blocks;
+    public byte[] decodeReedSolomon(byte[] blocks) throws IllegalArgumentException {
+        ReedSolomon reedSolomon = ReedSolomon.create(WARBLE_RS_P, WARBLE_RS_DISTANCE);
+        byte [] [] dataShards = new byte [WARBLE_RS_P+WARBLE_RS_DISTANCE] [];
+
+        // Init empty shards arrays
+        for (int block = 0; block < WARBLE_RS_P + WARBLE_RS_DISTANCE; block++) {
+            dataShards[block] = new byte[1];
+        }
+
+        // Check Reed Solomon sequences
+        final int totalShards = OpenWarble.WARBLE_RS_P + OpenWarble.WARBLE_RS_DISTANCE;
+        for(int idColumn=0; idColumn < shardSize; idColumn++) {
+            final int startPayload = idColumn*OpenWarble.WARBLE_RS_P;
+            final int endPayload = Math.min(configuration.payloadSize, startPayload+OpenWarble.WARBLE_RS_P);
+            final int startParity = configuration.payloadSize + idColumn * OpenWarble.WARBLE_RS_DISTANCE;
+            final int endParity = startParity + OpenWarble.WARBLE_RS_DISTANCE;
+            // Check crc
+            final int crcIndex = configuration.payloadSize +
+                    OpenWarble.WARBLE_RS_DISTANCE * shardSize + idColumn;
+            final byte got = OpenWarble.crc8(blocks, startPayload, endPayload);
+            final byte expected = blocks[crcIndex];
+            if(expected != got) {
+                // CRC Error
+                // Prepare for reed solomon test
+                // Copy payload
+                for (int payloadIndex = startPayload; payloadIndex < endPayload; payloadIndex++) {
+                    final int blockId = payloadIndex % OpenWarble.WARBLE_RS_P;
+                    dataShards[blockId][0] = blocks[payloadIndex];
+                }
+                // Copy parity
+                for(int parityIndex = startParity; parityIndex < endParity; parityIndex++) {
+                    final int blockId = (parityIndex - startParity) % OpenWarble.WARBLE_RS_DISTANCE;
+                    dataShards[blockId][0] = blocks[parityIndex];
+                }
+                // Maybe the CRC byte is wrong
+                // We can check if our payload+parity are good
+                if(!reedSolomon.isParityCorrect(dataShards, 0, 1)) {
+                    // CRC is right some data have been altered
+                    // We can fix up to OpenWarble.WARBLE_RS_DISTANCE errors
+                    // But we don't know what is the missing bytes
+                    // So we have to check for all possibilities against the expected crc
+                    boolean[] shardPresent = new boolean[totalShards];
+                    int[] tryCursor = new int[WARBLE_RS_DISTANCE];
+                    Arrays.fill(tryCursor, -1);
+                    tryCursor[0] = 0; // One error, on the first byte
+                    byte[] crcInput = new byte[OpenWarble.WARBLE_RS_P];
+                    while (tryCursor[tryCursor.length - 1] < WARBLE_RS_P) {
+                        Arrays.fill(shardPresent, true);
+                        for(int c=0; c < tryCursor.length; c++) {
+                            if(tryCursor[c]!=-1) {
+                                shardPresent[tryCursor[c]] = false;
+                            }
+                        }
+                        reedSolomon.decodeMissing(dataShards, shardPresent, 0,
+                                OpenWarble.WARBLE_RS_DISTANCE + OpenWarble.WARBLE_RS_P);
+                        // crc check
+                        for(int row = 0; row < WARBLE_RS_P; row++) {
+                            crcInput[row] = dataShards[row][0];
+                        }
+                        if(crc8(crcInput, 0, crcInput.length) == expected) {
+                            for(int row = 0; row < OpenWarble.WARBLE_RS_P; row++) {
+                                if(!shardPresent[row]) {
+                                    // Copy data to block
+                                    blocks[startPayload + row] = dataShards[row][0];
+                                }
+                            }
+                            // Error fixed !
+                            break;
+                        } else {
+                            // Not that, try another combination
+                            // increment try cursors
+                            for (int c = 0; c < tryCursor.length; c++) {
+                                tryCursor[c]++;
+                                if (tryCursor[c] < totalShards) {
+                                    break;
+                                } else {
+                                    if (c < tryCursor.length - 1) {
+                                        tryCursor[c] = 0;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return Arrays.copyOfRange(blocks, 0, configuration.payloadSize);
     }
 
     /**

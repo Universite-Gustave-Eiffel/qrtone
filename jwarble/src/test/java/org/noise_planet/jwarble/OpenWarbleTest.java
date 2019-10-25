@@ -313,47 +313,11 @@ public class OpenWarbleTest {
         OpenWarble openWarble = new OpenWarble(Configuration.getAudible(expectedPayload.length, sampleRate));
         byte[] blocks = openWarble.encodeReedSolomon(expectedPayload);
 
-        /////////////////////////////////////////////////////////
-        // Create crc check matrix
-        int reedSolomonLength = expectedPayload.length + OpenWarble.WARBLE_RS_DISTANCE * openWarble.shardSize;
-        boolean[] bytesPresent = new boolean[reedSolomonLength];
-        // Fill with true as padding bytes are known to be 0
-        Arrays.fill(bytesPresent, true);
-        int crcCursor = reedSolomonLength;
-        int contentCursor = 0;
-        while(contentCursor < reedSolomonLength) {
-            final byte expectedCrc = blocks[crcCursor];
-            final byte crc = OpenWarble.crc8(blocks, contentCursor, Math.min(contentCursor + openWarble.crcBlockLength, reedSolomonLength));
-            if(expectedCrc != crc) {
-                Arrays.fill(bytesPresent, contentCursor ,contentCursor+openWarble.crcBlockLength, false);
-            }
-            contentCursor += openWarble.crcBlockLength;
-            crcCursor += 1;
-        }
-
+        ////////////////////////////////////////////////
+        ////////////////////////////////////////////////
         // Check encoding
-        ReedSolomon reedSolomon = ReedSolomon.create(OpenWarble.WARBLE_RS_P, OpenWarble.WARBLE_RS_DISTANCE);
-        byte [] [] dataShards = new byte [OpenWarble.WARBLE_RS_P+OpenWarble.WARBLE_RS_DISTANCE] [];
-        // Data bytes
-        int cursor = 0;
-        int block = 0;
-        while (block < OpenWarble.WARBLE_RS_P) {
-            dataShards[block] = new byte[openWarble.shardSize];
-            if(cursor < expectedPayload.length) {
-                System.arraycopy(blocks, cursor, dataShards[block], 0,
-                        Math.min(expectedPayload.length - cursor, openWarble.shardSize));
-                cursor += openWarble.shardSize;
-            }
-            block +=1;
-        }
-        // Parity bytes
-        cursor = expectedPayload.length;
-        for(int parityBlock = OpenWarble.WARBLE_RS_P; parityBlock <  OpenWarble.WARBLE_RS_P + OpenWarble.WARBLE_RS_DISTANCE; parityBlock++) {
-            dataShards[parityBlock] = Arrays.copyOfRange(blocks, cursor, cursor + openWarble.shardSize);
-            cursor += openWarble.shardSize;
-        }
+
         System.out.println(Arrays.toString(Arrays.copyOfRange(blocks, expectedPayload.length, blocks.length)));
-        assertTrue(reedSolomon.isParityCorrect(dataShards, 0, openWarble.shardSize));
     }
 
     @Test
