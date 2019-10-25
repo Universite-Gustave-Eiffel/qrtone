@@ -36,6 +36,7 @@ package org.noise_planet.jwarble;
 import com.backblaze.erasure.ReedSolomon;
 
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class OpenWarble {
@@ -531,14 +532,45 @@ public class OpenWarble {
     }
 
     /**
+     * Compute all combinations of errors for n errors with n bytes array
+     * @param currentNumberOfErrors
+     * @param tryTable
+     * @return
+     */
+    public static int nextErrorState(int currentNumberOfErrors, int[] tryTable, int nBytes) {
+        if (tryTable[currentNumberOfErrors] == nBytes - 1) {
+            // All possibilities have been done for the last entry
+            int incrementCursor = currentNumberOfErrors - 1;
+            while (incrementCursor >= 0) {
+                if (tryTable[incrementCursor] < tryTable[incrementCursor + 1] - 1) {
+                    tryTable[incrementCursor]++;
+                    tryTable[incrementCursor + 1] = tryTable[incrementCursor] + 1;
+                    break;
+                }
+                incrementCursor--;
+            }
+            if (incrementCursor < 0) {
+                currentNumberOfErrors++;
+                tryTable[0] = 0;
+                for (int c = 1; c < tryTable.length; c++) {
+                    tryTable[c] = tryTable[c - 1] + 1;
+                }
+            }
+        } else {
+            tryTable[currentNumberOfErrors] += 1;
+        }
+        return currentNumberOfErrors;
+    }
+
+    /**
      * deinterleave and decode using reed solomon algorithm
      * @param blocks data to decode
      * @return Decoded data
      * @throws IllegalArgumentException if the provided data cannot be repaired
      */
-    public byte[] decodeReedSolomon(byte[] blocks) throws IllegalArgumentException {
+    public byte[] decodeReedSolomon(byte[] blocks, AtomicInteger fixedError) throws IllegalArgumentException {
         ReedSolomon reedSolomon = ReedSolomon.create(WARBLE_RS_P, WARBLE_RS_DISTANCE);
-        byte [] [] dataShards = new byte [WARBLE_RS_P+WARBLE_RS_DISTANCE] [];
+        byte[][] dataShards = new byte[WARBLE_RS_P + WARBLE_RS_DISTANCE][];
 
         // Init empty shards arrays
         for (int block = 0; block < WARBLE_RS_P + WARBLE_RS_DISTANCE; block++) {
@@ -547,9 +579,9 @@ public class OpenWarble {
 
         // Check Reed Solomon sequences
         final int totalShards = OpenWarble.WARBLE_RS_P + OpenWarble.WARBLE_RS_DISTANCE;
-        for(int idColumn=0; idColumn < shardSize; idColumn++) {
-            final int startPayload = idColumn*OpenWarble.WARBLE_RS_P;
-            final int endPayload = Math.min(configuration.payloadSize, startPayload+OpenWarble.WARBLE_RS_P);
+        for (int idColumn = 0; idColumn < shardSize; idColumn++) {
+            final int startPayload = idColumn * OpenWarble.WARBLE_RS_P;
+            final int endPayload = Math.min(configuration.payloadSize, startPayload + OpenWarble.WARBLE_RS_P);
             final int startParity = configuration.payloadSize + idColumn * OpenWarble.WARBLE_RS_DISTANCE;
             final int endParity = startParity + OpenWarble.WARBLE_RS_DISTANCE;
             // Check crc
@@ -557,7 +589,7 @@ public class OpenWarble {
                     OpenWarble.WARBLE_RS_DISTANCE * shardSize + idColumn;
             final byte got = OpenWarble.crc8(blocks, startPayload, endPayload);
             final byte expected = blocks[crcIndex];
-            if(expected != got) {
+            if (expected != got) {
                 // CRC Error
                 // Prepare for reed solomon test
                 // Copy payload
@@ -566,58 +598,53 @@ public class OpenWarble {
                     dataShards[blockId][0] = blocks[payloadIndex];
                 }
                 // Copy parity
-                for(int parityIndex = startParity; parityIndex < endParity; parityIndex++) {
+                for (int parityIndex = startParity; parityIndex < endParity; parityIndex++) {
                     final int blockId = (parityIndex - startParity) % OpenWarble.WARBLE_RS_DISTANCE;
                     dataShards[blockId][0] = blocks[parityIndex];
                 }
                 // Maybe the CRC byte is wrong
                 // We can check if our payload+parity are good
-                if(!reedSolomon.isParityCorrect(dataShards, 0, 1)) {
+                if (!reedSolomon.isParityCorrect(dataShards, 0, 1)) {
                     // CRC is right some data have been altered
                     // We can fix up to OpenWarble.WARBLE_RS_DISTANCE errors
                     // But we don't know what is the missing bytes
-                    // So we have to check for all possibilities against the expected crc
+                    // So we have to check for all missing bytes possibilities against the expected crc
                     boolean[] shardPresent = new boolean[totalShards];
-                    int[] tryCursor = new int[WARBLE_RS_DISTANCE];
-                    Arrays.fill(tryCursor, -1);
-                    tryCursor[0] = 0; // One error, on the first byte
+                    int[] tryTable = new int[WARBLE_RS_DISTANCE];
+                    int tryCursor = 0;
                     byte[] crcInput = new byte[OpenWarble.WARBLE_RS_P];
-                    while (tryCursor[tryCursor.length - 1] < WARBLE_RS_P) {
+                    boolean errorFixed = false;
+                    while (tryCursor < tryTable.length) {
                         Arrays.fill(shardPresent, true);
-                        for(int c=0; c < tryCursor.length; c++) {
-                            if(tryCursor[c]!=-1) {
-                                shardPresent[tryCursor[c]] = false;
-                            }
+                        for (int c = 0; c < tryCursor + 1; c++) {
+                            shardPresent[tryTable[c]] = false;
                         }
                         reedSolomon.decodeMissing(dataShards, shardPresent, 0,
                                 OpenWarble.WARBLE_RS_DISTANCE + OpenWarble.WARBLE_RS_P);
                         // crc check
-                        for(int row = 0; row < WARBLE_RS_P; row++) {
+                        for (int row = 0; row < WARBLE_RS_P; row++) {
                             crcInput[row] = dataShards[row][0];
                         }
-                        if(crc8(crcInput, 0, crcInput.length) == expected) {
-                            for(int row = 0; row < OpenWarble.WARBLE_RS_P; row++) {
-                                if(!shardPresent[row]) {
+                        if (crc8(crcInput, 0, crcInput.length) == expected) {
+                            for (int row = 0; row < OpenWarble.WARBLE_RS_P; row++) {
+                                if (!shardPresent[row]) {
                                     // Copy data to block
                                     blocks[startPayload + row] = dataShards[row][0];
                                 }
                             }
-                            // Error fixed !
+                            // Error(s) fixed !
+                            errorFixed = true;
+                            if(fixedError != null) {
+                                fixedError.incrementAndGet();
+                            }
                             break;
                         } else {
-                            // Not that, try another combination
-                            // increment try cursors
-                            for (int c = 0; c < tryCursor.length; c++) {
-                                tryCursor[c]++;
-                                if (tryCursor[c] < totalShards) {
-                                    break;
-                                } else {
-                                    if (c < tryCursor.length - 1) {
-                                        tryCursor[c] = 0;
-                                    }
-                                }
-                            }
+                            // Compute the next possible missing shards situation
+                            tryCursor = nextErrorState(tryCursor, tryTable, WARBLE_RS_P);
                         }
+                    }
+                    if(!errorFixed) {
+                        throw new IllegalArgumentException("Could not correct the errors in the message.");
                     }
                 }
             }
