@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.*;
@@ -307,17 +308,16 @@ public class OpenWarbleTest {
     }
 
     @Test
-    public void testRSEncode() {
+    public void testRSEncodeDecode() {
         double sampleRate = 44100;
         byte[] expectedPayload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
         OpenWarble openWarble = new OpenWarble(Configuration.getAudible(expectedPayload.length, sampleRate));
         byte[] blocks = openWarble.encodeReedSolomon(expectedPayload);
 
-        ////////////////////////////////////////////////
-        ////////////////////////////////////////////////
         // Check encoding
-
-        System.out.println(Arrays.toString(Arrays.copyOfRange(blocks, expectedPayload.length, blocks.length)));
+        AtomicInteger fixedError = new AtomicInteger(0);
+        openWarble.decodeReedSolomon(blocks, fixedError);
+        assertEquals(0, fixedError.get());
     }
 
     @Test
@@ -331,62 +331,6 @@ public class OpenWarbleTest {
             assertNotEquals(base, OpenWarble.crc8(alteredPayload, 0, alteredPayload.length));
         }
     }
-
-    @Test
-    public void testCorruption() {
-        ReedSolomon reedSolomon = ReedSolomon.create(4, 2);
-        byte[] [] shards = {
-                new byte[] {'A', 'B', 'C', 'D'},
-                new byte[] {'E', 'F', 'G', 'H'},
-                new byte[] {'I', 'J', 'K', 'L'},
-                new byte[] {'M', 'N', 'O', 'P'},
-                new byte[] {0, 0, 0, 0},
-                new byte[] {0, 0, 0, 0}
-        };
-        reedSolomon.encodeParity(shards, 0, shards[0].length);
-        System.out.println("Original: ");
-        for(byte[] shard : shards) {
-            for(byte b : shard) {
-                System.out.print(String.format("%2x ", b));
-            }
-            System.out.print("\n");
-        }
-        assertTrue(reedSolomon.isParityCorrect(shards, 0, shards[0].length));
-
-        // Corrupt in diagonal
-        shards[0][0] = 'B';
-        shards[1][1] = 'O';
-        shards[2][2] = 'R';
-        shards[3][3] = 'G';
-
-        assertFalse(reedSolomon.isParityCorrect(shards, 0, shards[0].length));
-
-
-        System.out.println("Corrupted: ");
-        for(byte[] shard : shards) {
-            for(byte b : shard) {
-                System.out.print(String.format("%2x ", b));
-            }
-            System.out.print("\n");
-        }
-
-        byte[] [] repair_shards = new byte[shards.length][];
-        int c = 0;
-        for(int i=0; i<shards.length; i++) {
-            repair_shards[i] = new byte[] {shards[i][c]};
-        }
-
-        reedSolomon.decodeMissing(repair_shards, new boolean[] {false, true, true, true, true, true}, 0, 1);
-
-        System.out.println("Fixed: ");
-        for(byte[] shard : repair_shards) {
-            for(byte b : shard) {
-                System.out.print(String.format("%2x ", b));
-            }
-            System.out.print("\n");
-        }
-    }
-
 
     /**
      * Test generation of possible error locations for a given number of errors
