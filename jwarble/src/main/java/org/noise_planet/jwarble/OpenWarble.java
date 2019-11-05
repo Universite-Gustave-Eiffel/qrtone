@@ -42,7 +42,7 @@ public class OpenWarble {
     private static final int BACKGROUND_LVL_SIZE = 32;
     // WARBLE_RS_DISTANCE is 2t where t is the number of maximum fixed bytes for WARBLE_RS_P bytes
     public static final int WARBLE_RS_P = 10;
-    public static final int WARBLE_RS_DISTANCE = 4;
+    public static final int WARBLE_RS_DISTANCE = 2;
     public static final double M2PI = Math.PI * 2;
     private long pushedSamples = 0;
     private long processedSamples = 0;
