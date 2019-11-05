@@ -328,14 +328,36 @@ public class OpenWarbleTest {
         OpenWarble openWarble = new OpenWarble(Configuration.getAudible(expectedPayload.length, sampleRate));
         byte[] blocks = openWarble.encodeReedSolomon(expectedPayload);
 
-        for(int i=0; i < expectedPayload.length; i++) {
+        for(int i=0; i < blocks.length; i++) {
             byte[] alteredBytes = Arrays.copyOf(blocks, blocks.length);
             alteredBytes[i] = 55;
             // Check encoding
             OpenWarble.ReedSolomonResult result = openWarble.decodeReedSolomon(alteredBytes);
+            assertNotEquals(String.format("Could not fixed error on location %d",i), OpenWarble.ReedSolomonResultCode.FAIL_CORRECTION,  result.code);
+            assertArrayEquals(expectedPayload, result.payload);
+            if(result.code == OpenWarble.ReedSolomonResultCode.CORRECTED_ERROR) {
+                assertEquals(String.format("Not expected fixes on location %d",i), 1, result.fixedErrors);
+            }
+        }
+    }
+
+
+    @Test
+    public void testRSEncodeDecode2Errors() {
+        double sampleRate = 44100;
+        byte[] expectedPayload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
+        OpenWarble openWarble = new OpenWarble(Configuration.getAudible(expectedPayload.length, sampleRate));
+        byte[] blocks = openWarble.encodeReedSolomon(expectedPayload);
+
+        for(int i=0; i < expectedPayload.length  / 2; i++) {
+            byte[] alteredBytes = Arrays.copyOf(blocks, blocks.length);
+            alteredBytes[i] = 55;
+            alteredBytes[alteredBytes.length - i - 1] = 12;
+            // Check encoding
+            OpenWarble.ReedSolomonResult result = openWarble.decodeReedSolomon(alteredBytes);
             assertEquals(String.format("Could not fixed error on location %d",i), OpenWarble.ReedSolomonResultCode.CORRECTED_ERROR,  result.code);
             assertArrayEquals(expectedPayload, result.payload);
-            assertEquals(1, result.fixedErrors);
+            assertEquals(2, result.fixedErrors);
         }
     }
 
