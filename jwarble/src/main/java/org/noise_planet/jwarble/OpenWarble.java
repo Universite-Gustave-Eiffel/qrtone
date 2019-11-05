@@ -36,7 +36,6 @@ package org.noise_planet.jwarble;
 import com.backblaze.erasure.ReedSolomon;
 
 import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class OpenWarble {
@@ -47,7 +46,8 @@ public class OpenWarble {
     public static final double M2PI = Math.PI * 2;
     private long pushedSamples = 0;
     private long processedSamples = 0;
-    private int correctedErrors = 0;
+    private int hammingCorrectedErrors = 0;
+    private ReedSolomonResult lastReedSolomonResult = null;
     private Percentile backgroundLevel;
     private Configuration configuration;
     public final static int NUM_FREQUENCIES = 12;
@@ -91,7 +91,7 @@ public class OpenWarble {
             block_length = configuration.payloadSize;
             shardSize = configuration.payloadSize;
         }
-        parsed = new byte[configuration.payloadSize];
+        parsed = new byte[block_length];
         word_length = (int)(configuration.sampleRate * configuration.wordTime);
         silence_length = (int)(configuration.sampleRate * configuration.wordSilence);
         windowOffsetLength = (int)Math.ceil(word_length / (double)WINDOW_OFFSET_DENOMINATOR);
@@ -115,6 +115,10 @@ public class OpenWarble {
 
     public long getTriggerSampleIndexBegin() {
         return triggerSampleIndexBegin;
+    }
+
+    public ReedSolomonResult getLastReedSolomonResult() {
+        return lastReedSolomonResult;
     }
 
     private MessageCallback callback = null;
@@ -225,7 +229,13 @@ public class OpenWarble {
                         break;
                     case PROCESS_COMPLETE:
                         if (callback != null) {
-                            callback.onNewMessage(parsed, triggerSampleIndexBegin);
+                            if(configuration.reedSolomonEncode) {
+                                unswapChars(parsed, shuffleIndex);
+                                lastReedSolomonResult = decodeReedSolomon(parsed);
+                                callback.onNewMessage(lastReedSolomonResult.payload, triggerSampleIndexBegin);
+                            } else {
+                                callback.onNewMessage(parsed, triggerSampleIndexBegin);
+                            }
                         }
                         break;
                     case PROCESS_ERROR:
@@ -245,8 +255,8 @@ public class OpenWarble {
         }
     }
 
-    public int getCorrectedErrors() {
-        return correctedErrors;
+    public int getHammingCorrectedErrors() {
+        return hammingCorrectedErrors;
     }
 
     private double getSnr(double level) {
@@ -348,7 +358,7 @@ public class OpenWarble {
                 if (peakCount == 1 && getSnr(maxValue) > configuration.triggerSnr) {
                     triggerSampleIndexBegin = processedSamples - (rmsGateHistory.length - maxIndex) * windowOffsetLength;
                     response = PROCESS_RESPONSE.PROCESS_PITCH;
-                    correctedErrors = 0;
+                    hammingCorrectedErrors = 0;
                     parsed_cursor = 0;
                     System.out.println(String.format("TRIGGER %.3f-%.3f s %.3f snr", triggerSampleIndexBegin / configuration.sampleRate,(triggerSampleIndexBegin+door_length) / configuration.sampleRate, getSnr(maxValue)));
                 }
@@ -399,7 +409,7 @@ public class OpenWarble {
                         triggerSampleIndexBegin = -1;
                     } else {
                         if (result.result == Hamming12_8.CorrectResultCode.CORRECTED_ERROR) {
-                            correctedErrors += 1;
+                            hammingCorrectedErrors += 1;
                         }
                         // message
                         parsed[parsed_cursor - 1] = result.value;
@@ -440,6 +450,10 @@ public class OpenWarble {
     }
 
     public double[] generate_signal(double powerPeak, byte[] words) {
+        if(configuration.reedSolomonEncode) {
+            words = encodeReedSolomon(words);
+            swapChars(words, shuffleIndex);
+        }
         double[] signal = new double[messageSamples];
         int location = 0;
         // Pure tone trigger signal
