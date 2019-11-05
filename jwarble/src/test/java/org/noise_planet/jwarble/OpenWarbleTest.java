@@ -355,9 +355,11 @@ public class OpenWarbleTest {
             alteredBytes[alteredBytes.length - i - 1] = 12;
             // Check encoding
             OpenWarble.ReedSolomonResult result = openWarble.decodeReedSolomon(alteredBytes);
-            assertEquals(String.format("Could not fixed error on location %d",i), OpenWarble.ReedSolomonResultCode.CORRECTED_ERROR,  result.code);
+            assertNotEquals(String.format("Could not fixed error on location %d",i), OpenWarble.ReedSolomonResultCode.FAIL_CORRECTION,  result.code);
             assertArrayEquals(expectedPayload, result.payload);
-            assertEquals(2, result.fixedErrors);
+            if(result.code == OpenWarble.ReedSolomonResultCode.CORRECTED_ERROR) {
+                assertTrue(String.format("Not expected fixes on location %d %d >= 3",i, result.fixedErrors), result.fixedErrors < 3);
+            }
         }
     }
 

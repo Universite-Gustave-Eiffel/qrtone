@@ -592,6 +592,11 @@ public class OpenWarble {
                 final int endParity = startParity + OpenWarble.WARBLE_RS_DISTANCE;
                 // CRC Error
                 // Prepare for reed solomon test
+
+                // Clean dataShards table
+                for (int block = 0; block < WARBLE_RS_P + WARBLE_RS_DISTANCE; block++) {
+                    dataShards[block][0] = 0;
+                }
                 // Copy payload
                 for (int payloadIndex = startPayload; payloadIndex < endPayload; payloadIndex++) {
                     final int blockId = payloadIndex % (OpenWarble.WARBLE_RS_P - 1);
