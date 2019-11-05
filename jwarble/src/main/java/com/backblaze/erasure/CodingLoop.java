@@ -61,18 +61,7 @@ public interface CodingLoop {
      */
     CodingLoop[] ALL_CODING_LOOPS =
             new CodingLoop[] {
-                    new ByteInputOutputExpCodingLoop(),
-                    new ByteInputOutputTableCodingLoop(),
-                    new ByteOutputInputExpCodingLoop(),
-                    new ByteOutputInputTableCodingLoop(),
-                    new InputByteOutputExpCodingLoop(),
-                    new InputByteOutputTableCodingLoop(),
-                    new InputOutputByteExpCodingLoop(),
-                    new InputOutputByteTableCodingLoop(),
-                    new OutputByteInputExpCodingLoop(),
-                    new OutputByteInputTableCodingLoop(),
-                    new OutputInputByteExpCodingLoop(),
-                    new OutputInputByteTableCodingLoop(),
+                    new InputOutputByteTableCodingLoop()
             };
 
     /**
