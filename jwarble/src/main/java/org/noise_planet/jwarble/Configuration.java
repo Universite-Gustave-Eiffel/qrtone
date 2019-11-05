@@ -39,7 +39,7 @@ package org.noise_planet.jwarble;
 public class Configuration {
   public static final double MULT_SEMITONE = 1.0594630943592952646;
   public static final double DEFAULT_WORD_TIME = 0.0872;
-  public static final double DEFAULT_WORD_SILENCE = 0.033; // Silence before a new word
+  public static final double DEFAULT_WORD_SILENCE = 0; // Silence before a new word
   public static final double DEFAULT_AUDIBLE_FIRST_FREQUENCY = 1760;
   public static final double DEFAULT_INAUDIBLE_FIRST_FREQUENCY = 18200;
   public static final int DEFAULT_INAUDIBLE_STEP = 120;
