@@ -101,6 +101,12 @@ public class OpenWarbleTest {
         double powerPeak = 1; // 90 dBspl
         double blankTime = 1.3;
         int blankSamples = (int)(blankTime * sampleRate);
+        // Send Ipfs address
+        // Python code:
+        // import base58
+        // import struct
+        // s = struct.Struct('b').unpack
+        // payload = map(lambda v : s(v)[0], base58.b58decode("QmXjkFQjnD8i8ntmwehoAHBfJEApETx8ebScyVzAHqgjpD"))
         byte[] payload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
         OpenWarble openWarble = new OpenWarble(Configuration.getAudible(payload.length, sampleRate, false));
         UtCallback utCallback = new UtCallback(false);
