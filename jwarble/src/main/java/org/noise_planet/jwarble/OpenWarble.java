@@ -38,6 +38,10 @@ import com.backblaze.erasure.ReedSolomon;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * Main class for data transfer over audio
+ * @author Nicolas Fortin (UMRAE - UGE)
+ */
 public class OpenWarble {
     private static final int BACKGROUND_LVL_SIZE = 32;
     // WARBLE_RS_DISTANCE is the number of maximum fixed bytes for WARBLE_RS_P bytes - 1
@@ -360,7 +364,6 @@ public class OpenWarble {
                     response = PROCESS_RESPONSE.PROCESS_PITCH;
                     hammingCorrectedErrors = 0;
                     parsed_cursor = 0;
-                    System.out.println(String.format("TRIGGER %.3f-%.3f s %.3f snr", triggerSampleIndexBegin / configuration.sampleRate,(triggerSampleIndexBegin+door_length) / configuration.sampleRate, getSnr(maxValue)));
                 }
             }
         } else {
