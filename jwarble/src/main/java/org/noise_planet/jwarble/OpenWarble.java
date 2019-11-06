@@ -40,9 +40,11 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class OpenWarble {
     private static final int BACKGROUND_LVL_SIZE = 32;
-    // WARBLE_RS_DISTANCE is 2t where t is the number of maximum fixed bytes for WARBLE_RS_P bytes
+    // WARBLE_RS_DISTANCE is the number of maximum fixed bytes for WARBLE_RS_P bytes - 1
     public static final int WARBLE_RS_P = 10;
     public static final int WARBLE_RS_DISTANCE = 2;
+    public final static int NUM_FREQUENCIES = 12;
+    public final static int WINDOW_OFFSET_DENOMINATOR = 4;
     public static final double M2PI = Math.PI * 2;
     private long pushedSamples = 0;
     private long processedSamples = 0;
@@ -50,8 +52,6 @@ public class OpenWarble {
     private ReedSolomonResult lastReedSolomonResult = null;
     private Percentile backgroundLevel;
     private Configuration configuration;
-    public final static int NUM_FREQUENCIES = 12;
-    public final static int WINDOW_OFFSET_DENOMINATOR = 4;
     final int frequency_door1;
     public final static byte door2_check = 'W';
     final double[] frequencies = new double[NUM_FREQUENCIES];
@@ -482,11 +482,18 @@ public class OpenWarble {
         for(int idword = 0; idword < block_length; idword++) {
             location += silence_length;
             code = Hamming12_8.encode(words[idword]);
+            int ones = 0;
+            // Count the number of waves in each columns to have stable emission levels
+            for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
+                if ((code & (1 << idfreq)) != 0) {
+                    ones++;
+                }
+            }
             for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
                 if((code & (1 << idfreq)) != 0) {
-                    generate_pitch(signal, location, word_length / 2 ,configuration.sampleRate, idword % 2 == 0 ? frequencies[idfreq] : frequencies_uptone[idfreq], powerPeak / frequencies.length);
+                    generate_pitch(signal, location, word_length / 2 ,configuration.sampleRate, idword % 2 == 0 ? frequencies[idfreq] : frequencies_uptone[idfreq], powerPeak / ones);
                 } else {
-                    generate_pitch(signal, location + word_length / 2, word_length / 2 ,configuration.sampleRate, idword % 2 == 0 ? frequencies[idfreq] : frequencies_uptone[idfreq], powerPeak / frequencies.length);
+                    generate_pitch(signal, location + word_length / 2, word_length / 2 ,configuration.sampleRate, idword % 2 == 0 ? frequencies[idfreq] : frequencies_uptone[idfreq], powerPeak / (frequencies.length - ones));
                 }
             }
             if(unitTestCallback != null) {
@@ -725,7 +732,7 @@ public class OpenWarble {
     void unswapChars(byte[] inputString, int[] index) {
         int i;
         for (i = 1; i < inputString.length; i++) {
-            int v = index[inputString.length - i - 1];
+            int v = index[inputString.length - 1 - i];
             byte tmp = inputString[i];
             inputString[i] = inputString[v];
             inputString[v] = tmp;
