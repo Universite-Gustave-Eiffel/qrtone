@@ -52,4 +52,12 @@
         <!-- <module>javabindings</module> -->
         <module>jwarble</module>
     </modules>
+
+
+    <scm>
+        <connection>scm:git:https://github.com/Ifsttar/NoiseModelling.git</connection>
+        <developerConnection>scm:git:git@github.com:Ifsttar/openwarble.git</developerConnection>
+        <url>git@github.com:Ifsttar/openwarble.git</url>
+        <tag>HEAD</tag>
+    </scm>
 </project>
