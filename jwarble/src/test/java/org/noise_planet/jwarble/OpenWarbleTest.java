@@ -32,9 +32,9 @@ public class OpenWarbleTest {
             audio[s] = Math.sin(OpenWarble.M2PI * signalFrequency * t) * (powerPeak);
         }
 
-        double[] rms = OpenWarble.generalized_goertzel(audio,0, audio.length, sampleRate, new double[]{1000.0});
+        double[] rms = OpenWarble.generalizedGoertzel(audio,0, audio.length, sampleRate, new double[]{1000.0});
 
-        double signal_rms = OpenWarble.compute_rms(audio);
+        double signal_rms = OpenWarble.computeRms(audio);
 
         Assert.assertEquals(signal_rms, rms[0], 0.1);
     }
@@ -113,7 +113,7 @@ public class OpenWarbleTest {
         UtMessageCallback messageCallback = new UtMessageCallback();
         openWarble.setCallback(messageCallback);
         openWarble.setUnitTestCallback(utCallback);
-        double[] signal = openWarble.generate_signal(powerPeak, payload);
+        double[] signal = openWarble.generateSignal(powerPeak, payload);
         double[] allSignal = new double[blankSamples+signal.length+blankSamples];
         System.arraycopy(signal, 0, allSignal, blankSamples, signal.length);
         int cursor = 0;
@@ -125,7 +125,7 @@ public class OpenWarbleTest {
             openWarble.pushSamples(Arrays.copyOfRange(allSignal, cursor, cursor+len));
             cursor+=len;
         }
-        assertTrue(Math.abs(blankSamples - messageCallback.pitchLocation) < openWarble.door_length / 4.0);
+        assertTrue(Math.abs(blankSamples - messageCallback.pitchLocation) < openWarble.doorLength / 4.0);
         assertArrayEquals(payload, messageCallback.payload);
         assertEquals(0, openWarble.getHammingCorrectedErrors());
     }
@@ -143,7 +143,7 @@ public class OpenWarbleTest {
         UtMessageCallback messageCallback = new UtMessageCallback();
         openWarble.setCallback(messageCallback);
         openWarble.setUnitTestCallback(utCallback);
-        double[] signal = openWarble.generate_signal(powerPeak, payload);
+        double[] signal = openWarble.generateSignal(powerPeak, payload);
         double[] allSignal = new double[blankSamples+signal.length+blankSamples];
         System.arraycopy(signal, 0, allSignal, blankSamples, signal.length);
         int cursor = 0;
@@ -155,7 +155,7 @@ public class OpenWarbleTest {
             openWarble.pushSamples(Arrays.copyOfRange(allSignal, cursor, cursor+len));
             cursor+=len;
         }
-        assertTrue(Math.abs(blankSamples - messageCallback.pitchLocation) < openWarble.door_length / 4.0);
+        assertTrue(Math.abs(blankSamples - messageCallback.pitchLocation) < openWarble.doorLength / 4.0);
         assertArrayEquals(payload, messageCallback.payload);
         assertEquals(0, openWarble.getHammingCorrectedErrors());
         //writeDoubleToFile("target/source_mono_16bits_BigEndian_44100Hz.raw", allSignal);
@@ -173,7 +173,7 @@ public class OpenWarbleTest {
         UtMessageCallback messageCallback = new UtMessageCallback();
         openWarble.setCallback(messageCallback);
         openWarble.setUnitTestCallback(utCallback);
-        double[] signal = openWarble.generate_signal(powerPeak, payload);
+        double[] signal = openWarble.generateSignal(powerPeak, payload);
         double[] allSignal = new double[blankSamples+signal.length+blankSamples];
         System.arraycopy(signal, 0, allSignal, blankSamples, signal.length);
         // Average with noise
@@ -193,7 +193,7 @@ public class OpenWarbleTest {
         }
         System.out.println(String.format("Execution time %.3f seconds", (System.nanoTime() - start) / 1e9));
         //writeDoubleToFile("target/test.raw", allSignal);
-        assertTrue(Math.abs(blankSamples - messageCallback.pitchLocation) < openWarble.door_length / 4.0);
+        assertTrue(Math.abs(blankSamples - messageCallback.pitchLocation) < openWarble.doorLength / 4.0);
         assertArrayEquals(payload, messageCallback.payload);
         assertEquals(0, openWarble.getHammingCorrectedErrors());
     }
@@ -212,7 +212,7 @@ public class OpenWarbleTest {
         UtMessageCallback messageCallback = new UtMessageCallback();
         openWarble.setCallback(messageCallback);
         openWarble.setUnitTestCallback(utCallback);
-        double[] signal = openWarble.generate_signal(powerPeak, payload);
+        double[] signal = openWarble.generateSignal(powerPeak, payload);
         double[] allSignal = new double[blankSamples+signal.length+blankSamples];
         System.arraycopy(signal, 0, allSignal, blankSamples, signal.length);
         // Average with noise
@@ -232,7 +232,7 @@ public class OpenWarbleTest {
         }
         System.out.println(String.format("Execution time %.3f seconds", (System.nanoTime() - start) / 1e9));
         //writeDoubleToFile("target/test.raw", allSignal);
-        assertTrue(Math.abs(blankSamples - messageCallback.pitchLocation) < openWarble.door_length / 4.0);
+        assertTrue(Math.abs(blankSamples - messageCallback.pitchLocation) < openWarble.doorLength / 4.0);
         assertArrayEquals(payload, messageCallback.payload);
         assertEquals(0, openWarble.getHammingCorrectedErrors());
     }
@@ -351,7 +351,7 @@ public class OpenWarbleTest {
         int[] expected= new int[] {1199,22292,14258,30291,11005,15335,22572,27361,8276,27653};
         AtomicLong seed = new AtomicLong(1337);
         for(int expectedValue : expected) {
-            assertEquals(expectedValue, OpenWarble.warble_rand(seed));
+            assertEquals(expectedValue, OpenWarble.warbleRand(seed));
         }
     }
 
@@ -360,7 +360,7 @@ public class OpenWarbleTest {
         double sampleRate = 44100;
         byte[] expectedPayload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93};
         OpenWarble openWarble = new OpenWarble(Configuration.getAudible(expectedPayload.length, sampleRate));
-        expectedPayload = Arrays.copyOf(expectedPayload, openWarble.block_length);
+        expectedPayload = Arrays.copyOf(expectedPayload, openWarble.blockLength);
         byte[] test = Arrays.copyOf(expectedPayload, expectedPayload.length);
         openWarble.swapChars(test, openWarble.shuffleIndex);
         assertArrayEquals(expectedPayload, test);
@@ -371,7 +371,7 @@ public class OpenWarbleTest {
         double sampleRate = 44100;
         byte[] expectedPayload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93};
         OpenWarble openWarble = new OpenWarble(Configuration.getAudible(expectedPayload.length, sampleRate));
-        expectedPayload = Arrays.copyOf(expectedPayload, openWarble.block_length);
+        expectedPayload = Arrays.copyOf(expectedPayload, openWarble.blockLength);
         byte[] test = Arrays.copyOf(expectedPayload, expectedPayload.length);
         openWarble.swapChars(test, openWarble.shuffleIndex);
         openWarble.unswapChars(test, openWarble.shuffleIndex);
@@ -441,7 +441,7 @@ public class OpenWarbleTest {
         AtomicLong next = new AtomicLong(1337);
         for(int i=0; i < expectedPayload.length; i++) {
             byte[] alteredPayload = Arrays.copyOf(expectedPayload, expectedPayload.length);
-            alteredPayload[i] = (byte) (OpenWarble.warble_rand(next) % 255);
+            alteredPayload[i] = (byte) (OpenWarble.warbleRand(next) % 255);
             assertNotEquals(base, OpenWarble.crc8(alteredPayload, 0, alteredPayload.length));
         }
     }
