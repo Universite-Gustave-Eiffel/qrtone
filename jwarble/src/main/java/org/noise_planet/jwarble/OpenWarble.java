@@ -236,11 +236,14 @@ public class OpenWarble {
                             if(configuration.reedSolomonEncode) {
                                 unswapChars(parsed, shuffleIndex);
                                 lastReedSolomonResult = decodeReedSolomon(parsed);
-                                callback.onNewMessage(lastReedSolomonResult.payload, triggerSampleIndexBegin);
+                                if(lastReedSolomonResult.code != ReedSolomonResultCode.FAIL_CORRECTION) {
+                                    callback.onNewMessage(lastReedSolomonResult.payload, triggerSampleIndexBegin);
+                                }
                             } else {
                                 callback.onNewMessage(parsed, triggerSampleIndexBegin);
                             }
                         }
+                        triggerSampleIndexBegin = -1;
                         break;
                     case PROCESS_ERROR:
                         if (callback != null) {
@@ -390,7 +393,7 @@ public class OpenWarble {
                     int step = (int)Math.ceil((1.0 / frequencies[0]) * configuration.sampleRate);
                     for(int offset = -doorLength / 2; offset < (doorLength / 2) - step; offset += step) {
                         Hamming12_8.CorrectResult offsetResult = decode(targetPitch + offset, door2Check, score, false);
-                        if(offsetResult.value == door2Check) {
+                        if(offsetResult.result == Hamming12_8.CorrectResultCode.NO_ERRORS && offsetResult.value == door2Check) {
                             Arrays.sort(score);
                             double median = score.length % 2 == 0 ? (score[(score.length - 1) / 2] + score[(score.length - 1) / 2 + 1]) / 2.0 : score[score.length / 2];
                             if(bestScore < median) {
@@ -425,7 +428,6 @@ public class OpenWarble {
                         parsedCursor++;
                         if (parsedCursor - 1 == parsed.length) {
                             response = PROCESS_RESPONSE.PROCESS_COMPLETE;
-                            triggerSampleIndexBegin = -1;
                         } else {
                             response = PROCESS_RESPONSE.PROCESS_PITCH;
                         }
