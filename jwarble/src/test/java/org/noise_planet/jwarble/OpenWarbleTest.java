@@ -116,12 +116,6 @@ public class OpenWarbleTest {
         double[] signal = openWarble.generateSignal(powerPeak, payload);
         double[] allSignal = new double[blankSamples+signal.length+blankSamples];
         System.arraycopy(signal, 0, allSignal, blankSamples, signal.length);
-        // Add small noise for realistic audio
-        double noisePeak = 0.02;
-        Random rand = new Random(1337);
-        for(int i = 0; i < allSignal.length; i++) {
-            allSignal[i] = allSignal[i] + rand.nextGaussian() * noisePeak;
-        }
         int cursor = 0;
         while (cursor < allSignal.length) {
             int len = Math.min(openWarble.getMaxPushSamplesLength(), allSignal.length - cursor);
@@ -152,12 +146,6 @@ public class OpenWarbleTest {
         double[] signal = openWarble.generateSignal(powerPeak, payload);
         double[] allSignal = new double[blankSamples+signal.length+blankSamples];
         System.arraycopy(signal, 0, allSignal, blankSamples, signal.length);
-        // Add small noise for realistic audio
-        double noisePeak = 0.02;
-        Random rand = new Random(1337);
-        for(int i = 0; i < allSignal.length; i++) {
-            allSignal[i] = allSignal[i] + rand.nextGaussian() * noisePeak;
-        }
         int cursor = 0;
         while (cursor < allSignal.length) {
             int len = Math.min(openWarble.getMaxPushSamplesLength(), allSignal.length - cursor);

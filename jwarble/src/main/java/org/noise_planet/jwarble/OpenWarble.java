@@ -55,8 +55,6 @@ public class OpenWarble {
     private int hammingCorrectedErrors = 0;
     private ReedSolomonResult lastReedSolomonResult = null;
     private Percentile backgroundLevel;
-    // The noise peak of the gate tone must only be located to the frequency of the gate tone
-    private Percentile backgroundLevelUpTone;
     private Configuration configuration;
     final int frequencyDoor1;
     public final static byte door2Check = 'W';
@@ -72,6 +70,7 @@ public class OpenWarble {
     final int windowOffsetLength;
     double[] signalCache;
     double[] rmsGateHistory;
+    // The noise peak of the gate tone must only be located to the frequency of the gate tone
     double[] rmsGateUpToneHistory;
     public enum PROCESS_RESPONSE {PROCESS_IDLE, PROCESS_ERROR, PROCESS_PITCH, PROCESS_COMPLETE}
     private long triggerSampleIndexBegin = -1;
@@ -108,7 +107,6 @@ public class OpenWarble {
         rmsGateHistory = new double[signalCache.length / windowOffsetLength];
         rmsGateUpToneHistory = new double[rmsGateHistory.length];
         backgroundLevel = new Percentile(BACKGROUND_LVL_SIZE);
-        backgroundLevelUpTone = new Percentile(BACKGROUND_LVL_SIZE);
         // Precompute pitch frequencies
         for(int i = 0; i < NUM_FREQUENCIES; i++) {
             if(configuration.frequencyIncrement != 0) {
@@ -343,7 +341,6 @@ public class OpenWarble {
                     levels[0] = Math.max(levels[0], 1e-12);
                     levels[1] = Math.max(levels[1], 1e-12);
                     backgroundLevel.add(levels[0]);
-                    backgroundLevelUpTone.add(levels[1]);
                     System.arraycopy(rmsGateHistory, 1, rmsGateHistory, 0, rmsGateHistory.length - 1);
                     System.arraycopy(rmsGateUpToneHistory, 1, rmsGateUpToneHistory, 0, rmsGateUpToneHistory.length - 1);
                     rmsGateHistory[rmsGateHistory.length - 1] = levels[0];
@@ -378,7 +375,7 @@ public class OpenWarble {
                     increase = value > 0;
                     oldSnr = snr;
                 }
-                if (peakCount == 1 && getSnr(maxValue, backgroundLevel) > configuration.triggerSnr && getSnr(rmsGateUpToneHistory[maxIndex], backgroundLevelUpTone) < configuration.triggerSnr) {
+                if (peakCount == 1 && getSnr(maxValue, backgroundLevel) > configuration.triggerSnr && 10 * Math.log10(maxValue / rmsGateUpToneHistory[maxIndex]) > configuration.triggerSnr) {
                     triggerSampleIndexBegin = processedSamples - (rmsGateHistory.length - maxIndex) * windowOffsetLength;
                     response = PROCESS_RESPONSE.PROCESS_PITCH;
                     hammingCorrectedErrors = 0;
