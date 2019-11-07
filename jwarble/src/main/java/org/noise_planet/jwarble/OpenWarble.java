@@ -214,6 +214,9 @@ public class OpenWarble {
     }
 
     public void pushSamples(double[] samples) {
+        if(samples.length > getMaxPushSamplesLength()) {
+            throw new IllegalArgumentException("Provided sample array length is greater than getMaxPushSamplesLength()");
+        }
         if(samples.length < signalCache.length) {
             // Move previous samples backward
             System.arraycopy(signalCache, samples.length, signalCache, 0, signalCache.length - samples.length);
@@ -425,7 +428,7 @@ public class OpenWarble {
                         }
                     }
                 }
-                processedSamples = Math.min(pushedSamples, targetPitch + wordLength);
+                processedSamples = Math.max(pushedSamples - signalCache.length, Math.min(pushedSamples, targetPitch + wordLength));
             } else {
                 processedSamples = pushedSamples;
             }
