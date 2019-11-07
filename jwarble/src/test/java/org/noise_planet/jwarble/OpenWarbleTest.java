@@ -116,6 +116,12 @@ public class OpenWarbleTest {
         double[] signal = openWarble.generateSignal(powerPeak, payload);
         double[] allSignal = new double[blankSamples+signal.length+blankSamples];
         System.arraycopy(signal, 0, allSignal, blankSamples, signal.length);
+        // Add small noise for realistic audio
+        double noisePeak = 0.02;
+        Random rand = new Random(1337);
+        for(int i = 0; i < allSignal.length; i++) {
+            allSignal[i] = allSignal[i] + rand.nextGaussian() * noisePeak;
+        }
         int cursor = 0;
         while (cursor < allSignal.length) {
             int len = Math.min(openWarble.getMaxPushSamplesLength(), allSignal.length - cursor);
@@ -146,6 +152,12 @@ public class OpenWarbleTest {
         double[] signal = openWarble.generateSignal(powerPeak, payload);
         double[] allSignal = new double[blankSamples+signal.length+blankSamples];
         System.arraycopy(signal, 0, allSignal, blankSamples, signal.length);
+        // Add small noise for realistic audio
+        double noisePeak = 0.02;
+        Random rand = new Random(1337);
+        for(int i = 0; i < allSignal.length; i++) {
+            allSignal[i] = allSignal[i] + rand.nextGaussian() * noisePeak;
+        }
         int cursor = 0;
         while (cursor < allSignal.length) {
             int len = Math.min(openWarble.getMaxPushSamplesLength(), allSignal.length - cursor);
@@ -269,12 +281,45 @@ public class OpenWarbleTest {
         assertArrayEquals(expectedPayload, messageCallback.payload);
     }
 
+    @Test
+    public void testWithRecordedAudioNoTrigger() throws IOException {
+        double sampleRate = 44100;
+        OpenWarble openWarble = new OpenWarble(Configuration.getAudible(9, sampleRate, false));
+        UtCallback utCallback = new UtCallback(true);
+        UtMessageCallback messageCallback = new UtMessageCallback();
+        openWarble.setCallback(messageCallback);
+        openWarble.setUnitTestCallback(utCallback);
+        short[] signal_short;
+        try (InputStream inputStream = OpenWarbleTest.class.getResourceAsStream("notrigger_44100hz_mono_16bits.raw")) {
+            signal_short = loadShortStream(inputStream, ByteOrder.LITTLE_ENDIAN);
+        }
+        // Push audio samples to OpenWarble
+        int cursor = 0;
+        while (cursor < signal_short.length) {
+            int len = Math.min(openWarble.getMaxPushSamplesLength(), signal_short.length - cursor);
+            if(len == 0) {
+                break;
+            }
+            double[] window = new double[len];
+            for(int i = cursor; i < cursor + len; i++) {
+                window[i - cursor] = signal_short[i] / (double)Short.MAX_VALUE;
+            }
+            openWarble.pushSamples(window);
+            cursor+=len;
+        }
+        assertEquals(0, messageCallback.numberOfMessages);
+        assertEquals(0, messageCallback.numberOfErrors);
+    }
+
     private static class UtMessageCallback implements MessageCallback {
         public long pitchLocation = -1;
         public byte[] payload;
+        public int numberOfMessages = 0;
+        public int numberOfErrors = 0;
 
         @Override
         public void onNewMessage(byte[] payload, long sampleId) {
+            numberOfMessages+=1;
             this.payload = payload;
         }
 
@@ -287,7 +332,7 @@ public class OpenWarbleTest {
 
         @Override
         public void onError(long sampleId) {
-
+            numberOfErrors +=1;
         }
     }
 

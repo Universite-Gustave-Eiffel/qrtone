@@ -48,13 +48,15 @@ public class OpenWarble {
     public static final int WARBLE_RS_P = 10;
     public static final int WARBLE_RS_DISTANCE = 2;
     public final static int NUM_FREQUENCIES = 12;
-    public final static int WINDOW_OFFSET_DENOMINATOR = 4;
+    public final static int WINDOW_OFFSET_DENOMINATOR = 5;
     public static final double M2PI = Math.PI * 2;
     private long pushedSamples = 0;
     private long processedSamples = 0;
     private int hammingCorrectedErrors = 0;
     private ReedSolomonResult lastReedSolomonResult = null;
     private Percentile backgroundLevel;
+    // The noise peak of the gate tone must only be located to the frequency of the gate tone
+    private Percentile backgroundLevelUpTone;
     private Configuration configuration;
     final int frequencyDoor1;
     public final static byte door2Check = 'W';
@@ -70,6 +72,7 @@ public class OpenWarble {
     final int windowOffsetLength;
     double[] signalCache;
     double[] rmsGateHistory;
+    double[] rmsGateUpToneHistory;
     public enum PROCESS_RESPONSE {PROCESS_IDLE, PROCESS_ERROR, PROCESS_PITCH, PROCESS_COMPLETE}
     private long triggerSampleIndexBegin = -1;
     int parsedCursor = 0; // parsed words
@@ -103,7 +106,9 @@ public class OpenWarble {
         messageSamples = doorLength + silenceLength + doorLength + blockLength * (silenceLength + wordLength);
         signalCache = new double[doorLength * 3];
         rmsGateHistory = new double[signalCache.length / windowOffsetLength];
+        rmsGateUpToneHistory = new double[rmsGateHistory.length];
         backgroundLevel = new Percentile(BACKGROUND_LVL_SIZE);
+        backgroundLevelUpTone = new Percentile(BACKGROUND_LVL_SIZE);
         // Precompute pitch frequencies
         for(int i = 0; i < NUM_FREQUENCIES; i++) {
             if(configuration.frequencyIncrement != 0) {
@@ -266,8 +271,8 @@ public class OpenWarble {
         return hammingCorrectedErrors;
     }
 
-    private double getSnr(double level) {
-        return 10 * Math.log10(level / backgroundLevel.getPercentile(0.1));
+    private static double getSnr(double level, Percentile background) {
+        return 10 * Math.log10(level / background.getPercentile(0.1));
     }
 
     /**
@@ -330,12 +335,16 @@ public class OpenWarble {
             long cursor = signalCache.length - pushedSamples + processedSamples;
             if(cursor < signalCache.length - doorLength) {
                 while (cursor < signalCache.length - doorLength) {
-                    final double[] doorFrequencies = new double[]{frequencies[frequencyDoor1]};
+                    final double[] doorFrequencies = new double[]{frequencies[frequencyDoor1], frequenciesUptone[frequencyDoor1]};
                     double[] levels = generalizedGoertzel(signalCache, (int) cursor + doorLength / 4, doorLength / 2, configuration.sampleRate, doorFrequencies);
                     levels[0] = Math.max(levels[0], 1e-12);
+                    levels[1] = Math.max(levels[1], 1e-12);
                     backgroundLevel.add(levels[0]);
+                    backgroundLevelUpTone.add(levels[1]);
                     System.arraycopy(rmsGateHistory, 1, rmsGateHistory, 0, rmsGateHistory.length - 1);
+                    System.arraycopy(rmsGateUpToneHistory, 1, rmsGateUpToneHistory, 0, rmsGateUpToneHistory.length - 1);
                     rmsGateHistory[rmsGateHistory.length - 1] = levels[0];
+                    rmsGateUpToneHistory[rmsGateHistory.length - 1] = levels[1];
                     cursor += windowOffsetLength;
                     processedSamples += windowOffsetLength;
                 }
@@ -366,7 +375,7 @@ public class OpenWarble {
                     increase = value > 0;
                     oldSnr = snr;
                 }
-                if (peakCount == 1 && getSnr(maxValue) > configuration.triggerSnr) {
+                if (peakCount == 1 && getSnr(maxValue, backgroundLevel) > configuration.triggerSnr && getSnr(rmsGateUpToneHistory[maxIndex], backgroundLevelUpTone) < configuration.triggerSnr) {
                     triggerSampleIndexBegin = processedSamples - (rmsGateHistory.length - maxIndex) * windowOffsetLength;
                     response = PROCESS_RESPONSE.PROCESS_PITCH;
                     hammingCorrectedErrors = 0;
@@ -386,27 +395,10 @@ public class OpenWarble {
                     // Validation gate - the expected word is known
                     // Find the most appropriate sample index by computing the sample offset score
                     // This is the most cpu intensive task, but triggered only when a message is found
-                    Hamming12_8.CorrectResult result = null;
-                    double[] score = new double[frequencies.length];
-                    double bestScore = Double.MIN_VALUE;
-                    int bestScoreOffset = 0;
-                    int step = (int)Math.ceil((1.0 / frequencies[0]) * configuration.sampleRate);
-                    for(int offset = -doorLength / 2; offset < (doorLength / 2) - step; offset += step) {
-                        Hamming12_8.CorrectResult offsetResult = decode(targetPitch + offset, door2Check, score, false);
-                        if(offsetResult.result == Hamming12_8.CorrectResultCode.NO_ERRORS && offsetResult.value == door2Check) {
-                            Arrays.sort(score);
-                            double median = score.length % 2 == 0 ? (score[(score.length - 1) / 2] + score[(score.length - 1) / 2 + 1]) / 2.0 : score[score.length / 2];
-                            if(bestScore < median) {
-                                bestScore = median;
-                                bestScoreOffset = offset;
-                                result = offsetResult;
-                            }
-                        }
-                    }
-                    triggerSampleIndexBegin = triggerSampleIndexBegin + bestScoreOffset;
-                    if (result == null || result.result == Hamming12_8.CorrectResultCode.FAIL_CORRECTION ||
+                    Hamming12_8.CorrectResult result = decode(targetPitch, door2Check, null, false);
+                    if (result.result == Hamming12_8.CorrectResultCode.FAIL_CORRECTION ||
                             door2Check != result.value) {
-                        response = PROCESS_RESPONSE.PROCESS_ERROR;
+                        response = PROCESS_RESPONSE.PROCESS_IDLE;
                         triggerSampleIndexBegin = -1;
                     } else {
                         response = PROCESS_RESPONSE.PROCESS_PITCH;
@@ -433,8 +425,10 @@ public class OpenWarble {
                         }
                     }
                 }
+                processedSamples = Math.min(pushedSamples, targetPitch + wordLength);
+            } else {
+                processedSamples = pushedSamples;
             }
-            processedSamples = pushedSamples;
         }
         return response;
     }
