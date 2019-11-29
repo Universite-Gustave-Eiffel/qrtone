@@ -43,7 +43,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author Nicolas Fortin (UMRAE - UGE)
  */
 public class OpenWarble {
-    private static final int BACKGROUND_LVL_SIZE = 32;
+    public static final int BACKGROUND_LVL_SIZE = 32;
     // WARBLE_RS_DISTANCE is the number of maximum fixed bytes for WARBLE_RS_P bytes - 1
     public static final int WARBLE_RS_P = 10;
     public static final int WARBLE_RS_DISTANCE = 2;
@@ -140,7 +140,7 @@ public class OpenWarble {
      * @param freqs Array of frequency search in Hz
      * @return rms Rms power by frequencies
      */
-    public static double[] generalizedGoertzel(final double[] signal, int start, int length, double sampleRate, final double[] freqs) {
+    public static double[] generalizedGoertzel(final double[] signal, int start, int length, double sampleRate, final double[] freqs, double[] phase) {
         double[] outFreqsPower = new double[freqs.length];
         // Fix frequency using the sampleRate of the signal
         double samplingRateFactor = length / sampleRate;
@@ -174,6 +174,9 @@ public class OpenWarble {
             Complex y = parta.mul(partb);
             outFreqsPower[idFreq] = Math.sqrt((y.r * y.r  + y.i * y.i) * 2) / length;
 
+            if(phase != null) {
+                phase[idFreq] = Math.atan2(y.i, y.r);
+            }
         }
         return outFreqsPower;
     }
@@ -284,8 +287,8 @@ public class OpenWarble {
         int startOne = Math.max(0, (int) (targetPitch - (pushedSamples - signalCache.length)));
         int startZero = startOne + wordLength / 2;
 
-        double[] levelsUp = generalizedGoertzel(signalCache, startOne, Math.min(signalCache.length - startOne, wordLength / 2), configuration.sampleRate, (parsedCursor + 1) % 2 == 0 ? frequencies : frequenciesUptone);
-        double[] levelsDown = generalizedGoertzel(signalCache, startZero,  Math.min(signalCache.length - startZero, wordLength / 2), configuration.sampleRate, (parsedCursor + 1) % 2 == 0 ? frequencies : frequenciesUptone);
+        double[] levelsUp = generalizedGoertzel(signalCache, startOne, Math.min(signalCache.length - startOne, wordLength / 2), configuration.sampleRate, (parsedCursor + 1) % 2 == 0 ? frequencies : frequenciesUptone, null);
+        double[] levelsDown = generalizedGoertzel(signalCache, startZero,  Math.min(signalCache.length - startZero, wordLength / 2), configuration.sampleRate, (parsedCursor + 1) % 2 == 0 ? frequencies : frequenciesUptone, null);
 
         int word = 0;
         boolean[] freqs = null;
@@ -337,7 +340,7 @@ public class OpenWarble {
             if(cursor < signalCache.length - doorLength) {
                 while (cursor < signalCache.length - doorLength) {
                     final double[] doorFrequencies = new double[]{frequencies[frequencyDoor1], frequenciesUptone[frequencyDoor1]};
-                    double[] levels = generalizedGoertzel(signalCache, (int) cursor + doorLength / 4, doorLength / 2, configuration.sampleRate, doorFrequencies);
+                    double[] levels = generalizedGoertzel(signalCache, (int) cursor + doorLength / 4, doorLength / 2, configuration.sampleRate, doorFrequencies, null);
                     levels[0] = Math.max(levels[0], 1e-12);
                     levels[1] = Math.max(levels[1], 1e-12);
                     backgroundLevel.add(levels[0]);
@@ -713,7 +716,7 @@ public class OpenWarble {
      * @param n
      * @param index
      */
-    void fisherYatesShuffleIndex(int n, int[] index) {
+    public static void fisherYatesShuffleIndex(int n, int[] index) {
         int i;
         AtomicLong rndCache = new AtomicLong(n);
         for (i = index.length - 1; i > 0; i--) {
@@ -721,7 +724,7 @@ public class OpenWarble {
         }
     }
 
-    void swapChars(byte[] inputString, int[] index) {
+    public static void swapChars(byte[] inputString, int[] index) {
         int i;
         for (i = inputString.length - 1; i > 0; i--)
         {
