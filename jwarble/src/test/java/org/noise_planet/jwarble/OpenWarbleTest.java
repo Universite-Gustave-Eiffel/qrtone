@@ -14,6 +14,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.*;
@@ -640,41 +644,6 @@ public class OpenWarbleTest {
             System.out.println(String.format("Odd %d Hz Even %d Hz", Math.round(openWarble.frequencies[idFreq]), Math.round(openWarble.frequenciesUptone[idFreq])));        }
     }
 
-
-
-    @Test
-    public void testRecordedAudioTrigger() throws IOException {
-        double sampleRate = 44100;
-        byte[] expectedPayload = new byte[]{18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4,
-                31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
-        OpenWarble openWarble = new OpenWarble(Configuration.getAudible(expectedPayload.length, sampleRate));
-        short[] signal_short;
-        final double[] doorFrequencies = new double[]{openWarble.frequencies[openWarble.frequencyDoor1],
-                openWarble.frequenciesUptone[openWarble.frequencyDoor1]};
-        try (InputStream inputStream = OpenWarbleTest.class.getResourceAsStream("with_noise_44100hz_mono_16bits.raw")) {
-            signal_short = loadShortStream(inputStream, ByteOrder.LITTLE_ENDIAN);
-            int cursor = 0;
-            Percentile backgroundLevel = new Percentile(OpenWarble.BACKGROUND_LVL_SIZE);
-            while (cursor < signal_short.length - openWarble.wordLength) {
-                int len = Math.min(openWarble.wordLength, signal_short.length - cursor);
-                if(len == 0) {
-                    break;
-                }
-                double[] window = new double[len];
-                for(int i = cursor; i < cursor + len; i++) {
-                    window[i - cursor] = signal_short[i] / (double)Short.MAX_VALUE;
-                }
-                double[] levels = openWarble.generalizedGoertzel(window, 0, window.length, sampleRate, doorFrequencies, null);
-                levels[0] = Math.max(levels[0], 1e-12);
-                levels[1] = Math.max(levels[1], 1e-12);
-                backgroundLevel.add(levels[0]);
-                double snr = 10 * Math.log10(levels[0] / backgroundLevel.getPercentile(0.1));
-                System.out.println(String.format("%.3f s SNR %.2f dB", cursor / sampleRate ,snr));
-                cursor+=openWarble.windowOffsetLength;
-            }
-        }
-    }
-
     @Test
     public void testMicrophone() throws Exception {
         double sampleRate = 44100;
@@ -708,7 +677,22 @@ public class OpenWarbleTest {
         for(int i=0; i<allSignal.length;i++) {
             shortSignal[i] = (short)((allSignal[i] / maxValue) * Short.MAX_VALUE);
         }
-        PlayRecord playRecord = new PlayRecord();
-        playRecord.playSound(shortSignal, sampleRate);
+        AtomicBoolean doRecord = new AtomicBoolean(true);
+        AtomicBoolean micOpen = new AtomicBoolean(false);
+        try {
+            FutureTask<double[]> recordTask = new FutureTask<>(new PlayRecord.Recorder(doRecord, micOpen));
+            ExecutorService executorService = Executors.newSingleThreadExecutor();
+            executorService.submit(recordTask);
+            while(!micOpen.get()) {
+                Thread.sleep(120);
+            }
+            PlayRecord playRecord = new PlayRecord();
+            playRecord.playSound(shortSignal, sampleRate);
+            doRecord.set(false);
+            double[] samples = recordTask.get();
+            executorService.shutdown();
+        } finally {
+            doRecord.set(false);
+        }
     }
 }

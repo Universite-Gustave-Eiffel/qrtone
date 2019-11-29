@@ -1,6 +1,8 @@
 package org.noise_planet.jwarble;
 
 import java.io.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
@@ -108,6 +110,59 @@ public class PlayRecord {
             sourceDataLine.close();
         } catch (LineUnavailableException e) {
             e.printStackTrace();
+        }
+    }
+
+    public static class Recorder implements Callable<double[]> {
+        AtomicBoolean run;
+        AtomicBoolean micOpen;
+
+        public Recorder(AtomicBoolean run, AtomicBoolean micOpen) {
+            this.run = run;
+            this.micOpen = micOpen;
+        }
+
+        @Override
+        public double[] call() throws Exception {
+            System.out.println("Open Microphone");
+
+            AudioFormat format = new AudioFormat(44100.0f, 16, 1, true, true);
+            TargetDataLine microphone;
+            try {
+                microphone = AudioSystem.getTargetDataLine(format);
+
+                DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
+                microphone = (TargetDataLine) AudioSystem.getLine(info);
+                microphone.open(format);
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                int numBytesRead;
+                int CHUNK_SIZE = 1024;
+                byte[] data = new byte[microphone.getBufferSize() / 5];
+                microphone.start();
+                micOpen.set(true);
+                int bytesRead = 0;
+                try {
+                    while (run.get()) {
+                        numBytesRead = microphone.read(data, 0, CHUNK_SIZE);
+                        bytesRead = bytesRead + numBytesRead;
+                        out.write(data, 0, numBytesRead);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                byte[] audioData = out.toByteArray();
+                double[] audioOut = new double[audioData.length / (Short.SIZE / Byte.SIZE)];
+                DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(audioData));
+                int cursor = 0;
+                while(cursor < audioOut.length) {
+                    short sample = dataInputStream.readShort();
+                    audioOut[cursor++] = sample / (double)Short.MAX_VALUE;
+                }
+                return audioOut;
+            } catch (LineUnavailableException ex) {
+                // Ignore
+            }
+            return new double[0];
         }
     }
 }
