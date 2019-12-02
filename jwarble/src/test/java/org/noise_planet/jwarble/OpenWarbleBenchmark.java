@@ -8,6 +8,8 @@ import java.util.Arrays;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.junit.Assert.*;
+
 public class OpenWarbleBenchmark {
 
     @Test
@@ -25,15 +27,6 @@ public class OpenWarbleBenchmark {
         double[] signal = openWarble.generateSignal(powerPeak, payload);
         double[] allSignal = new double[blankSamples+signal.length+blankSamples];
         System.arraycopy(signal, 0, allSignal, blankSamples, signal.length);
-        int cursor = 0;
-        while (cursor < allSignal.length) {
-            int len = Math.min(openWarble.getMaxPushSamplesLength(), allSignal.length - cursor);
-            if(len == 0) {
-                break;
-            }
-            openWarble.pushSamples(Arrays.copyOfRange(allSignal, cursor, cursor+len));
-            cursor+=len;
-        }
         short[] shortSignal = new short[allSignal.length];
         double maxValue = Double.MIN_VALUE;
         for (double aSignal : allSignal) {
@@ -54,15 +47,22 @@ public class OpenWarbleBenchmark {
                 Thread.sleep(120);
             }
             executorService.submit(playerTask);
-            System.out.println(String.format("Wait for %.2f", shortSignal.length / sampleRate));
             playerTask.get(Math.round((shortSignal.length / sampleRate) * 2000), TimeUnit.MILLISECONDS);
             Thread.sleep(1000);
             doRecord.set(false);
             double[] samples = recordTask.get(5000, TimeUnit.MILLISECONDS);
-            if(samples != null) {
-                OpenWarbleTest.writeDoubleToFile("target/recorded.raw", samples);
-                // TODO DECODE
+            assertNotNull(samples);
+            //OpenWarbleTest.writeDoubleToFile("target/recorded.raw", samples);
+            int cursor = 0;
+            while (cursor < samples.length) {
+                int len = Math.min(openWarble.getMaxPushSamplesLength(), samples.length - cursor);
+                if(len == 0) {
+                    break;
+                }
+                openWarble.pushSamples(Arrays.copyOfRange(samples, cursor, cursor+len));
+                cursor+=len;
             }
+            assertArrayEquals(payload, messageCallback.payload);
         } finally {
             doRecord.set(false);
         }
@@ -85,7 +85,6 @@ public class OpenWarbleBenchmark {
             DataOutputStream dataOutputStream = new DataOutputStream(bos);
             for (short sample : samples) {
                 dataOutputStream.writeShort(sample);
-                dataOutputStream.writeShort(0);
             }
             InputStream byteArrayInputStream = new ByteArrayInputStream(bos.toByteArray());
             System.out.println("started");
