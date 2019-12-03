@@ -343,11 +343,11 @@ public class OpenWarbleTest {
                 StringBuilder sb = new StringBuilder();
                 for(double freq : frequencies) {
                     if (sb.length() != 0) {
-                        sb.append(", ");
+                        sb.append(",");
                     }
-                    sb.append(String.format("%.0f", freq));
+                    sb.append(String.format(Locale.ROOT, "%.0f", freq));
                 }
-                System.out.println(String.format("%.3f New word 0x%02x %s", time ,word, sb.toString()));
+                System.out.println(String.format(Locale.ROOT,"%.3f,0x%02x,%s", time ,word, sb.toString()));
             }
         }
 
@@ -357,11 +357,11 @@ public class OpenWarbleTest {
                 StringBuilder sb = new StringBuilder();
                 for(double freq : frequencies) {
                     if (sb.length() != 0) {
-                        sb.append(", ");
+                        sb.append(",");
                     }
-                    sb.append(String.format("%.0f", freq));
+                    sb.append(String.format(Locale.ROOT, "%.0f", freq));
                 }
-                System.out.println(String.format("%.3f s New word 0x%02x %s", time ,result.value, sb.toString()));
+                System.out.println(String.format(Locale.ROOT, "%.3f,0x%02x,%s", time ,result.value, sb.toString()));
 //                if (result.result == Hamming12_8.CorrectResultCode.CORRECTED_ERROR) {
 //                    int code = Hamming12_8.encode(result.value);
 //                    StringBuilder wrongFrequencies = new StringBuilder();

@@ -33,7 +33,6 @@ public class OpenWarbleBenchmark {
         for(int i=0; i<signal.length;i++) {
             shortSignal[i] = (short)((signal[i] / maxValue) * Short.MAX_VALUE);
         }
-        OpenWarbleTest.writeShortToFile("target/source.raw", shortSignal);
         AtomicBoolean doRecord = new AtomicBoolean(true);
         AtomicBoolean micOpen = new AtomicBoolean(false);
         try {
@@ -44,9 +43,10 @@ public class OpenWarbleBenchmark {
             while(!micOpen.get()) {
                 Thread.sleep(120);
             }
+            Thread.sleep(2500);
             executorService.submit(playerTask);
             playerTask.get(Math.round((shortSignal.length / sampleRate) * 2000), TimeUnit.MILLISECONDS);
-            Thread.sleep(1000);
+            Thread.sleep(2500);
             doRecord.set(false);
             double[] samples = recordTask.get(5000, TimeUnit.MILLISECONDS);
             assertNotNull(samples);
@@ -68,6 +68,7 @@ public class OpenWarbleBenchmark {
 
 
 
+    @Test
     public void testWithRecordedAudio() throws IOException {
         double sampleRate = 44100;
         byte[] expectedPayload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4,
@@ -83,11 +84,11 @@ public class OpenWarbleBenchmark {
         }
         System.out.println("\nGot");
         short[] signal_short;
-        try (InputStream inputStream = OpenWarbleTest.class.getResourceAsStream("recorded_test.raw")) {
+        try (InputStream inputStream = new FileInputStream("target/recorded.raw")) {
             signal_short = OpenWarbleTest.loadShortStream(inputStream, ByteOrder.BIG_ENDIAN);
         }
         // Push audio samples to OpenWarble
-        // openWarble.triggerSampleIndexBegin = 69369;
+        openWarble.triggerSampleIndexBegin = 121800;
         int cursor = 0;
         while (cursor < signal_short.length) {
             int len = Math.min(openWarble.getMaxPushSamplesLength(), signal_short.length - cursor);
