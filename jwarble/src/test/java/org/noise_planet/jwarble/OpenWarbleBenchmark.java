@@ -77,14 +77,13 @@ public class OpenWarbleBenchmark {
         OpenWarbleTest.UtMessageCallback messageCallback = new OpenWarbleTest.UtMessageCallback();
         openWarble.setCallback(messageCallback);
         openWarble.setUnitTestCallback(utCallback);
-        openWarble.generateSignal(1.0, expectedPayload);
+        //openWarble.generateSignal(1.0, expectedPayload);
         System.out.println("\nGot");
         short[] signal_short;
         try (InputStream inputStream = new FileInputStream("target/recorded.raw")) {
             signal_short = OpenWarbleTest.loadShortStream(inputStream, ByteOrder.BIG_ENDIAN);
         }
         // Push audio samples to OpenWarble
-        openWarble.triggerSampleIndexBegin = (int)(2.778 * sampleRate);
         int cursor = 0;
         while (cursor < signal_short.length) {
             int len = Math.min(openWarble.getMaxPushSamplesLength(), signal_short.length - cursor);
@@ -93,7 +92,7 @@ public class OpenWarbleBenchmark {
             }
             double[] window = new double[len];
             for(int i = cursor; i < cursor + len; i++) {
-                window[i - cursor] = signal_short[i] / (double)Short.MAX_VALUE;
+                window[i - cursor] = signal_short[i];
             }
             openWarble.pushSamples(window);
             cursor+=len;
@@ -113,14 +112,14 @@ public class OpenWarbleBenchmark {
         }
         // Push audio samples to OpenWarble
         //openWarble.triggerSampleIndexBegin = 121800;
-        int cursor = (int)(2.4 * sampleRate);
         Percentile background = new Percentile(80);
-        int windowLength = openWarble.wordLength / 5;
-        int windowOffset = windowLength / 10;
+        int windowLength = (openWarble.wordLength / 2) / 3;
+        int windowOffset = windowLength / 3;
         double[] window = new double[windowLength];
-        Percentile denoise = new Percentile(10);
-        Percentile denoise2 = new Percentile(10);
-        while (cursor < (int)(2.9 * sampleRate)) {
+        Percentile denoise = new Percentile((openWarble.wordLength / 2) / windowOffset);
+        Percentile denoise2 = new Percentile((openWarble.wordLength / 2) / windowOffset);
+        int cursor = 0;
+        while (cursor < (int)(3.5 * sampleRate)) {
             int len = Math.min(windowOffset, signal_short.length - cursor);
             if(len == 0) {
                 break;
@@ -129,11 +128,13 @@ public class OpenWarbleBenchmark {
             for(int i = cursor; i < cursor + len; i++) {
                 window[window.length - len + (i - cursor)] = signal_short[i];
             }
-            double[] rms = OpenWarble.generalizedGoertzel(window, 0, window.length, sampleRate, new double[]{openWarble.frequencyDoor1, openWarble.frequencies[openWarble.frequencies.length - 1]}, null, true);
+            double[] rms = OpenWarble.generalizedGoertzel(window, 0, window.length, sampleRate, new double[]{openWarble.frequencyDoor1, openWarble.frequencies[openWarble.frequencies.length - 1]}, null, false);
             background.add(rms[0]);
             denoise.add(rms[0]);
             denoise2.add(rms[1]);
-            System.out.println(String.format(Locale.ROOT, "%.3f,%.3f,%.3f",cursor / sampleRate ,20 * Math.log10(denoise.getPercentile(0.9)),20 * Math.log10(denoise2.getPercentile(0.9))));
+            if(cursor > (int)(2.4 * sampleRate)) {
+                System.out.println(String.format(Locale.ROOT, "%.3f,%.3f,%.3f", cursor / sampleRate, 20 * Math.log10(denoise.getPercentile(0.9) + 1), 20 * Math.log10(denoise2.getPercentile(0.9))));
+            }
             cursor+=len;
         }
     }
