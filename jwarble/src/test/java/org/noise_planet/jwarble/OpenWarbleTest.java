@@ -635,8 +635,6 @@ public class OpenWarbleTest {
 
         OpenWarble openWarble = new OpenWarble(Configuration.getAudible(payloadSize, 44100));
 
-        for(int idFreq = 0; idFreq < openWarble.frequencies.length; idFreq++) {
-            System.out.println(String.format("Odd %d Hz Even %d Hz", Math.round(openWarble.frequencies[idFreq]), Math.round(openWarble.frequenciesUptone[idFreq])));        }
     }
 
     @Test

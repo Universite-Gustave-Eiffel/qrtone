@@ -6,6 +6,7 @@ import javax.sound.sampled.*;
 import java.io.*;
 import java.nio.ByteOrder;
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -29,7 +30,7 @@ public class OpenWarbleBenchmark {
         for (double aSignal : signal) {
             maxValue = Math.max(maxValue, Math.abs(aSignal));
         }
-        maxValue *= 2;
+        maxValue *= 8;
         for(int i=0; i<signal.length;i++) {
             shortSignal[i] = (short)((signal[i] / maxValue) * Short.MAX_VALUE);
         }
@@ -51,22 +52,20 @@ public class OpenWarbleBenchmark {
             double[] samples = recordTask.get(5000, TimeUnit.MILLISECONDS);
             assertNotNull(samples);
             OpenWarbleTest.writeDoubleToFile("target/recorded.raw", samples);
-            int cursor = 0;
-            while (cursor < samples.length) {
-                int len = Math.min(openWarble.getMaxPushSamplesLength(), samples.length - cursor);
-                if(len == 0) {
-                    break;
-                }
-                openWarble.pushSamples(Arrays.copyOfRange(samples, cursor, cursor+len));
-                cursor+=len;
-            }
-            assertArrayEquals(payload, messageCallback.payload);
+//            int cursor = 0;
+//            while (cursor < samples.length) {
+//                int len = Math.min(openWarble.getMaxPushSamplesLength(), samples.length - cursor);
+//                if(len == 0) {
+//                    break;
+//                }
+//                openWarble.pushSamples(Arrays.copyOfRange(samples, cursor, cursor+len));
+//                cursor+=len;
+//            }
+            //assertArrayEquals(payload, messageCallback.payload);
         } finally {
             doRecord.set(false);
         }
     }
-
-
 
     @Test
     public void testWithRecordedAudio() throws IOException {
@@ -79,16 +78,13 @@ public class OpenWarbleBenchmark {
         openWarble.setCallback(messageCallback);
         openWarble.setUnitTestCallback(utCallback);
         openWarble.generateSignal(1.0, expectedPayload);
-        for(int idFreq = 0; idFreq < openWarble.frequencies.length; idFreq++) {
-            System.out.println(String.format("Odd %d Hz Even %d Hz", Math.round(openWarble.frequencies[idFreq]), Math.round(openWarble.frequenciesUptone[idFreq])));
-        }
         System.out.println("\nGot");
         short[] signal_short;
         try (InputStream inputStream = new FileInputStream("target/recorded.raw")) {
             signal_short = OpenWarbleTest.loadShortStream(inputStream, ByteOrder.BIG_ENDIAN);
         }
         // Push audio samples to OpenWarble
-        openWarble.triggerSampleIndexBegin = 121800;
+        openWarble.triggerSampleIndexBegin = (int)(2.778 * sampleRate);
         int cursor = 0;
         while (cursor < signal_short.length) {
             int len = Math.min(openWarble.getMaxPushSamplesLength(), signal_short.length - cursor);
@@ -103,6 +99,43 @@ public class OpenWarbleBenchmark {
             cursor+=len;
         }
         assertArrayEquals(expectedPayload, messageCallback.payload);
+    }
+
+    @Test
+    public void testWithRecordedAudioMethod() throws IOException {
+        double sampleRate = 44100;
+        byte[] expectedPayload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4,
+                31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
+        OpenWarble openWarble = new OpenWarble(Configuration.getAudible(expectedPayload.length, sampleRate));
+        short[] signal_short;
+        try (InputStream inputStream = new FileInputStream("target/recorded.raw")) {
+            signal_short = OpenWarbleTest.loadShortStream(inputStream, ByteOrder.BIG_ENDIAN);
+        }
+        // Push audio samples to OpenWarble
+        //openWarble.triggerSampleIndexBegin = 121800;
+        int cursor = (int)(2.4 * sampleRate);
+        Percentile background = new Percentile(80);
+        int windowLength = openWarble.wordLength / 5;
+        int windowOffset = windowLength / 10;
+        double[] window = new double[windowLength];
+        Percentile denoise = new Percentile(10);
+        Percentile denoise2 = new Percentile(10);
+        while (cursor < (int)(2.9 * sampleRate)) {
+            int len = Math.min(windowOffset, signal_short.length - cursor);
+            if(len == 0) {
+                break;
+            }
+            System.arraycopy(window, len, window, 0, window.length - len);
+            for(int i = cursor; i < cursor + len; i++) {
+                window[window.length - len + (i - cursor)] = signal_short[i];
+            }
+            double[] rms = OpenWarble.generalizedGoertzel(window, 0, window.length, sampleRate, new double[]{openWarble.frequencyDoor1, openWarble.frequencies[openWarble.frequencies.length - 1]}, null, true);
+            background.add(rms[0]);
+            denoise.add(rms[0]);
+            denoise2.add(rms[1]);
+            System.out.println(String.format(Locale.ROOT, "%.3f,%.3f,%.3f",cursor / sampleRate ,20 * Math.log10(denoise.getPercentile(0.9)),20 * Math.log10(denoise2.getPercentile(0.9))));
+            cursor+=len;
+        }
     }
 
     public static class Player implements Callable<Boolean> {
