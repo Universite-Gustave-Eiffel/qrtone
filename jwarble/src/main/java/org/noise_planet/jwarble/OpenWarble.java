@@ -102,8 +102,8 @@ public class OpenWarble {
         parsed = new byte[blockLength];
         wordLength = (int)(configuration.sampleRate * configuration.wordTime);
         silenceLength = (int)(configuration.sampleRate * configuration.wordSilence);
-        clockWindowLength = (wordLength / 2) / 3;
-        windowOffsetLength = clockWindowLength / 3;
+        clockWindowLength = (wordLength / 2);
+        windowOffsetLength = clockWindowLength / 6;
         doorLength = wordLength;
         messageSamples = doorLength + silenceLength + doorLength + blockLength * (silenceLength + wordLength);
         signalCache = new double[doorLength * 3];

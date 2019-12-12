@@ -4,11 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PeakFinder {
-    final int precision;
-    boolean increase = true;
-    double oldVal = Double.MIN_VALUE;
-    int index = 0;
-    List<Integer> peaks = new ArrayList<>();
+    private final int precision;
+    private boolean increase = true;
+    private double oldVal = Double.MIN_VALUE;
+    private int index = 0;
+    private List<Integer> peaks = new ArrayList<>();
 
     public PeakFinder(int precision) {
         this.precision = precision;
