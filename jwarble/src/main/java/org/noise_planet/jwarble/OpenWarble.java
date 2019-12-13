@@ -60,6 +60,7 @@ public class OpenWarble {
     private int hammingCorrectedErrors = 0;
     private ReedSolomonResult lastReedSolomonResult = null;
     private Percentile denoiseClock;
+    private Percentile backgroundLevel;
     private Configuration configuration;
     final double frequencyDoor1;
     public final static byte door2Check = 'W';
@@ -109,6 +110,7 @@ public class OpenWarble {
         signalCache = new double[doorLength * 3];
         clockRmsHistory = new double[signalCache.length / windowOffsetLength];
         denoiseClock = new Percentile((wordLength / 2) / windowOffsetLength);
+        backgroundLevel = new Percentile(signalCache.length / windowOffsetLength);
         // Precompute pitch frequencies
         for(int i = 0; i < NUM_FREQUENCIES; i++) {
             if(configuration.frequencyIncrement != 0) {
@@ -278,11 +280,7 @@ public class OpenWarble {
     }
 
     public int getMaxPushSamplesLength() {
-        if(triggerSampleIndexBegin < 0) {
-            return Math.min(signalCache.length, (int) (signalCache.length - (pushedSamples - processedSamples)));
-        } else {
-            return Math.min(wordLength, (int) (wordLength - (pushedSamples - processedSamples)));
-        }
+        return Math.min(signalCache.length, (int) (signalCache.length - (wordLength * 2) - (pushedSamples - processedSamples)));
     }
 
     public int getHammingCorrectedErrors() {
@@ -355,25 +353,42 @@ public class OpenWarble {
                 final double[] doorFrequencies = new double[]{frequencyDoor1};
                 double[] levels = generalizedGoertzel(signalCache, (int) cursor, clockWindowLength, configuration.sampleRate, doorFrequencies, null, false);
                 denoiseClock.add(levels[0]);
+                if(parsedCursor == 0) {
+                    backgroundLevel.add(Math.max(1e-12, levels[0]));
+                }
                 System.arraycopy(clockRmsHistory, 1, clockRmsHistory, 0, clockRmsHistory.length - 1);
-                clockRmsHistory[clockRmsHistory.length - 1] = 20 * Math.log10(denoiseClock.getPercentile(0.9) + 1);
-                boolean hasPeak = peakFinder.add(clockRmsHistory[clockRmsHistory.length - 1]);
+                clockRmsHistory[clockRmsHistory.length - 1] = denoiseClock.getPercentile(0.9); // 20 * Math.log10(denoiseClock.getPercentile(0.9) + 1);
+                boolean hasPeak = peakFinder.add(processedSamples, clockRmsHistory[clockRmsHistory.length - 1]);
                 cursor += windowOffsetLength;
                 if(processedSamples / configuration.sampleRate > 2.4 && processedSamples / configuration.sampleRate < 3.5) {
                     if(hasPeak) {
-                        System.out.println(String.format(Locale.ROOT, "%.3f,%f,40", processedSamples / configuration.sampleRate, clockRmsHistory[clockRmsHistory.length - 1]));
+                        // Find peak
+                        // Evaluate previous peaks in order to find expected delay between peaks
+                        List<Long> peaks = peakFinder.getPeaks();
+                        for(int i = peaks.size() - 2; i >= 0; i--) {
+                            // Check if peak interval is equal to word length
+                            long windowDiff = processedSamples - peaks.get(i);
+                            if(Math.abs(windowDiff - wordLength) < wordLength / 3) {
+                                // Evaluate peak up/down ratio
+                                int upIndex = clockRmsHistory.length - (int)((processedSamples - (peaks.get(i) - wordLength / 2)) / windowOffsetLength);
+                                //int lowIndex = clockRmsHistory.length - (int)((processedSamples - (peaks.get(i) + clockWindowLength / 3)) / windowOffsetLength);
+                                //upIndex = Math.max(0, Math.min(clockRmsHistory.length - 1, upIndex));
+                                //lowIndex = Math.max(0, Math.min(clockRmsHistory.length - 1, lowIndex));
+                                if(getSnr(clockRmsHistory[upIndex], backgroundLevel) > configuration.triggerSnr) {
+                                    System.out.print("+");
+                                }
+                            } else if(windowDiff > wordLength + windowOffsetLength) {
+                                break;
+                            }
+                        }
+                        System.out.println(String.format(Locale.ROOT, "%.3f,%f,40", processedSamples / configuration.sampleRate,20 * Math.log10(denoiseClock.getPercentile(0.9) + 1)));
                     } else {
-                        System.out.println(String.format(Locale.ROOT, "%.3f,%f,0", processedSamples / configuration.sampleRate, clockRmsHistory[clockRmsHistory.length - 1]));
+                        System.out.println(String.format(Locale.ROOT, "%.3f,%f,0", processedSamples / configuration.sampleRate, 20 * Math.log10(denoiseClock.getPercentile(0.9) + 1)));
                     }
                 }
                 processedSamples += windowOffsetLength;
             }
-//            if (false) {
-//                triggerSampleIndexBegin = processedSamples;
-//                response = PROCESS_RESPONSE.PROCESS_PITCH;
-//                hammingCorrectedErrors = 0;
-//                parsedCursor = 0;
-//            }
+            peakFinder.clearPeaks(pushedSamples - signalCache.length);
         }
         return response;
     }

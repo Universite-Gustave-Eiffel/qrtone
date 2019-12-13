@@ -7,18 +7,23 @@ public class PeakFinder {
     private final int precision;
     private boolean increase = true;
     private double oldVal = Double.MIN_VALUE;
-    private int index = 0;
-    private List<Integer> peaks = new ArrayList<>();
+    private List<Long> peaks = new ArrayList<>();
 
     public PeakFinder(int precision) {
         this.precision = precision;
     }
 
-    public List<Integer> getPeaks() {
+    public List<Long> getPeaks() {
         return peaks;
     }
 
-    public boolean add(double value) {
+    public void clearPeaks(long upTo) {
+        while(!peaks.isEmpty() && peaks.get(0) < upTo) {
+            peaks.remove(0);
+        }
+    }
+
+    public boolean add(Long index, double value) {
         boolean ret = false;
         double diff = (int)((value - oldVal) * Math.pow(10, precision)) / Math.pow(10, precision);
         if(diff < 0 && increase) {
@@ -27,7 +32,6 @@ public class PeakFinder {
         }
         increase = diff >= 0;
         oldVal = value;
-        index++;
         return ret;
     }
 }
