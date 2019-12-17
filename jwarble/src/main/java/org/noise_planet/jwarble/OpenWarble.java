@@ -374,7 +374,10 @@ public class OpenWarble {
                                 //int lowIndex = clockRmsHistory.length - (int)((processedSamples - (peaks.get(i) + clockWindowLength / 3)) / windowOffsetLength);
                                 //upIndex = Math.max(0, Math.min(clockRmsHistory.length - 1, upIndex));
                                 //lowIndex = Math.max(0, Math.min(clockRmsHistory.length - 1, lowIndex));
-                                if (getSnr(clockRmsHistory[upIndex], backgroundLevel) > configuration.triggerSnr) {
+                                // Evaluate level at gap time
+                                int startOne = Math.max(0, (int) (peaks.get(i) - clockWindowLength - (pushedSamples - signalCache.length)));
+                                double[] lvls = generalizedGoertzel(signalCache, startOne, clockWindowLength, configuration.sampleRate, new double[] {frequencyDoor1, frequencies[frequencies.length - 1]}, null, false);
+                                if (getSnr(clockRmsHistory[upIndex], backgroundLevel) > configuration.triggerSnr && 10 * Math.log10(lvls[0] / lvls[1]) > configuration.triggerSnr) {
                                     lastWordSampleIndex = peaks.get(i) - clockWindowLength;
                                     parsedCursor = 0;
                                     break;

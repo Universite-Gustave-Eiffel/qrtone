@@ -278,7 +278,7 @@ public class OpenWarbleTest {
     public void testWithRecordedAudioNoTrigger() throws IOException {
         double sampleRate = 44100;
         OpenWarble openWarble = new OpenWarble(Configuration.getAudible(9, sampleRate, false));
-        UtCallback utCallback = new UtCallback(true);
+        UtCallback utCallback = new UtCallback(false);
         UtMessageCallback messageCallback = new UtMessageCallback();
         openWarble.setCallback(messageCallback);
         openWarble.setUnitTestCallback(utCallback);
