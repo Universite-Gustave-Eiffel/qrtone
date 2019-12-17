@@ -77,7 +77,7 @@ public class OpenWarbleBenchmark {
         OpenWarbleTest.UtMessageCallback messageCallback = new OpenWarbleTest.UtMessageCallback();
         openWarble.setCallback(messageCallback);
         openWarble.setUnitTestCallback(utCallback);
-        //openWarble.generateSignal(1.0, expectedPayload);
+        openWarble.generateSignal(1.0, expectedPayload);
         System.out.println("\nGot");
         short[] signal_short;
         try (InputStream inputStream = new FileInputStream("target/recorded.raw")) {

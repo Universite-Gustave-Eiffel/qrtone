@@ -76,7 +76,7 @@ public class OpenWarble {
     double[] signalCache;
     double[] clockRmsHistory;
     public enum PROCESS_RESPONSE {PROCESS_IDLE, PROCESS_ERROR, PROCESS_PITCH, PROCESS_COMPLETE}
-    protected long triggerSampleIndexBegin = -1;
+    protected long lastWordSampleIndex = -1;
     int parsedCursor = 0; // parsed words
     byte[] parsed;
     private UnitTestCallback unitTestCallback;
@@ -129,8 +129,8 @@ public class OpenWarble {
         }
     }
 
-    public long getTriggerSampleIndexBegin() {
-        return triggerSampleIndexBegin;
+    public long getLastWordSampleIndex() {
+        return lastWordSampleIndex;
     }
 
     public ReedSolomonResult getLastReedSolomonResult() {
@@ -245,15 +245,15 @@ public class OpenWarble {
                     signalCache.length);
             pushedSamples+=signalCache.length;
         }
-        if((triggerSampleIndexBegin < 0 && pushedSamples - processedSamples >= windowOffsetLength)
-            ||(triggerSampleIndexBegin >= 0 && pushedSamples - processedSamples >= wordLength)) {
+        if((lastWordSampleIndex < 0 && pushedSamples - processedSamples >= windowOffsetLength)
+            ||(lastWordSampleIndex >= 0 && pushedSamples - processedSamples >= wordLength)) {
             PROCESS_RESPONSE processResponse = PROCESS_RESPONSE.PROCESS_PITCH;
             while(processResponse == PROCESS_RESPONSE.PROCESS_PITCH || processResponse == PROCESS_RESPONSE.PROCESS_COMPLETE) {
                 processResponse = process();
                 switch (processResponse) {
                     case PROCESS_PITCH:
                         if (callback != null && parsedCursor > 0) {
-                            callback.onPitch(triggerSampleIndexBegin);
+                            callback.onPitch(lastWordSampleIndex);
                         }
                         break;
                     case PROCESS_COMPLETE:
@@ -262,13 +262,13 @@ public class OpenWarble {
                                 unswapChars(parsed, shuffleIndex);
                                 lastReedSolomonResult = decodeReedSolomon(parsed);
                                 if(lastReedSolomonResult.code != ReedSolomonResultCode.FAIL_CORRECTION) {
-                                    callback.onNewMessage(lastReedSolomonResult.payload, triggerSampleIndexBegin);
+                                    callback.onNewMessage(lastReedSolomonResult.payload, lastWordSampleIndex);
                                 }
                             } else {
-                                callback.onNewMessage(parsed, triggerSampleIndexBegin);
+                                callback.onNewMessage(parsed, lastWordSampleIndex);
                             }
                         }
-                        triggerSampleIndexBegin = -1;
+                        lastWordSampleIndex = -1;
                         break;
                     case PROCESS_ERROR:
                         if (callback != null) {
@@ -349,42 +349,89 @@ public class OpenWarble {
         // Find clock frequency
         long cursor = signalCache.length - pushedSamples + processedSamples;
         if(cursor < signalCache.length - doorLength / 2) {
-            while (cursor < signalCache.length - doorLength / 2) {
+            while (response == PROCESS_RESPONSE.PROCESS_IDLE && cursor < signalCache.length - doorLength / 2) {
                 final double[] doorFrequencies = new double[]{frequencyDoor1};
                 double[] levels = generalizedGoertzel(signalCache, (int) cursor, clockWindowLength, configuration.sampleRate, doorFrequencies, null, false);
                 denoiseClock.add(levels[0]);
-                if(parsedCursor == 0) {
+                if(lastWordSampleIndex == -1) {
                     backgroundLevel.add(Math.max(1e-12, levels[0]));
                 }
                 System.arraycopy(clockRmsHistory, 1, clockRmsHistory, 0, clockRmsHistory.length - 1);
                 clockRmsHistory[clockRmsHistory.length - 1] = denoiseClock.getPercentile(0.9); // 20 * Math.log10(denoiseClock.getPercentile(0.9) + 1);
                 boolean hasPeak = peakFinder.add(processedSamples, clockRmsHistory[clockRmsHistory.length - 1]);
                 cursor += windowOffsetLength;
-                if(processedSamples / configuration.sampleRate > 2.4 && processedSamples / configuration.sampleRate < 3.5) {
-                    if(hasPeak) {
-                        // Find peak
-                        // Evaluate previous peaks in order to find expected delay between peaks
-                        List<Long> peaks = peakFinder.getPeaks();
-                        for(int i = peaks.size() - 2; i >= 0; i--) {
+                if(hasPeak) {
+                    // Find peak
+                    // Evaluate previous peaks in order to find expected delay between peaks
+                    List<Long> peaks = peakFinder.getPeaks();
+                    if(lastWordSampleIndex == -1) {
+                        for (int i = peaks.size() - 2; i >= 0; i--) {
                             // Check if peak interval is equal to word length
                             long windowDiff = processedSamples - peaks.get(i);
-                            if(Math.abs(windowDiff - wordLength) < wordLength / 3) {
+                            if (Math.abs(windowDiff - wordLength) < wordLength / 3) {
                                 // Evaluate peak up/down ratio
-                                int upIndex = clockRmsHistory.length - (int)((processedSamples - (peaks.get(i) - wordLength / 2)) / windowOffsetLength);
+                                int upIndex = clockRmsHistory.length - (int) ((processedSamples - (peaks.get(i) - wordLength / 2)) / windowOffsetLength);
                                 //int lowIndex = clockRmsHistory.length - (int)((processedSamples - (peaks.get(i) + clockWindowLength / 3)) / windowOffsetLength);
                                 //upIndex = Math.max(0, Math.min(clockRmsHistory.length - 1, upIndex));
                                 //lowIndex = Math.max(0, Math.min(clockRmsHistory.length - 1, lowIndex));
-                                if(getSnr(clockRmsHistory[upIndex], backgroundLevel) > configuration.triggerSnr) {
-                                    System.out.print("+");
+                                if (getSnr(clockRmsHistory[upIndex], backgroundLevel) > configuration.triggerSnr) {
+                                    lastWordSampleIndex = peaks.get(i) - clockWindowLength;
+                                    break;
                                 }
-                            } else if(windowDiff > wordLength + windowOffsetLength) {
+                            } else if (windowDiff > wordLength + windowOffsetLength) {
                                 break;
                             }
                         }
-                        System.out.println(String.format(Locale.ROOT, "%.3f,%f,40", processedSamples / configuration.sampleRate,20 * Math.log10(denoiseClock.getPercentile(0.9) + 1)));
-                    } else {
-                        System.out.println(String.format(Locale.ROOT, "%.3f,%f,0", processedSamples / configuration.sampleRate, 20 * Math.log10(denoiseClock.getPercentile(0.9) + 1)));
                     }
+                    if(lastWordSampleIndex != -1) {
+                        // Find most appropriate peak of the current word
+                        boolean findClockPeak = false;
+                        for (int i = peaks.size() - 1; i >= 0; i--) {
+                            long windowDiff = peaks.get(i) - lastWordSampleIndex;
+                            if (Math.abs(windowDiff - wordLength) < wordLength / 3) {
+                                findClockPeak = true;
+                                lastWordSampleIndex = peaks.get(i) - clockWindowLength;
+                                break;
+                            }
+                        }
+                        if(!findClockPeak) {
+                            lastWordSampleIndex += wordLength;
+                        }
+                        if(parsedCursor == 0) {
+                            Hamming12_8.CorrectResult result = decode(lastWordSampleIndex, door2Check, null, unitTestCallback != null);
+                            if (result.result == Hamming12_8.CorrectResultCode.FAIL_CORRECTION ||
+                                    door2Check != result.value) {
+                                response = PROCESS_RESPONSE.PROCESS_IDLE;
+                                lastWordSampleIndex = -1;
+                            } else {
+                                response = PROCESS_RESPONSE.PROCESS_PITCH;
+                                parsedCursor++;
+                            }
+                        } else {
+                            Hamming12_8.CorrectResult result = decode(lastWordSampleIndex, null, null, unitTestCallback != null);
+                            if (!configuration.reedSolomonEncode && result.result == Hamming12_8.CorrectResultCode.FAIL_CORRECTION) {
+                                // Failed to decode byte
+                                // Reed Solomon is disabled so the entire message is lost
+                                response = PROCESS_RESPONSE.PROCESS_ERROR;
+                                lastWordSampleIndex = -1;
+                            } else {
+                                if (result.result == Hamming12_8.CorrectResultCode.CORRECTED_ERROR) {
+                                    hammingCorrectedErrors += 1;
+                                }
+                                // message
+                                parsed[parsedCursor - 1] = result.value;
+                                parsedCursor++;
+                                if (parsedCursor - 1 == parsed.length) {
+                                    response = PROCESS_RESPONSE.PROCESS_COMPLETE;
+                                } else {
+                                    response = PROCESS_RESPONSE.PROCESS_PITCH;
+                                }
+                            }
+                        }
+                    }
+                    //System.out.println(String.format(Locale.ROOT, "%.3f,%f,40", processedSamples / configuration.sampleRate,20 * Math.log10(denoiseClock.getPercentile(0.9) + 1)));
+                } else {
+                    //System.out.println(String.format(Locale.ROOT, "%.3f,%f,0", processedSamples / configuration.sampleRate, 20 * Math.log10(denoiseClock.getPercentile(0.9) + 1)));
                 }
                 processedSamples += windowOffsetLength;
             }
