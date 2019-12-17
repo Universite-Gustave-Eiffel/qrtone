@@ -52,16 +52,16 @@ public class OpenWarbleBenchmark {
             double[] samples = recordTask.get(5000, TimeUnit.MILLISECONDS);
             assertNotNull(samples);
             OpenWarbleTest.writeDoubleToFile("target/recorded.raw", samples);
-//            int cursor = 0;
-//            while (cursor < samples.length) {
-//                int len = Math.min(openWarble.getMaxPushSamplesLength(), samples.length - cursor);
-//                if(len == 0) {
-//                    break;
-//                }
-//                openWarble.pushSamples(Arrays.copyOfRange(samples, cursor, cursor+len));
-//                cursor+=len;
-//            }
-            //assertArrayEquals(payload, messageCallback.payload);
+            int cursor = 0;
+            while (cursor < samples.length) {
+                int len = Math.min(openWarble.getMaxPushSamplesLength(), samples.length - cursor);
+                if(len == 0) {
+                    break;
+                }
+                openWarble.pushSamples(Arrays.copyOfRange(samples, cursor, cursor+len));
+                cursor+=len;
+            }
+            assertArrayEquals(payload, messageCallback.payload);
         } finally {
             doRecord.set(false);
         }

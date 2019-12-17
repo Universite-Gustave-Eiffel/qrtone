@@ -376,6 +376,7 @@ public class OpenWarble {
                                 //lowIndex = Math.max(0, Math.min(clockRmsHistory.length - 1, lowIndex));
                                 if (getSnr(clockRmsHistory[upIndex], backgroundLevel) > configuration.triggerSnr) {
                                     lastWordSampleIndex = peaks.get(i) - clockWindowLength;
+                                    parsedCursor = 0;
                                     break;
                                 }
                             } else if (windowDiff > wordLength + windowOffsetLength) {

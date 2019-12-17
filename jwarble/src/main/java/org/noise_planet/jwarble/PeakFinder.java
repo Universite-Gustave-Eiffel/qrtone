@@ -25,7 +25,7 @@ public class PeakFinder {
 
     public boolean add(Long index, double value) {
         boolean ret = false;
-        double diff = (int)((value - oldVal) * Math.pow(10, precision)) / Math.pow(10, precision);
+        double diff = value - oldVal; //(int)((value - oldVal) * Math.pow(10, precision)) / Math.pow(10, precision);
         if(diff < 0 && increase) {
             peaks.add(index);
             ret = true;

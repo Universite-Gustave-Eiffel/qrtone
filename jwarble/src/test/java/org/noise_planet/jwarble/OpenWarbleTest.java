@@ -130,7 +130,7 @@ public class OpenWarbleTest {
             openWarble.pushSamples(Arrays.copyOfRange(allSignal, cursor, cursor+len));
             cursor+=len;
         }
-        assertTrue(Math.abs(blankSamples - messageCallback.pitchLocation) < openWarble.doorLength / 4.0);
+        assertTrue(Math.abs(blankSamples - messageCallback.pitchLocation + openWarble.doorLength) < openWarble.doorLength / 4.0);
         assertArrayEquals(payload, messageCallback.payload);
         assertEquals(0, openWarble.getHammingCorrectedErrors());
     }
@@ -160,7 +160,7 @@ public class OpenWarbleTest {
             openWarble.pushSamples(Arrays.copyOfRange(allSignal, cursor, cursor+len));
             cursor+=len;
         }
-        assertTrue(Math.abs(blankSamples - messageCallback.pitchLocation) < openWarble.doorLength / 4.0);
+        assertTrue(Math.abs(blankSamples - messageCallback.pitchLocation + openWarble.doorLength) < openWarble.doorLength / 4.0);
         assertArrayEquals(payload, messageCallback.payload);
         assertEquals(0, openWarble.getHammingCorrectedErrors());
         //writeDoubleToFile("target/source_mono_16bits_BigEndian_44100Hz.raw", allSignal);
@@ -198,7 +198,7 @@ public class OpenWarbleTest {
         }
         System.out.println(String.format("Execution time %.3f seconds", (System.nanoTime() - start) / 1e9));
         //writeDoubleToFile("target/test.raw", allSignal);
-        assertTrue(Math.abs(blankSamples - messageCallback.pitchLocation) < openWarble.doorLength / 4.0);
+        assertTrue(Math.abs(blankSamples - messageCallback.pitchLocation + openWarble.doorLength) < openWarble.doorLength / 4.0);
         assertArrayEquals(payload, messageCallback.payload);
         assertEquals(0, openWarble.getHammingCorrectedErrors());
     }
@@ -237,7 +237,7 @@ public class OpenWarbleTest {
         }
         System.out.println(String.format("Execution time %.3f seconds", (System.nanoTime() - start) / 1e9));
         //writeDoubleToFile("target/test.raw", allSignal);
-        assertTrue(Math.abs(blankSamples - messageCallback.pitchLocation) < openWarble.doorLength / 4.0);
+        assertTrue(Math.abs(blankSamples - messageCallback.pitchLocation + openWarble.doorLength) < openWarble.doorLength / 4.0);
         assertArrayEquals(payload, messageCallback.payload);
         assertEquals(0, openWarble.getHammingCorrectedErrors());
     }
