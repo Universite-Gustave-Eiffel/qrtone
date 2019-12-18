@@ -59,7 +59,7 @@ public class OpenWarble {
     private long processedSamples = 0;
     private int hammingCorrectedErrors = 0;
     private ReedSolomonResult lastReedSolomonResult = null;
-    private Percentile denoiseClock;
+    Percentile denoiseClock;
     private Percentile backgroundLevel;
     private Configuration configuration;
     final double frequencyDoor1;
@@ -68,13 +68,12 @@ public class OpenWarble {
     final int blockLength; // Full payload + all parity bytes
     final int shardSize; // Number of Reed Solomon parts
     final int wordLength;
-    final PeakFinder peakFinder = new PeakFinder(1);
+    final PeakFinder peakFinder;
     final int silenceLength;
     final int doorLength;
     final int messageSamples;
     final int windowOffsetLength;
     double[] signalCache;
-    double[] clockRmsHistory;
     double[] lowerFreqRmsHistory;
     public enum PROCESS_RESPONSE {PROCESS_IDLE, PROCESS_ERROR, PROCESS_PITCH, PROCESS_COMPLETE}
     protected long lastWordSampleIndex = -1;
@@ -109,7 +108,7 @@ public class OpenWarble {
         doorLength = wordLength;
         messageSamples = doorLength + silenceLength + doorLength + blockLength * (silenceLength + wordLength);
         signalCache = new double[doorLength * 3];
-        clockRmsHistory = new double[signalCache.length / windowOffsetLength];
+        peakFinder = new PeakFinder(signalCache.length / windowOffsetLength);
         lowerFreqRmsHistory = new double[signalCache.length / windowOffsetLength];
         denoiseClock = new Percentile((wordLength / 2) / windowOffsetLength);
         backgroundLevel = new Percentile(signalCache.length / windowOffsetLength);
@@ -346,10 +345,6 @@ public class OpenWarble {
         return result;
     }
 
-    private long peaksToIndex(long peakIndex) {
-        return peakIndex - clockWindowLength;
-    }
-
     private PROCESS_RESPONSE process() {
         PROCESS_RESPONSE response = PROCESS_RESPONSE.PROCESS_IDLE;
         // Find clock frequency
@@ -362,34 +357,34 @@ public class OpenWarble {
                 if(lastWordSampleIndex == -1) {
                     backgroundLevel.add(Math.max(1e-12, levels[0]));
                 }
-                System.arraycopy(clockRmsHistory, 1, clockRmsHistory, 0, clockRmsHistory.length - 1);
-                clockRmsHistory[clockRmsHistory.length - 1] = denoiseClock.getPercentile(0.9);
                 System.arraycopy(lowerFreqRmsHistory, 1, lowerFreqRmsHistory, 0, lowerFreqRmsHistory.length - 1);
                 lowerFreqRmsHistory[lowerFreqRmsHistory.length - 1] = -1;
-                boolean hasPeak = peakFinder.add(processedSamples, clockRmsHistory[clockRmsHistory.length - 1]);
+                boolean hasPeak = peakFinder.add(processedSamples, denoiseClock.getPercentile(0.9));
                 cursor += windowOffsetLength;
                 if(hasPeak) {
                     // Find peak
                     // Evaluate previous peaks in order to find expected delay between peaks
-                    List<Long> peaks = peakFinder.getPeaks();
+                    final List<Long> peaks = peakFinder.getPeaks();
+                    final List<Integer> peaksIndex = peakFinder.getPeaksIndex();
                     if(lastWordSampleIndex == -1) {
                         for (int i = peaks.size() - 2; i >= 0; i--) {
                             // Check if peak interval is equal to word length
                             long windowDiff = processedSamples - peaks.get(i);
-                            if (Math.abs(windowDiff - wordLength) < wordLength / 3) {
-                                // Evaluate peak up/down ratio
-                                int upIndex = clockRmsHistory.length - (int) ((processedSamples - (  peaksToIndex(peaks.get(i)))) / windowOffsetLength);
-                                // Evaluate level at gap time
-                                double lowerFreqLevel = 0;
-                                if(lowerFreqRmsHistory[upIndex] < 0) {
-                                    int startOne = Math.max(0, (int) (peaksToIndex(peaks.get(i)) - (pushedSamples - signalCache.length)));
-                                    lowerFreqRmsHistory[upIndex] = generalizedGoertzel(signalCache, startOne, clockWindowLength, configuration.sampleRate, new double[]{frequencies[frequencies.length - 1]}, null, false)[0];
-                                }
+                            if (Math.abs(windowDiff - wordLength) < clockWindowLength) {
+                                // Evaluate peak value with background level (time snr ratio)
+                                int upIndex = peaksIndex.get(i);
                                 // Check for Level discontinuity on temporal and frequency scales.
-                                if (getSnr(clockRmsHistory[upIndex], backgroundLevel) > configuration.triggerSnr && 10 * Math.log10(clockRmsHistory[upIndex] / lowerFreqRmsHistory[upIndex]) > configuration.triggerSnr) {
-                                    lastWordSampleIndex = peaksToIndex(peaks.get(i));
-                                    parsedCursor = 0;
-                                    break;
+                                if (getSnr(peakFinder.getPeakValue(upIndex), backgroundLevel) > configuration.triggerSnr) {
+                                    // Evaluate level at gap time
+                                    if(lowerFreqRmsHistory[upIndex] < 0) {
+                                        int startOne = Math.max(0, (int) (peaks.get(i) - (pushedSamples - signalCache.length)));
+                                        lowerFreqRmsHistory[upIndex] = generalizedGoertzel(signalCache, startOne, clockWindowLength, configuration.sampleRate, new double[]{frequencies[frequencies.length - 1]}, null, false)[0];
+                                    }
+                                    if(10 * Math.log10(peakFinder.getPeakValue(upIndex) / lowerFreqRmsHistory[upIndex]) > configuration.triggerSnr) {
+                                        lastWordSampleIndex = peaks.get(i);
+                                        parsedCursor = 0;
+                                        break;
+                                    }
                                 }
                             } else if (windowDiff > wordLength + windowOffsetLength) {
                                 break;
@@ -401,9 +396,9 @@ public class OpenWarble {
                         boolean findClockPeak = false;
                         for (int i = peaks.size() - 1; i >= 0; i--) {
                             long windowDiff = peaks.get(i) - lastWordSampleIndex;
-                            if (Math.abs(windowDiff - wordLength) < wordLength / 3) {
+                            if (Math.abs(windowDiff - wordLength) < clockWindowLength) {
                                 findClockPeak = true;
-                                lastWordSampleIndex = peaksToIndex(peaks.get(i));
+                                lastWordSampleIndex = peaks.get(i);
                                 break;
                             }
                         }

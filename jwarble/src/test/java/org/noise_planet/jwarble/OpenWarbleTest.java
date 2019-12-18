@@ -333,6 +333,7 @@ public class OpenWarbleTest {
 
         boolean print;
         OpenWarble openWarble;
+        double lastGateLevel;
 
         public UtCallback(boolean print, OpenWarble openWarble) {
             this.print = print;
@@ -341,7 +342,14 @@ public class OpenWarbleTest {
 
         @Override
         public void windowStep(double gateLevel, boolean findPeak) {
-
+            if(findPeak) {
+                lastGateLevel = gateLevel;
+            }
+//            if(print) {
+//                System.out.println(String.format(Locale.ROOT, "%.3f,%f,%.3f",
+//                        (openWarble.getProcessedSamples()) / openWarble.getConfiguration().sampleRate,
+//                        20 * Math.log10(openWarble.denoiseClock.getPercentile(0.9)), findPeak ? openWarble.lastWordSampleIndex / openWarble.getConfiguration().sampleRate : 0));
+//            }
         }
 
         @Override
