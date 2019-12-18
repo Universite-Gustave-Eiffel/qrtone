@@ -75,6 +75,7 @@ public class OpenWarble {
     final int windowOffsetLength;
     double[] signalCache;
     double[] clockRmsHistory;
+    double[] lowerFreqRmsHistory;
     public enum PROCESS_RESPONSE {PROCESS_IDLE, PROCESS_ERROR, PROCESS_PITCH, PROCESS_COMPLETE}
     protected long lastWordSampleIndex = -1;
     int parsedCursor = 0; // parsed words
@@ -109,6 +110,7 @@ public class OpenWarble {
         messageSamples = doorLength + silenceLength + doorLength + blockLength * (silenceLength + wordLength);
         signalCache = new double[doorLength * 3];
         clockRmsHistory = new double[signalCache.length / windowOffsetLength];
+        lowerFreqRmsHistory = new double[signalCache.length / windowOffsetLength];
         denoiseClock = new Percentile((wordLength / 2) / windowOffsetLength);
         backgroundLevel = new Percentile(signalCache.length / windowOffsetLength);
         // Precompute pitch frequencies
@@ -344,6 +346,10 @@ public class OpenWarble {
         return result;
     }
 
+    private long peaksToIndex(long peakIndex) {
+        return peakIndex - clockWindowLength;
+    }
+
     private PROCESS_RESPONSE process() {
         PROCESS_RESPONSE response = PROCESS_RESPONSE.PROCESS_IDLE;
         // Find clock frequency
@@ -357,7 +363,9 @@ public class OpenWarble {
                     backgroundLevel.add(Math.max(1e-12, levels[0]));
                 }
                 System.arraycopy(clockRmsHistory, 1, clockRmsHistory, 0, clockRmsHistory.length - 1);
-                clockRmsHistory[clockRmsHistory.length - 1] = denoiseClock.getPercentile(0.9); // 20 * Math.log10(denoiseClock.getPercentile(0.9) + 1);
+                clockRmsHistory[clockRmsHistory.length - 1] = denoiseClock.getPercentile(0.9);
+                System.arraycopy(lowerFreqRmsHistory, 1, lowerFreqRmsHistory, 0, lowerFreqRmsHistory.length - 1);
+                lowerFreqRmsHistory[lowerFreqRmsHistory.length - 1] = -1;
                 boolean hasPeak = peakFinder.add(processedSamples, clockRmsHistory[clockRmsHistory.length - 1]);
                 cursor += windowOffsetLength;
                 if(hasPeak) {
@@ -370,15 +378,16 @@ public class OpenWarble {
                             long windowDiff = processedSamples - peaks.get(i);
                             if (Math.abs(windowDiff - wordLength) < wordLength / 3) {
                                 // Evaluate peak up/down ratio
-                                int upIndex = clockRmsHistory.length - (int) ((processedSamples - (peaks.get(i) - wordLength / 2)) / windowOffsetLength);
-                                //int lowIndex = clockRmsHistory.length - (int)((processedSamples - (peaks.get(i) + clockWindowLength / 3)) / windowOffsetLength);
-                                //upIndex = Math.max(0, Math.min(clockRmsHistory.length - 1, upIndex));
-                                //lowIndex = Math.max(0, Math.min(clockRmsHistory.length - 1, lowIndex));
+                                int upIndex = clockRmsHistory.length - (int) ((processedSamples - (  peaksToIndex(peaks.get(i)))) / windowOffsetLength);
                                 // Evaluate level at gap time
-                                int startOne = Math.max(0, (int) (peaks.get(i) - clockWindowLength - (pushedSamples - signalCache.length)));
-                                double[] lvls = generalizedGoertzel(signalCache, startOne, clockWindowLength, configuration.sampleRate, new double[] {frequencyDoor1, frequencies[frequencies.length - 1]}, null, false);
-                                if (getSnr(clockRmsHistory[upIndex], backgroundLevel) > configuration.triggerSnr && 10 * Math.log10(lvls[0] / lvls[1]) > configuration.triggerSnr) {
-                                    lastWordSampleIndex = peaks.get(i) - clockWindowLength;
+                                double lowerFreqLevel = 0;
+                                if(lowerFreqRmsHistory[upIndex] < 0) {
+                                    int startOne = Math.max(0, (int) (peaksToIndex(peaks.get(i)) - (pushedSamples - signalCache.length)));
+                                    lowerFreqRmsHistory[upIndex] = generalizedGoertzel(signalCache, startOne, clockWindowLength, configuration.sampleRate, new double[]{frequencies[frequencies.length - 1]}, null, false)[0];
+                                }
+                                // Check for Level discontinuity on temporal and frequency scales.
+                                if (getSnr(clockRmsHistory[upIndex], backgroundLevel) > configuration.triggerSnr && 10 * Math.log10(clockRmsHistory[upIndex] / lowerFreqRmsHistory[upIndex]) > configuration.triggerSnr) {
+                                    lastWordSampleIndex = peaksToIndex(peaks.get(i));
                                     parsedCursor = 0;
                                     break;
                                 }
@@ -394,7 +403,7 @@ public class OpenWarble {
                             long windowDiff = peaks.get(i) - lastWordSampleIndex;
                             if (Math.abs(windowDiff - wordLength) < wordLength / 3) {
                                 findClockPeak = true;
-                                lastWordSampleIndex = peaks.get(i) - clockWindowLength;
+                                lastWordSampleIndex = peaksToIndex(peaks.get(i));
                                 break;
                             }
                         }
@@ -433,9 +442,9 @@ public class OpenWarble {
                             }
                         }
                     }
-                    //System.out.println(String.format(Locale.ROOT, "%.3f,%f,40", processedSamples / configuration.sampleRate,20 * Math.log10(denoiseClock.getPercentile(0.9) + 1)));
-                } else {
-                    //System.out.println(String.format(Locale.ROOT, "%.3f,%f,0", processedSamples / configuration.sampleRate, 20 * Math.log10(denoiseClock.getPercentile(0.9) + 1)));
+                }
+                if(unitTestCallback != null) {
+                    unitTestCallback.windowStep(levels[0], hasPeak);
                 }
                 processedSamples += windowOffsetLength;
             }
@@ -446,6 +455,13 @@ public class OpenWarble {
 
     public Configuration getConfiguration() {
         return configuration;
+    }
+
+    /**
+     * @return Number of analyzed samples
+     */
+    public long getProcessedSamples() {
+        return processedSamples;
     }
 
     public int getWordLength() {
@@ -805,6 +821,7 @@ public class OpenWarble {
     public interface UnitTestCallback {
         void generateWord(double time, byte word, int encodedWord, List<Double> frequencies);
         void detectWord(double time, Hamming12_8.CorrectResult result, int encodedWord, List<Double> frequencies);
+        void windowStep(double gateLevel, boolean findPeak);
     }
 
     public enum ReedSolomonResultCode {NO_ERRORS, CORRECTED_ERROR, FAIL_CORRECTION}

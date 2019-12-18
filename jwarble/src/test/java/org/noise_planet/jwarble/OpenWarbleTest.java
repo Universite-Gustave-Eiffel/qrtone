@@ -114,7 +114,7 @@ public class OpenWarbleTest {
         // payload = map(lambda v : s(v)[0], base58.b58decode("QmXjkFQjnD8i8ntmwehoAHBfJEApETx8ebScyVzAHqgjpD"))
         byte[] payload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
         OpenWarble openWarble = new OpenWarble(Configuration.getAudible(payload.length, sampleRate, false));
-        UtCallback utCallback = new UtCallback(false);
+        UtCallback utCallback = new UtCallback(false, openWarble);
         UtMessageCallback messageCallback = new UtMessageCallback();
         openWarble.setCallback(messageCallback);
         openWarble.setUnitTestCallback(utCallback);
@@ -144,7 +144,7 @@ public class OpenWarbleTest {
         int blankSamples = (int)(blankTime * sampleRate);
         byte[] payload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
         OpenWarble openWarble = new OpenWarble(Configuration.getAudible(payload.length, sampleRate, true));
-        UtCallback utCallback = new UtCallback(false);
+        UtCallback utCallback = new UtCallback(false, openWarble);
         UtMessageCallback messageCallback = new UtMessageCallback();
         openWarble.setCallback(messageCallback);
         openWarble.setUnitTestCallback(utCallback);
@@ -174,7 +174,7 @@ public class OpenWarbleTest {
         int blankSamples = (int)(blankTime * sampleRate);
         byte[] payload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
         OpenWarble openWarble = new OpenWarble(Configuration.getAudible(payload.length, sampleRate, false));
-        UtCallback utCallback = new UtCallback(false);
+        UtCallback utCallback = new UtCallback(false, openWarble);
         UtMessageCallback messageCallback = new UtMessageCallback();
         openWarble.setCallback(messageCallback);
         openWarble.setUnitTestCallback(utCallback);
@@ -213,7 +213,7 @@ public class OpenWarbleTest {
         int blankSamples = (int)(blankTime * sampleRate);
         byte[] payload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
         OpenWarble openWarble = new OpenWarble(Configuration.getAudible(payload.length, sampleRate, true));
-        UtCallback utCallback = new UtCallback(false);
+        UtCallback utCallback = new UtCallback(false, openWarble);
         UtMessageCallback messageCallback = new UtMessageCallback();
         openWarble.setCallback(messageCallback);
         openWarble.setUnitTestCallback(utCallback);
@@ -249,7 +249,7 @@ public class OpenWarbleTest {
         byte[] expectedPayload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4,
                 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
         OpenWarble openWarble = new OpenWarble(Configuration.getAudible(expectedPayload.length, sampleRate));
-        UtCallback utCallback = new UtCallback(true);
+        UtCallback utCallback = new UtCallback(true, openWarble);
         UtMessageCallback messageCallback = new UtMessageCallback();
         openWarble.setCallback(messageCallback);
         openWarble.setUnitTestCallback(utCallback);
@@ -278,7 +278,7 @@ public class OpenWarbleTest {
     public void testWithRecordedAudioNoTrigger() throws IOException {
         double sampleRate = 44100;
         OpenWarble openWarble = new OpenWarble(Configuration.getAudible(9, sampleRate, false));
-        UtCallback utCallback = new UtCallback(false);
+        UtCallback utCallback = new UtCallback(false, openWarble);
         UtMessageCallback messageCallback = new UtMessageCallback();
         openWarble.setCallback(messageCallback);
         openWarble.setUnitTestCallback(utCallback);
@@ -332,9 +332,16 @@ public class OpenWarbleTest {
     public static class UtCallback implements OpenWarble.UnitTestCallback {
 
         boolean print;
+        OpenWarble openWarble;
 
-        public UtCallback(boolean print) {
+        public UtCallback(boolean print, OpenWarble openWarble) {
             this.print = print;
+            this.openWarble = openWarble;
+        }
+
+        @Override
+        public void windowStep(double gateLevel, boolean findPeak) {
+
         }
 
         @Override
