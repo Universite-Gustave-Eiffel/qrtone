@@ -163,7 +163,7 @@ public class OpenWarbleTest {
         assertTrue(Math.abs(blankSamples - messageCallback.pitchLocation + openWarble.doorLength) < openWarble.doorLength / 4.0);
         assertArrayEquals(payload, messageCallback.payload);
         assertEquals(0, openWarble.getHammingCorrectedErrors());
-        //writeDoubleToFile("target/source_mono_16bits_BigEndian_44100Hz.raw", allSignal);
+        writeDoubleToFile("target/source_mono_16bits_BigEndian_44100Hz.raw", allSignal);
     }
     @Test
     public void testRecognitionWithNoise() throws IOException {
