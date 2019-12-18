@@ -249,13 +249,13 @@ public class OpenWarbleTest {
         byte[] expectedPayload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4,
                 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
         OpenWarble openWarble = new OpenWarble(Configuration.getAudible(expectedPayload.length, sampleRate));
-        UtCallback utCallback = new UtCallback(true, openWarble);
+        UtCallback utCallback = new UtCallback(false, openWarble);
         UtMessageCallback messageCallback = new UtMessageCallback();
         openWarble.setCallback(messageCallback);
         openWarble.setUnitTestCallback(utCallback);
         short[] signal_short;
         try (InputStream inputStream = OpenWarbleTest.class.getResourceAsStream("with_noise_44100hz_mono_16bits.raw")) {
-            signal_short = loadShortStream(inputStream, ByteOrder.LITTLE_ENDIAN);
+            signal_short = loadShortStream(inputStream, ByteOrder.BIG_ENDIAN);
         }
         // Push audio samples to OpenWarble
         int cursor = 0;

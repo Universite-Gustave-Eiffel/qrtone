@@ -14,7 +14,7 @@ import static org.junit.Assert.*;
 
 public class OpenWarbleBenchmark {
 
-    @Test
+    //@Test
     public void runAudioMicLoop () throws Exception {
         double sampleRate = 44100;
         double powerPeak = 1; // 90 dBspl
@@ -67,7 +67,7 @@ public class OpenWarbleBenchmark {
         }
     }
 
-    @Test
+    //@Test
     public void testWithRecordedAudio() throws IOException {
         double sampleRate = 44100;
         byte[] expectedPayload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4,
@@ -100,7 +100,7 @@ public class OpenWarbleBenchmark {
         assertArrayEquals(expectedPayload, messageCallback.payload);
     }
 
-    @Test
+    //@Test
     public void testWithRecordedAudioMethod() throws IOException {
         double sampleRate = 44100;
         byte[] expectedPayload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4,
