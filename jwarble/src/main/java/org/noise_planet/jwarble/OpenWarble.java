@@ -151,6 +151,7 @@ public class OpenWarble {
      * @return rms Rms power by frequencies
      */
     public static double[] generalizedGoertzel(final double[] signal, int start, int length, double sampleRate, final double[] freqs, double[] phase, boolean hannWindow) {
+        assert length > 0 : "Illegal length";
         double[] outFreqsPower = new double[freqs.length];
         // Fix frequency using the sampleRate of the signal
         double samplingRateFactor = length / sampleRate;
@@ -349,8 +350,8 @@ public class OpenWarble {
         PROCESS_RESPONSE response = PROCESS_RESPONSE.PROCESS_IDLE;
         // Find clock frequency
         long cursor = signalCache.length - pushedSamples + processedSamples;
-        if(cursor < signalCache.length - doorLength / 2) {
-            while (response == PROCESS_RESPONSE.PROCESS_IDLE && cursor < signalCache.length - doorLength / 2) {
+        if(cursor <= signalCache.length - doorLength) {
+            while (response == PROCESS_RESPONSE.PROCESS_IDLE && cursor <= signalCache.length - doorLength) {
                 final double[] doorFrequencies = new double[]{frequencyDoor1};
                 double[] levels = generalizedGoertzel(signalCache, (int) cursor, clockWindowLength, configuration.sampleRate, doorFrequencies, null, false);
                 denoiseClock.add(levels[0]);
@@ -392,47 +393,51 @@ public class OpenWarble {
                         }
                     }
                     if(lastWordSampleIndex != -1) {
+                        long nextWordSampleIndex = 0;
                         // Find most appropriate peak of the current word
                         boolean findClockPeak = false;
                         for (int i = peaks.size() - 1; i >= 0; i--) {
                             long windowDiff = peaks.get(i) - lastWordSampleIndex;
                             if (Math.abs(windowDiff - wordLength) < clockWindowLength) {
                                 findClockPeak = true;
-                                lastWordSampleIndex = peaks.get(i);
+                                nextWordSampleIndex = peaks.get(i);
                                 break;
                             }
                         }
-                        if(!findClockPeak) {
-                            lastWordSampleIndex += wordLength;
+                        if (!findClockPeak) {
+                            nextWordSampleIndex += lastWordSampleIndex + wordLength;
                         }
-                        if(parsedCursor == 0) {
-                            Hamming12_8.CorrectResult result = decode(lastWordSampleIndex, door2Check, null, unitTestCallback != null);
-                            if (result.result == Hamming12_8.CorrectResultCode.FAIL_CORRECTION ||
-                                    door2Check != result.value) {
-                                response = PROCESS_RESPONSE.PROCESS_IDLE;
-                                lastWordSampleIndex = -1;
-                            } else {
-                                response = PROCESS_RESPONSE.PROCESS_PITCH;
-                                parsedCursor++;
-                            }
-                        } else {
-                            Hamming12_8.CorrectResult result = decode(lastWordSampleIndex, null, null, unitTestCallback != null);
-                            if (!configuration.reedSolomonEncode && result.result == Hamming12_8.CorrectResultCode.FAIL_CORRECTION) {
-                                // Failed to decode byte
-                                // Reed Solomon is disabled so the entire message is lost
-                                response = PROCESS_RESPONSE.PROCESS_ERROR;
-                                lastWordSampleIndex = -1;
-                            } else {
-                                if (result.result == Hamming12_8.CorrectResultCode.CORRECTED_ERROR) {
-                                    hammingCorrectedErrors += 1;
-                                }
-                                // message
-                                parsed[parsedCursor - 1] = result.value;
-                                parsedCursor++;
-                                if (parsedCursor - 1 == parsed.length) {
-                                    response = PROCESS_RESPONSE.PROCESS_COMPLETE;
+                        if(nextWordSampleIndex + wordLength <= pushedSamples) {
+                            lastWordSampleIndex = nextWordSampleIndex;
+                            if (parsedCursor == 0) {
+                                Hamming12_8.CorrectResult result = decode(lastWordSampleIndex, door2Check, null, unitTestCallback != null);
+                                if (result.result == Hamming12_8.CorrectResultCode.FAIL_CORRECTION ||
+                                        door2Check != result.value) {
+                                    response = PROCESS_RESPONSE.PROCESS_IDLE;
+                                    lastWordSampleIndex = -1;
                                 } else {
                                     response = PROCESS_RESPONSE.PROCESS_PITCH;
+                                    parsedCursor++;
+                                }
+                            } else {
+                                Hamming12_8.CorrectResult result = decode(lastWordSampleIndex, null, null, unitTestCallback != null);
+                                if (!configuration.reedSolomonEncode && result.result == Hamming12_8.CorrectResultCode.FAIL_CORRECTION) {
+                                    // Failed to decode byte
+                                    // Reed Solomon is disabled so the entire message is lost
+                                    response = PROCESS_RESPONSE.PROCESS_ERROR;
+                                    lastWordSampleIndex = -1;
+                                } else {
+                                    if (result.result == Hamming12_8.CorrectResultCode.CORRECTED_ERROR) {
+                                        hammingCorrectedErrors += 1;
+                                    }
+                                    // message
+                                    parsed[parsedCursor - 1] = result.value;
+                                    parsedCursor++;
+                                    if (parsedCursor - 1 == parsed.length) {
+                                        response = PROCESS_RESPONSE.PROCESS_COMPLETE;
+                                    } else {
+                                        response = PROCESS_RESPONSE.PROCESS_PITCH;
+                                    }
                                 }
                             }
                         }
