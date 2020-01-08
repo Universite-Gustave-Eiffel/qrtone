@@ -79,6 +79,11 @@ public class Percentile {
         }
     }
 
+    public int getPercentileRank(double percentile) {
+        int rank = Math.max(0, Math.min((int) Math.round(stackSize * percentile - 1), stackSize - 1));
+        return indexes[rank];
+    }
+
     /**
      *
      * @param percentile (0-1]

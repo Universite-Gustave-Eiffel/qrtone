@@ -11,13 +11,13 @@ Signal processing use method *Sysel and Rajmic:Goertzel algorithm generalized to
 
 # How it works ?
 
-The data is converted into a sequence of pure sine waves.
- 
-The first and second pitch are used to recognize and trigger the sequence of tones.
+The data transmission method is similar to the first Internet modems except that it is adapted to the disturbances caused by acoustic propagation.
 
-If the receiver misses a frequency due to loud background noise or reverberation, the data is reconstructed using a forward error correction algorithm. The fec is a RS(10, 4) with 1 byte of CRC, than mean for each 12 bytes, the code can correct up to 2 erroneous bytes.
- 
-In addition, a single sequence of locations can contain multiple interleaved payloads and correction codes. Interleaving spreads an error to other correction codes, so the correction is much more robust.
+Diagram of the signal modulation and demodulation process:
+
+
+![OpenWarble diagram](process.png)
+
 
 Here a spectrogram of a sequence:
 
@@ -25,4 +25,4 @@ Here a spectrogram of a sequence:
 
 *Top recorded audio in real situation, bottom source signal.*
 
-This library can be included in android app with Api 14+ (Android 4.0.2) and does not require dependencies, the jar size is only 17 kbytes !
+This library is full native java and can be included in android app with Api 14+ (Android 4.0.2),it does not require dependencies, the jar size is only 38 kbytes !
