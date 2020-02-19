@@ -49,8 +49,8 @@
 
 
     <modules>
-        <!-- <module>javabindings</module> -->
         <module>jwarble</module>
+        <module>jqrtone</module>
     </modules>
 
 
