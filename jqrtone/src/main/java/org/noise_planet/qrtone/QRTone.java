@@ -37,6 +37,15 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class QRTone {
     public static final double M2PI = Math.PI * 2;
+    private Configuration configuration;
+    // DTMF 16*16 frequencies
+    public final static int NUM_FREQUENCIES = 32;
+    final double[] frequencies;
+
+    public QRTone(Configuration configuration) {
+        this.configuration = configuration;
+        this.frequencies = configuration.computeFrequencies(NUM_FREQUENCIES);
+    }
 
     /**
      * Checksum of bytes (could be used only up to 64 bytes)
@@ -109,7 +118,7 @@ public class QRTone {
      * @param freqs Array of frequency search in Hz
      * @return rms Rms power by frequencies
      */
-    public static double[] generalizedGoertzel(final float[] signal, int start, int length, double sampleRate, final double[] freqs, double[] phase, boolean hannWindow) {
+    public static double[] generalizedGoertzel(final float[] signal, int start, int length, double sampleRate, final double[] freqs, double[] phase) {
         assert length > 0 : "Illegal length";
         double[] outFreqsPower = new double[freqs.length];
         // Fix frequency using the sampleRate of the signal
@@ -129,19 +138,12 @@ public class QRTone {
             // 'main' loop
             // number of iterations is (by one) less than the length of signal
             for(int ind=start; ind < start + length - 1; ind++) {
-                if(hannWindow) {
-                    final double window = 0.5 * (1 - Math.cos((M2PI * (ind - start)) / (length - 1)));
-                    s0 = signal[ind] * window + cosPikTerm2 * s1 - s2;
-                } else {
-                    s0 = signal[ind] + cosPikTerm2 * s1 - s2;
-                }
+                s0 = signal[ind] + cosPikTerm2 * s1 - s2;
                 s2 = s1;
                 s1 = s0;
             }
             // final computations
-            if(!hannWindow) {
-                s0 = signal[start + length - 1] + cosPikTerm2 * s1 - s2;
-            }
+            s0 = signal[start + length - 1] + cosPikTerm2 * s1 - s2;
 
             // complex multiplication substituting the last iteration
             // and correcting the phase for (potentially) non - integer valued
@@ -156,6 +158,16 @@ public class QRTone {
             }
         }
         return outFreqsPower;
+    }
+
+    /**
+     * Apply hamming window on provided signal
+     * @param signal
+     */
+    public static void applyHamming(float[] signal) {
+        for(int i=0; i < signal.length; i++) {
+            signal[i] *= (float)((1.0-Math.cos(M2PI*(i+1)/(signal.length + 1)))*0.5);
+        }
     }
 
     public static double computeRms(float[] signal) {

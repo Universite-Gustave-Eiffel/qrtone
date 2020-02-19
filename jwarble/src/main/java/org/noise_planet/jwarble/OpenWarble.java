@@ -182,6 +182,8 @@ public class OpenWarble {
             // final computations
             if(!hannWindow) {
                 s0 = signal[start + length - 1] + cosPikTerm2 * s1 - s2;
+            } else {
+                s0 = cosPikTerm2 * s1 - s2;
             }
 
             // complex multiplication substituting the last iteration

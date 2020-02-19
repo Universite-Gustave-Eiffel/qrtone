@@ -3,6 +3,7 @@ package org.noise_planet.qrtone;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.*;
@@ -36,12 +37,47 @@ public class QRToneTest {
         }
 
         double[] phase = new double[1];
-        double[] rms = QRTone.generalizedGoertzel(audio,0, audio.length, sampleRate, new double[]{1000.0}, phase, false);
+        double[] rms = QRTone.generalizedGoertzel(audio,0, audio.length, sampleRate, new double[]{1000.0}, phase);
 
         double signal_rms = QRTone.computeRms(audio);
 
         assertEquals(signal_rms, rms[0], 0.1);
         assertEquals(0, phase[0], 1e-8);
+    }
+
+    @Test
+    public void testGoertzelLeaks() {
+
+
+        double sampleRate = 44100;
+        double powerRMS = Math.pow(10, -26.0 / 20.0); // -26 dBFS
+        double powerPeak = powerRMS * Math.sqrt(2);
+
+        Configuration configuration = Configuration.getAudible(4, sampleRate);
+        double[] frequencies = configuration.computeFrequencies(QRTone.NUM_FREQUENCIES);
+
+        float[] audio = new float[4410];
+        for (int s = 0; s < audio.length; s++) {
+            double t = s * (1 / sampleRate);
+            audio[s] = (float)(Math.cos(QRTone.M2PI * frequencies[frequencies.length / 2] * t) * (powerPeak));
+        }
+        QRTone.applyHamming(audio);
+        double[] rms = QRTone.generalizedGoertzel(audio, 0, audio.length, sampleRate, frequencies, null);
+
+        for(int idfreq=0; idfreq < QRTone.NUM_FREQUENCIES; idfreq++) {
+            if(idfreq > 0) {
+                System.out.print(", ");
+            }
+            System.out.print(String.format(Locale.ROOT, "%.0f Hz", frequencies[idfreq]));
+        }
+        System.out.print("\n");
+        for(int idfreq=0; idfreq < QRTone.NUM_FREQUENCIES; idfreq++) {
+            if(idfreq > 0) {
+                System.out.print(", ");
+            }
+            System.out.print(String.format(Locale.ROOT, "%.2f", 20 * Math.log10(rms[idfreq])));
+        }
+        System.out.print("\n");
     }
 
 
