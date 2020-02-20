@@ -1,7 +1,10 @@
 package org.noise_planet.qrtone;
 
 /**
- * GeneralizedGoertzel without cached samples
+ * Goertzel algorithm - Compute the RMS power of the selected frequencies for the provided audio signals.
+ * http://asp.eurasipjournals.com/content/pdf/1687-6180-2012-56.pdf
+ * ipfs://QmdAMfyq71Fm72Rt5u1qtWM7teReGAHmceAtDN5SG4Pt22
+ * Sysel and Rajmic:Goertzel algorithm generalized to non-integer multiples of fundamental frequency. EURASIP Journal on Advances in Signal Processing 2012 2012:56.
  */
 public class IterativeGeneralizedGoertzel {
     public static final double M2PI = Math.PI * 2;
@@ -17,6 +20,11 @@ public class IterativeGeneralizedGoertzel {
     private int processedSamples = 0;
     private Complex cc;
 
+    /**
+     * @param sampleRate Sampling rate in Hz
+     * @param frequency Array of frequency search in Hz
+     * @param windowSize Number of samples to analyse
+     */
     public IterativeGeneralizedGoertzel(double sampleRate, double frequency, int windowSize) {
         this.sampleRate = sampleRate;
         this.windowSize = windowSize;
@@ -47,7 +55,7 @@ public class IterativeGeneralizedGoertzel {
         return processedSamples;
     }
 
-    public void processSamples(float[] samples) {
+    public IterativeGeneralizedGoertzel processSamples(float[] samples) {
         if(processedSamples + samples.length > windowSize) {
             throw new IllegalArgumentException("Exceed window length");
         }
@@ -63,9 +71,15 @@ public class IterativeGeneralizedGoertzel {
             s2 = s1;
             s1 = s0;
         }
+        processedSamples+=samples.length;
+        return this;
     }
 
     public GoertzelResult computeRMS(boolean computePhase) {
+        if(processedSamples != windowSize) {
+            throw new IllegalStateException("Not enough processed samples");
+        }
+
         // final computations
         s0 = lastSample + cosPikTerm2 * s1 - s2;
 

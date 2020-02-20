@@ -107,66 +107,15 @@ public class QRTone {
         return (int)(((next.get() / 65536) & 0xFFFF  % 32768));
     }
 
-
-    /**
-     * Goertzel algorithm - Compute the RMS power of the selected frequencies for the provided audio signals.
-     * http://asp.eurasipjournals.com/content/pdf/1687-6180-2012-56.pdf
-     * ipfs://QmdAMfyq71Fm72Rt5u1qtWM7teReGAHmceAtDN5SG4Pt22
-     * Sysel and Rajmic:Goertzel algorithm generalized to non-integer multiples of fundamental frequency. EURASIP Journal on Advances in Signal Processing 2012 2012:56.
-     * @param signal Audio signal
-     * @param sampleRate Sampling rate in Hz
-     * @param freqs Array of frequency search in Hz
-     * @return rms Rms power by frequencies
-     */
-    public static double[] generalizedGoertzel(final float[] signal, int start, int length, double sampleRate, final double[] freqs, double[] phase) {
-        assert length > 0 : "Illegal length";
-        double[] outFreqsPower = new double[freqs.length];
-        // Fix frequency using the sampleRate of the signal
-        double samplingRateFactor = length / sampleRate;
-        // Computation via second-order system
-        for(int idFreq = 0; idFreq < freqs.length; idFreq++) {
-            // for a single frequency :
-            // precompute the constants
-            double pikTerm = M2PI * (freqs[idFreq] * samplingRateFactor) / length;
-            double cosPikTerm2 = Math.cos(pikTerm) * 2.0;
-
-            Complex cc = new Complex(pikTerm, 0).exp();
-            // state variables
-            double s0 = 0;
-            double s1 = 0.;
-            double s2 = 0.;
-            // 'main' loop
-            // number of iterations is (by one) less than the length of signal
-            for(int ind=start; ind < start + length - 1; ind++) {
-                s0 = signal[ind] + cosPikTerm2 * s1 - s2;
-                s2 = s1;
-                s1 = s0;
-            }
-            // final computations
-            s0 = signal[start + length - 1] + cosPikTerm2 * s1 - s2;
-
-            // complex multiplication substituting the last iteration
-            // and correcting the phase for (potentially) non - integer valued
-            // frequencies at the same time
-            Complex parta = new Complex(s0, 0).sub(new Complex(s1, 0).mul(cc));
-            Complex partb = new Complex(pikTerm * (length - 1.), 0).exp();
-            Complex y = parta.mul(partb);
-            outFreqsPower[idFreq] = Math.sqrt((y.r * y.r  + y.i * y.i) * 2) / length;
-
-            if(phase != null) {
-                phase[idFreq] = Math.atan2(y.i, y.r);
-            }
-        }
-        return outFreqsPower;
-    }
-
     /**
      * Apply hamming window on provided signal
-     * @param signal
+     * @param signal Signal to update
+     * @param windowLength Hamming window length
+     * @param offset If the signal length is inferior than windowLength, give the offset of the hamming window
      */
-    public static void applyHamming(float[] signal) {
+    public static void applyHamming(float[] signal, int windowLength, int offset) {
         for(int i=0; i < signal.length; i++) {
-            signal[i] *= (float)((1.0-Math.cos(M2PI*(i+1)/(signal.length + 1)))*0.5);
+            signal[i] *= (float)((1.0-Math.cos(M2PI*(i+offset+1)/(windowLength + 1)))*0.5);
         }
     }
 
