@@ -121,7 +121,7 @@ public class QRToneTest {
             goertzel.processSamples(audio);
             reference[idfreq] = goertzel.computeRMS(false).rms;
         }
-        int windowSize = 2048;
+        int windowSize = (int)(sampleRate*0.087/2);
         int s = 0;
         double rms[] = new double[QRTone.NUM_FREQUENCIES];
         IterativeGeneralizedGoertzel[] goertzel = new IterativeGeneralizedGoertzel[QRTone.NUM_FREQUENCIES];
@@ -145,9 +145,9 @@ public class QRToneTest {
 
         double refSignal = 20*Math.log10(rms[signalFreqIndex]);
 
-        // We need at least 50 dBFS of level decrease on neighbors frequencies
-        assertTrue(50 < Math.abs(refSignal - 20*Math.log10(rms[signalFreqIndex - 1])));
-        assertTrue(50 < Math.abs(refSignal - 20*Math.log10(rms[signalFreqIndex + 1])));
+        // We need sufficient level decrease on neighbors frequencies
+        assertTrue(49 < Math.abs(refSignal - 20*Math.log10(rms[signalFreqIndex - 1])));
+        assertTrue(49 < Math.abs(refSignal - 20*Math.log10(rms[signalFreqIndex + 1])));
 
         // Print results
         printArray(frequencies, reference, rms);
