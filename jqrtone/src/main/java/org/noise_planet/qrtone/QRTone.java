@@ -119,27 +119,28 @@ public class QRTone {
         }
     }
 
-    public static void applyTukey(float[] signal, double alpha, int windowLength, int offset) {
+    public static double applyTukey(float[] signal, double alpha, int windowLength, int offset) {
         int index_begin_flat = (int)(Math.floor(alpha * (windowLength - 1) / 2.0));
         int index_end_flat = windowLength - index_begin_flat;
         double window_value = 0;
         double energy_correction = 0;
-        for(int i=0; i <= index_begin_flat; i++) {
+        for(int i=offset; i < offset + index_begin_flat + 1 && i - offset < signal.length; i++) {
             window_value = 0.5 * (1 + Math.cos(Math.PI * (-1 + 2.0*i/alpha/(windowLength-1))));
             energy_correction += window_value * window_value;
-            signal[i] = (float)(signal[i] * window_value);
+            signal[i - offset] = (float)(signal[i] * window_value);
         }
         // Flat part
-        energy_correction += index_end_flat - index_begin_flat;
-        for(int i=index_begin_flat + 1; i < index_end_flat - 1; i++) {
-            signal[i] = signal[i];
+        for(int i=offset + index_begin_flat + 1; i < offset + index_end_flat - 1 && i - offset < signal.length; i++) {
+            energy_correction += index_end_flat - 1 - index_begin_flat + 1;
         }
         // End Hann part
-        for(int i=index_end_flat - 1; i < windowLength; i++) {
+        for(int i=offset + index_end_flat - 1; i < offset + windowLength && i - offset < signal.length; i++) {
             window_value =0.5 * (1 +  Math.cos(Math.PI * (-2.0/alpha + 1 + 2.0*i/alpha/(windowLength-1))));
             energy_correction += window_value * window_value;
-            signal[i] = (float)(signal[i] * window_value);
+            signal[i - offset] = (float)(signal[i] * window_value);
         }
+        energy_correction = 1 / (Math.sqrt(energy_correction) / windowLength);
+        return energy_correction;
     }
 
     public static void generatePitch(double[] signal_out, final int offset, double sample_rate, double frequency, double powerPeak) {
