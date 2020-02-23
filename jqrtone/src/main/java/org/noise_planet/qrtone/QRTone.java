@@ -119,6 +119,13 @@ public class QRTone {
         }
     }
 
+    /**
+     * Apply tukey window on specified array
+     * @param signal Audio samples
+     * @param alpha Tukay alpha (0-1)
+     * @param windowLength full length of tukey window
+     * @param offset Offset of the provided signal buffer (> 0)
+     */
     public static void applyTukey(float[] signal, double alpha, int windowLength, int offset) {
         int index_begin_flat = (int)(Math.floor(alpha * (windowLength - 1) / 2.0));
         int index_end_flat = windowLength - index_begin_flat;
