@@ -154,60 +154,6 @@ public class QRToneTest {
     }
 
     @Test
-    public void testGoertzelLeaks2() {
-
-
-        double sampleRate = 44100;
-        double powerRMS = Math.pow(10, -26.0 / 20.0); // -26 dBFS
-        double powerPeak = powerRMS * Math.sqrt(2);
-        Configuration configuration = Configuration.getAudible(4, sampleRate);
-        double[] frequencies = configuration.computeFrequencies(QRTone.NUM_FREQUENCIES);
-        int signalFreqIndex = 1;
-
-        float[] audio = new float[30000];
-        double[] reference = new double[QRTone.NUM_FREQUENCIES];
-        for (int s = 0; s < audio.length; s++) {
-            double t = s * (1 / sampleRate);
-            audio[s] = (float) (Math.cos(QRTone.M2PI * frequencies[signalFreqIndex] * t) * (powerPeak));
-        }
-        for (int idfreq = 0; idfreq < QRTone.NUM_FREQUENCIES; idfreq++) {
-            IterativeGeneralizedGoertzel goertzel = new IterativeGeneralizedGoertzel(sampleRate, frequencies[idfreq], audio.length);
-            goertzel.processSamples(audio);
-            reference[idfreq] = goertzel.computeRMS(false).rms;
-        }
-        int windowSize = (int)(sampleRate*0.087/2);
-        int s = 0;
-        double rms[] = new double[QRTone.NUM_FREQUENCIES];
-        IterativeGeneralizedGoertzel[] goertzel = new IterativeGeneralizedGoertzel[QRTone.NUM_FREQUENCIES];
-        for (int idfreq = 0; idfreq < QRTone.NUM_FREQUENCIES; idfreq++) {
-            goertzel[idfreq] = new IterativeGeneralizedGoertzel(sampleRate,frequencies[idfreq], windowSize);
-        }
-        int pushed = 0;
-        while (s < audio.length - windowSize) {
-            float[] window = Arrays.copyOfRange(audio, s, s + windowSize);
-            double corr = QRTone.applyTukey(window, 0.5, window.length, 0);
-            for (int idfreq = 0; idfreq < QRTone.NUM_FREQUENCIES; idfreq++) {
-                goertzel[idfreq].processSamples(window);
-                rms[idfreq] += goertzel[idfreq].computeRMS(false).rms * corr;
-            }
-            pushed += 1;
-            s += windowSize;
-        }
-        for (int idfreq = 0; idfreq < QRTone.NUM_FREQUENCIES; idfreq++) {
-            rms[idfreq] /= pushed;
-        }
-
-        double refSignal = 20*Math.log10(rms[signalFreqIndex]);
-
-        // Print results
-        printArray(frequencies, reference, rms);
-
-        // We need sufficient level decrease on neighbors frequencies
-        assertTrue(49 < Math.abs(refSignal - 20*Math.log10(rms[signalFreqIndex - 1])));
-        assertTrue(49 < Math.abs(refSignal - 20*Math.log10(rms[signalFreqIndex + 1])));
-
-    }
-    @Test
     public void testTukeyWindow() {
         float[] expected = new float[]{0f,0.0157084f,0.0618467f,0.135516f,0.232087f,0.345492f,0.468605f,0.593691f,
                 0.71289f,0.818712f,0.904508f,0.964888f,0.996057f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,
@@ -221,6 +167,40 @@ public class QRToneTest {
         QRTone.applyTukey(window, 0.5, window.length, 0);
 
         assertArrayEquals(expected, window, 1e-5f);
+    }
 
+
+    @Test
+    public void generalized_goertzelIterativeTestTukey() throws Exception {
+        double sampleRate = 44100;
+        double powerRMS = Math.pow(10, -26.0 / 20.0); // -26 dBFS
+        float signalFrequency = 1000;
+        double powerPeak = powerRMS * Math.sqrt(2);
+
+        float[] audio = new float[44100];
+        for (int s = 0; s < audio.length; s++) {
+            double t = s * (1 / sampleRate);
+            audio[s] = (float)(Math.cos(QRTone.M2PI * signalFrequency * t) * (powerPeak));
+        }
+
+        int cursor = 0;
+        Random random = new Random(1337);
+        IterativeGeneralizedGoertzel goertzel = new IterativeGeneralizedGoertzel(sampleRate, signalFrequency,
+                audio.length);
+        while (cursor < audio.length) {
+            int windowSize = Math.min(random.nextInt(115) + 20, audio.length - cursor);
+            float[] window = new float[windowSize];
+            System.arraycopy(audio, cursor, window, 0, window.length);
+            QRTone.applyTukey(window, 0.5, audio.length, cursor);
+            goertzel.processSamples(window);
+            cursor += windowSize;
+        }
+        IterativeGeneralizedGoertzel.GoertzelResult res = goertzel.computeRMS(true);
+
+
+        double signal_rms = QRTone.computeRms(audio);
+
+        assertEquals(signal_rms, res.rms, 0.1);
+        assertEquals(0, res.phase, 1e-8);
     }
 }
