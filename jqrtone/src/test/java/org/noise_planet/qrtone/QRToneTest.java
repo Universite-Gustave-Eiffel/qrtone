@@ -153,5 +153,20 @@ public class QRToneTest {
         printArray(frequencies, reference, rms);
     }
 
+    @Test
+    public void testTukeyWindow() {
+        float[] expected = new float[]{0f,0.0157084f,0.0618467f,0.135516f,0.232087f,0.345492f,0.468605f,0.593691f,
+                0.71289f,0.818712f,0.904508f,0.964888f,0.996057f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,
+                1f,1f,1f,1f,1f,1f,1f,1f,0.996057f,0.964888f,0.904508f,0.818712f,0.71289f,0.593691f,0.468605f,0.345492f,
+                0.232087f,0.135516f,0.0618467f,0.0157084f,0f
+        };
 
+        float[] window = new float[expected.length];
+        Arrays.fill(window, 1.0f);
+
+        QRTone.applyTukey(window, 0.5, window.length, 0);
+
+        assertArrayEquals(expected, window, 1e-5f);
+
+    }
 }

@@ -114,8 +114,38 @@ public class QRTone {
      * @param offset If the signal length is inferior than windowLength, give the offset of the hamming window
      */
     public static void applyHamming(float[] signal, int windowLength, int offset) {
-        for(int i=0; i < signal.length; i++) {
-            signal[i] *= (float)((1.0-Math.cos(M2PI*(i+offset+1)/(windowLength + 1)))*0.5);
+        for (int i = 0; i < signal.length; i++) {
+            signal[i] *= (float) ((0.5 - 0.5 * Math.cos((M2PI * (i + offset)) / (windowLength - 1))));
+        }
+    }
+
+    public static void applyTukey(float[] signal, double alpha, int windowLength, int offset) {
+        int index_begin_flat = (int)((alpha / 2) * windowLength);
+        int index_end_flat = windowLength - index_begin_flat;
+        double window_value = 0;
+        double energy_correction = 0;
+        for(int i=0; i < index_begin_flat; i++) {
+            window_value = (0.5 * (1 + Math.cos(M2PI / alpha * ((i / (float)windowLength) - alpha / 2))));
+            energy_correction += window_value * window_value;
+            signal[i] = (float)(signal[i] * window_value);
+        }
+        // Flat part
+        energy_correction += index_end_flat - index_begin_flat;
+        for(int i=index_begin_flat; i < index_end_flat; i++) {
+            signal[i] = signal[i];
+        }
+        // End Hann part
+        for(int i=index_end_flat; i < windowLength; i++) {
+            window_value = (0.5 * (1 + Math.cos(M2PI / alpha * ((i / (float)windowLength) - 1 + alpha / 2))));
+            energy_correction += window_value * window_value;
+            signal[i] = (float)(signal[i] * window_value);
+        }
+    }
+
+    public static void generatePitch(double[] signal_out, final int offset, double sample_rate, double frequency, double powerPeak) {
+        double tStep = 1 / sample_rate;
+        for(int i=0; i < signal_out.length; i++) {
+            signal_out[i] += Math.sin((i + offset) * tStep * M2PI * frequency) * powerPeak;
         }
     }
 
