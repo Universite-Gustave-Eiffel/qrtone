@@ -5,6 +5,11 @@ package org.noise_planet.qrtone;
  * http://asp.eurasipjournals.com/content/pdf/1687-6180-2012-56.pdf
  * ipfs://QmdAMfyq71Fm72Rt5u1qtWM7teReGAHmceAtDN5SG4Pt22
  * Sysel and Rajmic:Goertzel algorithm generalized to non-integer multiples of fundamental frequency. EURASIP Journal on Advances in Signal Processing 2012 2012:56.
+ * Issue with integer multiples of fundamental frequency:
+ * window_size = ( k * sample_frequency ) / target_frequency
+ * Find k (1, 2, 3, ..) that provides an integer window_size
+ * Bin size:
+ * bin_size = sample_frequency / window_size
  */
 public class IterativeGeneralizedGoertzel {
     public static final double M2PI = Math.PI * 2;
