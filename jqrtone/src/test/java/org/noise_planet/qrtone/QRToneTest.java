@@ -172,6 +172,7 @@ public class QRToneTest {
 
     /**
      * Check equality between iterative window function on random size windows with full window Tukey
+     *
      * @throws Exception
      */
     @Test
@@ -184,7 +185,7 @@ public class QRToneTest {
         float[] audio = new float[44100];
         for (int s = 0; s < audio.length; s++) {
             double t = s * (1 / sampleRate);
-            audio[s] = (float)(Math.cos(QRTone.M2PI * signalFrequency * t) * (powerPeak));
+            audio[s] = (float) (Math.cos(QRTone.M2PI * signalFrequency * t) * (powerPeak));
         }
 
         int cursor = 0;
@@ -202,8 +203,6 @@ public class QRToneTest {
         }
         QRTone.applyTukey(audio, 0.5, audio.length, 0);
         double signal_rms = QRTone.computeRms(audio);
-        assertEquals(20*Math.log10(signal_rms),
-                20*Math.log10(Math.sqrt(iterativeRMS / audio.length)), 0.1);
-
+        assertEquals(signal_rms, Math.sqrt(iterativeRMS / audio.length), 1e-6);
     }
 }
