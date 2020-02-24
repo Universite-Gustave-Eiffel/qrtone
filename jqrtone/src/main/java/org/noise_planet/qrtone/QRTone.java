@@ -130,12 +130,12 @@ public class QRTone {
         int index_begin_flat = (int)(Math.floor(alpha * (windowLength - 1) / 2.0));
         int index_end_flat = windowLength - index_begin_flat;
         double window_value = 0;
-        for(int i=offset; i < offset + index_begin_flat + 1 && i - offset < signal.length; i++) {
+        for(int i=offset; i < index_begin_flat + 1 && i - offset < signal.length; i++) {
             window_value = 0.5 * (1 + Math.cos(Math.PI * (-1 + 2.0*i/alpha/(windowLength-1))));
             signal[i - offset] = (float)(signal[i - offset] * window_value);
         }
         // End Hann part
-        for(int i=offset + index_end_flat - 1; i < offset + windowLength && i - offset < signal.length; i++) {
+        for(int i=Math.max(offset, index_end_flat - 1); i < offset + windowLength && i - offset < signal.length; i++) {
             window_value =0.5 * (1 +  Math.cos(Math.PI * (-2.0/alpha + 1 + 2.0*i/alpha/(windowLength-1))));
             signal[i - offset] = (float)(signal[i - offset] * window_value);
         }

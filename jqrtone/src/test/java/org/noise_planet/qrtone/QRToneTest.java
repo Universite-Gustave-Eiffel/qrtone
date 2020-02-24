@@ -76,7 +76,7 @@ public class QRToneTest {
 
         double signal_rms = QRTone.computeRms(audio);
 
-        assertEquals(signal_rms, res.rms, 0.1);
+        assertEquals(20 * Math.log10(signal_rms), 20 * Math.log10(res.rms), 0.1);
         assertEquals(0, res.phase, 1e-8);
     }
 
@@ -170,8 +170,12 @@ public class QRToneTest {
     }
 
 
+    /**
+     * Check equality between iterative window function on random size windows with full window Tukey
+     * @throws Exception
+     */
     @Test
-    public void generalized_goertzelIterativeTestTukey() throws Exception {
+    public void iterativeTestTukey() throws Exception {
         double sampleRate = 44100;
         double powerRMS = Math.pow(10, -26.0 / 20.0); // -26 dBFS
         float signalFrequency = 1000;
@@ -185,22 +189,21 @@ public class QRToneTest {
 
         int cursor = 0;
         Random random = new Random(1337);
-        IterativeGeneralizedGoertzel goertzel = new IterativeGeneralizedGoertzel(sampleRate, signalFrequency,
-                audio.length);
+        double iterativeRMS = 0;
         while (cursor < audio.length) {
             int windowSize = Math.min(random.nextInt(115) + 20, audio.length - cursor);
             float[] window = new float[windowSize];
             System.arraycopy(audio, cursor, window, 0, window.length);
             QRTone.applyTukey(window, 0.5, audio.length, cursor);
-            goertzel.processSamples(window);
+            for (float v : window) {
+                iterativeRMS += v * v;
+            }
             cursor += windowSize;
         }
-        IterativeGeneralizedGoertzel.GoertzelResult res = goertzel.computeRMS(true);
-
-
+        QRTone.applyTukey(audio, 0.5, audio.length, 0);
         double signal_rms = QRTone.computeRms(audio);
+        assertEquals(20*Math.log10(signal_rms),
+                20*Math.log10(Math.sqrt(iterativeRMS / audio.length)), 0.1);
 
-        assertEquals(signal_rms, res.rms, 0.1);
-        assertEquals(0, res.phase, 1e-8);
     }
 }
