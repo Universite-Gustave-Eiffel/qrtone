@@ -60,23 +60,25 @@ public class IterativeGeneralizedGoertzel {
         return processedSamples;
     }
 
-    public IterativeGeneralizedGoertzel processSamples(float[] samples) {
-        if(processedSamples + samples.length > windowSize) {
+    public IterativeGeneralizedGoertzel processSamples(float[] samples, int from, int to) {
+        int length = (to - from);
+        if(processedSamples + length > windowSize) {
             throw new IllegalArgumentException("Exceed window length");
         }
         final int size;
-        if(processedSamples + samples.length == windowSize) {
-            lastSample = samples[samples.length - 1];
-            size = samples.length - 1;
+        // Do not loop over the last sample of the window
+        if(processedSamples + length == windowSize) {
+            lastSample = samples[length - 1];
+            size = length - 1;
         } else {
-            size = samples.length;
+            size = length;
         }
-        for(int i=0; i < size; i++) {
+        for(int i=from; i < size - from; i++) {
             s0 = samples[i] + cosPikTerm2 * s1 - s2;
             s2 = s1;
             s1 = s0;
         }
-        processedSamples+=samples.length;
+        processedSamples+=length;
         return this;
     }
 

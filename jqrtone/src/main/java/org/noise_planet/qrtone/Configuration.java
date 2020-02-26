@@ -37,86 +37,48 @@ package org.noise_planet.qrtone;
  * OpenWarble configuration object
  */
 public class Configuration {
-  public static final double MULT_SEMITONE = 1.0594630943592952646;
+  public static final double MULT_SEMITONE = Math.pow(2, 1/12.0);
   public static final double DEFAULT_WORD_TIME = 0.0872;
-  public static final double DEFAULT_WORD_SILENCE = 0; // Silence before a new word
-  public static final double DEFAULT_AUDIBLE_FIRST_FREQUENCY = 1760;
+  public static final double DEFAULT_AUDIBLE_FIRST_FREQUENCY = 1720;
   public static final double DEFAULT_INAUDIBLE_FIRST_FREQUENCY = 18200;
   public static final int DEFAULT_INAUDIBLE_STEP = 120;
   public static final double DEFAULT_TRIGGER_SNR = 15;
-  public static final boolean DEFAULT_RS_ENCODE = true;
-  // Peak ratio, when computing SNR, no other peaks must be found in the provided percentage
-  public static final double DEFAULT_DOOR_PEAK_RATIO = 0.8;
 
-  public final int payloadSize;
   public final double sampleRate;
   public final double firstFrequency;
   public final int frequencyIncrement;
   public final double frequencyMulti;
   public final double wordTime;
-  public final double wordSilence;
   public final double triggerSnr;
-  public final double convolutionPeakRatio;
-  public final boolean reedSolomonEncode;
 
-  public Configuration(int payloadSize, double sampleRate, double firstFrequency, int frequencyIncrement, double frequencyMulti, double wordTime, double wordSilence, double triggerSnr, double convolutionPeakRatio, boolean reedSolomonEncode) {
-    this.payloadSize = payloadSize;
+  public Configuration(double sampleRate, double firstFrequency, int frequencyIncrement, double frequencyMulti, double wordTime, double triggerSnr) {
     this.sampleRate = sampleRate;
     this.firstFrequency = firstFrequency;
     this.frequencyIncrement = frequencyIncrement;
     this.frequencyMulti = frequencyMulti;
     this.wordTime = wordTime;
-    this.wordSilence = wordSilence;
     this.triggerSnr = triggerSnr;
-    this.convolutionPeakRatio = convolutionPeakRatio;
-    this.reedSolomonEncode = reedSolomonEncode;
   }
 
   /**
    * Audible data communication
-   * @param payloadSize Payload size in bytes.
    * @param sampleRate Sampling rate in Hz
    * @return Default configuration for this profile
    */
-  public static Configuration getAudible(int payloadSize, double sampleRate) {
-    return new Configuration(payloadSize, sampleRate, DEFAULT_AUDIBLE_FIRST_FREQUENCY,
-            0, MULT_SEMITONE, DEFAULT_WORD_TIME, DEFAULT_WORD_SILENCE, DEFAULT_TRIGGER_SNR, DEFAULT_DOOR_PEAK_RATIO, DEFAULT_RS_ENCODE);
+  public static Configuration getAudible(double sampleRate) {
+    return new Configuration(sampleRate, DEFAULT_AUDIBLE_FIRST_FREQUENCY,
+            0, MULT_SEMITONE, DEFAULT_WORD_TIME, DEFAULT_TRIGGER_SNR);
   }
 
 
   /**
    * Inaudible data communication (from 18200 Hz to 22040 hz)
-   * @param payloadSize Payload size in bytes.
    * @param sampleRate Sampling rate in Hz. Must be greater or equal to 44100 Hz (Nyquist frequency)
    * @return Default configuration for this profile
    */
-  public static Configuration getInaudible(int payloadSize, double sampleRate) {
-    return new Configuration(payloadSize, sampleRate, DEFAULT_INAUDIBLE_FIRST_FREQUENCY,
-            DEFAULT_INAUDIBLE_STEP, 0, DEFAULT_WORD_TIME, DEFAULT_WORD_SILENCE, DEFAULT_TRIGGER_SNR, DEFAULT_DOOR_PEAK_RATIO, DEFAULT_RS_ENCODE);
-  }
-  /**
-   * Audible data communication
-   * @param payloadSize Payload size in bytes.
-   * @param sampleRate Sampling rate in Hz
-   * @param reedSolomonEncode Additional error correction code, more resistant to noise but the message takes longer to be transferred.
-   * @return Default configuration for this profile
-   */
-  public static Configuration getAudible(int payloadSize, double sampleRate, boolean reedSolomonEncode) {
-    return new Configuration(payloadSize, sampleRate, DEFAULT_AUDIBLE_FIRST_FREQUENCY,
-            0, MULT_SEMITONE, DEFAULT_WORD_TIME, DEFAULT_WORD_SILENCE, DEFAULT_TRIGGER_SNR, DEFAULT_DOOR_PEAK_RATIO, reedSolomonEncode);
-  }
-
-
-  /**
-   * Inaudible data communication (from 18200 Hz to 22040 hz)
-   * @param payloadSize Payload size in bytes.
-   * @param sampleRate Sampling rate in Hz. Must be greater or equal to 44100 Hz (Nyquist frequency)
-   * @param reedSolomonEncode Additional error correction code, more resistant to noise but the message takes longer to be transferred.
-   * @return Default configuration for this profile
-   */
-  public static Configuration getInaudible(int payloadSize, double sampleRate, boolean reedSolomonEncode) {
-    return new Configuration(payloadSize, sampleRate, DEFAULT_INAUDIBLE_FIRST_FREQUENCY,
-            DEFAULT_INAUDIBLE_STEP, 0, DEFAULT_WORD_TIME, DEFAULT_WORD_SILENCE, DEFAULT_TRIGGER_SNR, DEFAULT_DOOR_PEAK_RATIO, reedSolomonEncode);
+  public static Configuration getInaudible(double sampleRate) {
+    return new Configuration(sampleRate, DEFAULT_INAUDIBLE_FIRST_FREQUENCY,
+            DEFAULT_INAUDIBLE_STEP, 0, DEFAULT_WORD_TIME, DEFAULT_TRIGGER_SNR);
   }
 
   public double[] computeFrequencies(int frequencyCount) {
@@ -130,5 +92,13 @@ public class Configuration {
       }
     }
     return frequencies;
+  }
+
+  public int computeMinimumWindowSize(double sampleRate, double targetFrequency, double closestFrequency) {
+    // Max bin size in Hz
+    double max_bin_size = Math.abs(closestFrequency - targetFrequency) / 2.0;
+    // Minimum window size without leaks
+    int window_size = (int)(Math.ceil(sampleRate / max_bin_size));
+    return Math.max(window_size, (int)Math.ceil(sampleRate*(5*(1/targetFrequency))));
   }
 }

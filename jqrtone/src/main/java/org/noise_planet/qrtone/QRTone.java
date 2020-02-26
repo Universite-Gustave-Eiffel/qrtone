@@ -33,18 +33,31 @@
 
 package org.noise_planet.qrtone;
 
+import java.io.*;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class QRTone {
     public static final double M2PI = Math.PI * 2;
+    final int wordLength;
     private Configuration configuration;
     // DTMF 16*16 frequencies
     public final static int NUM_FREQUENCIES = 32;
-    final double[] frequencies;
+    private final double[] frequencies;
+    ToneAnalyzer[] toneAnalyzers = new ToneAnalyzer[NUM_FREQUENCIES];
+    private byte[] symbolsToDeliver;
+    private int windowOffset = 0;
+    private final int windowAnalyze;
 
     public QRTone(Configuration configuration) {
         this.configuration = configuration;
+        this.wordLength = (int)(configuration.sampleRate * configuration.wordTime);
         this.frequencies = configuration.computeFrequencies(NUM_FREQUENCIES);
+        windowAnalyze = configuration.computeMinimumWindowSize(configuration.sampleRate, frequencies[0], frequencies[1]);
+        for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
+            toneAnalyzers[idfreq] = new ToneAnalyzer(configuration.sampleRate, frequencies[idfreq],
+                    windowAnalyze, this.wordLength);
+        }
     }
 
     /**
@@ -108,43 +121,45 @@ public class QRTone {
     }
 
     /**
-     * Apply hamming window on provided signal
+     * Apply hann window on provided signal
      * @param signal Signal to update
      * @param windowLength Hamming window length
      * @param offset If the signal length is inferior than windowLength, give the offset of the hamming window
      */
-    public static void applyHamming(float[] signal, int windowLength, int offset) {
-        for (int i = 0; i < signal.length; i++) {
-            signal[i] *= (float) ((0.5 - 0.5 * Math.cos((M2PI * (i + offset)) / (windowLength - 1))));
+    public static void applyHann(float[] signal, int from, int to, int windowLength, int offset) {
+        for (int i = 0; i < to - from && offset + i < windowLength; i++) {
+            signal[i + from] *= ((0.5 - 0.5 * Math.cos((M2PI * (i + offset)) / (windowLength - 1))));
         }
     }
 
     /**
      * Apply tukey window on specified array
      * @param signal Audio samples
+     * @param from index of audio sample to begin with
+     * @param to excluded index of audio sample to end with
      * @param alpha Tukay alpha (0-1)
      * @param windowLength full length of tukey window
      * @param offset Offset of the provided signal buffer (> 0)
      */
-    public static void applyTukey(float[] signal, double alpha, int windowLength, int offset) {
+    public static void applyTukey(float[] signal,int from, int to, double alpha, int windowLength, int offset) {
         int index_begin_flat = (int)(Math.floor(alpha * (windowLength - 1) / 2.0));
         int index_end_flat = windowLength - index_begin_flat;
         double window_value = 0;
-        for(int i=offset; i < index_begin_flat + 1 && i - offset < signal.length; i++) {
+        for(int i=offset; i < index_begin_flat + 1 && i - offset + from < to; i++) {
             window_value = 0.5 * (1 + Math.cos(Math.PI * (-1 + 2.0*i/alpha/(windowLength-1))));
-            signal[i - offset] = (float)(signal[i - offset] * window_value);
+            signal[i - offset + from] *= window_value;
         }
         // End Hann part
-        for(int i=Math.max(offset, index_end_flat - 1); i < offset + windowLength && i - offset < signal.length; i++) {
+        for(int i=Math.max(offset, index_end_flat - 1); i < offset + windowLength && i - offset + from < to; i++) {
             window_value =0.5 * (1 +  Math.cos(Math.PI * (-2.0/alpha + 1 + 2.0*i/alpha/(windowLength-1))));
-            signal[i - offset] = (float)(signal[i - offset] * window_value);
+            signal[i - offset + from] *= window_value;
         }
     }
 
-    public static void generatePitch(double[] signal_out, final int offset, double sample_rate, double frequency, double powerPeak) {
+    public static void generatePitch(float[] signal_out, int location, int length, final int offset, double sample_rate, double frequency, double powerPeak) {
         double tStep = 1 / sample_rate;
-        for(int i=0; i < signal_out.length; i++) {
-            signal_out[i] += Math.sin((i + offset) * tStep * M2PI * frequency) * powerPeak;
+        for(int i=location; i - location < length && i < signal_out.length; i++) {
+            signal_out[i] += Math.sin((i - location + offset) * tStep * M2PI * frequency) * powerPeak;
         }
     }
 
@@ -156,4 +171,42 @@ public class QRTone {
         return Math.sqrt(sum / signal.length);
     }
 
+    public void writeCSV(String path) throws IOException {
+        try(FileOutputStream fos = new FileOutputStream(path)) {
+            BufferedOutputStream bos = new BufferedOutputStream(fos);
+            Writer writer = new OutputStreamWriter(bos);
+            writer.write("t");
+            for (int idfreq = 0; idfreq < frequencies.length; idfreq++) {
+                writer.write(",");
+                writer.write(String.format(Locale.ROOT, "%.0f Hz", frequencies[idfreq]));
+            }
+            writer.write("\n");
+            for (int i = 0; i < toneAnalyzers[0].values.size(); i++) {
+                writer.write(String.format(Locale.ROOT, "%.3f", (i * windowAnalyze) / configuration.sampleRate));
+                for (int idfreq = 0; idfreq < frequencies.length; idfreq++) {
+                    writer.write(",");
+                    writer.write(String.format(Locale.ROOT, "%.2f",toneAnalyzers[idfreq].values.get(i)));
+                }
+                writer.write("\n");
+            }
+            writer.flush();
+        }
+    }
+
+    public void pushSamples(float[] samples) {
+        int processed = 0;
+        while(processed < samples.length) {
+            int toProcess = Math.min(samples.length - processed,windowAnalyze - windowOffset);
+            applyHann(samples,processed, processed + toProcess, windowAnalyze, windowOffset);
+            for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
+                toneAnalyzers[idfreq].processSamples(samples, processed, processed + toProcess);
+            }
+            processed += toProcess;
+            windowOffset += toProcess;
+            if(windowOffset == windowAnalyze) {
+                windowOffset = 0;
+                // TODO process data
+            }
+        }
+    }
 }
