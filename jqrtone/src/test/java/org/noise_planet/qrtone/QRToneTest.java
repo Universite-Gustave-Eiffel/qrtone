@@ -266,6 +266,17 @@ public class QRToneTest {
         }
         writeShortToFile(path, shortSignal);
     }
+
+    private void pushTone(float[] signal,int location,double frequency, QRTone qrTone, double powerPeak) {
+        float[] tone = new float[qrTone.wordLength];
+        QRTone.generatePitch(tone, 0, qrTone.wordLength, 0, qrTone.getConfiguration().sampleRate, frequency, powerPeak);
+        QRTone.applyTukey(tone, 0, tone.length, 0.15, tone.length, 0);
+        for(int i=0; i < tone.length; i++) {
+            signal[location+i] += tone[i];
+        }
+    }
+
+
     @Test
     public void testToneDetection() throws IOException {
         double sampleRate = 44100;
@@ -276,8 +287,6 @@ public class QRToneTest {
         QRTone qrTone = new QRTone(configuration);
         double[] frequencies = configuration.computeFrequencies(QRTone.NUM_FREQUENCIES);
 
-        printArray(frequencies);
-
         float[] audio = new float[(int)(sampleRate * 4.0)];
         Random random = new Random(1337);
         for (int s = 0; s < audio.length; s++) {
@@ -286,14 +295,14 @@ public class QRToneTest {
         int toneDuration = (int)(configuration.wordTime * sampleRate);
         int toneLocation = audio.length / 2 - toneDuration / 2;
 
-        int checkFrequency = 1;
+        int checkFrequency = 0;
+        pushTone(audio, toneLocation, frequencies[checkFrequency], qrTone, powerPeak);
+        pushTone(audio, toneLocation + 3 * toneDuration, frequencies[checkFrequency], qrTone, powerPeak);
+        pushTone(audio, toneLocation + 4 * toneDuration, frequencies[checkFrequency], qrTone, powerPeak);
+        pushTone(audio, toneLocation + toneDuration, frequencies[checkFrequency + 1], qrTone, powerPeak);
+        pushTone(audio, toneLocation + 2 * toneDuration, frequencies[checkFrequency + 2], qrTone, powerPeak);
 
-        System.out.println(String.format("Generate pitch at %.3f s to %.3f",toneLocation/sampleRate,(toneLocation+toneDuration)/sampleRate));
-        QRTone.generatePitch(audio, toneLocation, toneDuration, 0, sampleRate, frequencies[checkFrequency], powerPeak);
-        QRTone.generatePitch(audio, toneLocation - toneDuration, toneDuration, 0, sampleRate, frequencies[checkFrequency - 1], powerPeak);
-        QRTone.generatePitch(audio, toneLocation + toneDuration, toneDuration, 0, sampleRate, frequencies[checkFrequency + 1], powerPeak);
-
-        writeFloatToFile("target/inputSignal.raw", Arrays.copyOfRange(audio,toneLocation - toneDuration * 3, toneLocation + toneDuration * 3));
+        writeFloatToFile("target/inputSignal.raw", Arrays.copyOfRange(audio,toneLocation - toneDuration * 3, toneLocation + toneDuration * 8));
         long start = System.currentTimeMillis();
         int cursor = 0;
         while (cursor < audio.length) {

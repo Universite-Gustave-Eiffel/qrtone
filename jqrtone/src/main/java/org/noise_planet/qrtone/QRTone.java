@@ -60,6 +60,14 @@ public class QRTone {
         }
     }
 
+    public Configuration getConfiguration() {
+        return configuration;
+    }
+
+    public double[] getFrequencies() {
+        return frequencies;
+    }
+
     /**
      * Checksum of bytes (could be used only up to 64 bytes)
      * @param payload payload to crc
@@ -184,8 +192,9 @@ public class QRTone {
             for (int i = 0; i < toneAnalyzers[0].values.size(); i++) {
                 writer.write(String.format(Locale.ROOT, "%.3f", (i * windowAnalyze) / configuration.sampleRate));
                 for (int idfreq = 0; idfreq < frequencies.length; idfreq++) {
-                    writer.write(",");
-                    writer.write(String.format(Locale.ROOT, "%.2f",toneAnalyzers[idfreq].values.get(i)));
+                    for(double val : toneAnalyzers[idfreq].values.get(i)) {
+                        writer.write(String.format(Locale.ROOT, ",%.2f", val));
+                    }
                 }
                 writer.write("\n");
             }

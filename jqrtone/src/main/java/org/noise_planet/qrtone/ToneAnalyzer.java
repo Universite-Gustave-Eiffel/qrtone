@@ -13,7 +13,7 @@ public class ToneAnalyzer {
     private PeakFinder peakFinder = new PeakFinder();
     private IterativeGeneralizedGoertzel goertzel;
     private int toneLength;
-    public List<Double> values = new ArrayList<>();
+    public List<double[]> values = new ArrayList<>();
 
     public ToneAnalyzer(double sampleRate, double frequency, int windowSize, int toneLength) {
         goertzel = new IterativeGeneralizedGoertzel(sampleRate, frequency, windowSize);
@@ -24,7 +24,8 @@ public class ToneAnalyzer {
         goertzel.processSamples(samples, from, to);
         if(goertzel.getWindowSize() == goertzel.getProcessedSamples()) {
             double spl = 20 * Math.log10(goertzel.computeRMS(false).rms);
-            values.add(spl);
+            backgroundNoiseEvaluator.add(spl);
+            values.add(new double[]{spl, backgroundNoiseEvaluator.getPercentile(0.95), backgroundNoiseEvaluator.getPercentile(0.05)});
 //            backgroundNoiseEvaluator.add(spl);
 //            peakFinder.add(processed, spl);
 //            double backgroundNoise = backgroundNoiseEvaluator.getPercentile(0.05) + 15.0;
