@@ -38,7 +38,7 @@ package org.noise_planet.qrtone;
  */
 public class Configuration {
   public static final double MULT_SEMITONE = Math.pow(2, 1/12.0);
-  public static final double DEFAULT_WORD_TIME = 0.0872;
+  public static final double DEFAULT_WORD_TIME = 0.06;
   public static final double DEFAULT_AUDIBLE_FIRST_FREQUENCY = 1720;
   public static final double DEFAULT_INAUDIBLE_FIRST_FREQUENCY = 18200;
   public static final int DEFAULT_INAUDIBLE_STEP = 120;
@@ -94,7 +94,14 @@ public class Configuration {
     return frequencies;
   }
 
-  public int computeMinimumWindowSize(double sampleRate, double targetFrequency, double closestFrequency) {
+  /**
+   * Given sample rate and frequencies, evaluate the minimal good window size for avoiding leaks of spectral analysis.
+   * @param sampleRate Sample rate in Hz
+   * @param targetFrequency Spectral analysis minimal frequency
+   * @param closestFrequency Spectral analysis closest frequency to differentiate
+   * @return Minimum window length in samples
+   */
+  public static int computeMinimumWindowSize(double sampleRate, double targetFrequency, double closestFrequency) {
     // Max bin size in Hz
     double max_bin_size = Math.abs(closestFrequency - targetFrequency) / 2.0;
     // Minimum window size without leaks

@@ -60,6 +60,14 @@ public class PeakFinder {
         return peaks;
     }
 
+    public Element getLastPeak() {
+        if(peaks.isEmpty()) {
+            return null;
+        } else {
+            return peaks.get(peaks.size() - 1);
+        }
+    }
+
     public void clearPeaks(long upTo) {
         while(!peaks.isEmpty() && peaks.get(0).index < upTo) {
             peaks.remove(0);

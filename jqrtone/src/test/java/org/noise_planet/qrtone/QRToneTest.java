@@ -270,7 +270,7 @@ public class QRToneTest {
     private void pushTone(float[] signal,int location,double frequency, QRTone qrTone, double powerPeak) {
         float[] tone = new float[qrTone.wordLength];
         QRTone.generatePitch(tone, 0, qrTone.wordLength, 0, qrTone.getConfiguration().sampleRate, frequency, powerPeak);
-        QRTone.applyTukey(tone, 0, tone.length, 0.15, tone.length, 0);
+        QRTone.applyTukey(tone, 0, tone.length, 0.8, tone.length, 0);
         for(int i=0; i < tone.length; i++) {
             signal[location+i] += tone[i];
         }
@@ -293,7 +293,7 @@ public class QRToneTest {
             audio[s] = (float)(random.nextGaussian() * noisePeak);
         }
         int toneDuration = (int)(configuration.wordTime * sampleRate);
-        int toneLocation = audio.length / 2 - toneDuration / 2;
+        int toneLocation = audio.length / 2 - toneDuration / 2 + random.nextInt(toneDuration);
 
         int checkFrequency = 0;
         pushTone(audio, toneLocation, frequencies[checkFrequency], qrTone, powerPeak);

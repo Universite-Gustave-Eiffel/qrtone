@@ -53,7 +53,10 @@ public class QRTone {
         this.configuration = configuration;
         this.wordLength = (int)(configuration.sampleRate * configuration.wordTime);
         this.frequencies = configuration.computeFrequencies(NUM_FREQUENCIES);
-        windowAnalyze = configuration.computeMinimumWindowSize(configuration.sampleRate, frequencies[0], frequencies[1]);
+        windowAnalyze = wordLength / 2;
+        if(windowAnalyze < Configuration.computeMinimumWindowSize(configuration.sampleRate, frequencies[0], frequencies[1])) {
+            throw new IllegalArgumentException("Tone length are not compatible with sample rate and selected frequencies");
+        }
         for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
             toneAnalyzers[idfreq] = new ToneAnalyzer(configuration.sampleRate, frequencies[idfreq],
                     windowAnalyze, this.wordLength);
@@ -67,6 +70,26 @@ public class QRTone {
     public double[] getFrequencies() {
         return frequencies;
     }
+
+    /**
+     * Set the payload to send
+     * @param payload Payload content
+     * @return Number of samples of the signal for {@link #getSamples(float[], int)}
+     */
+    public int setPayload(byte[] payload) {
+
+        return 0;
+    }
+
+    /**
+     * Compute the audio samples for sending the message.
+     * @param samples Write samples here
+     * @param offset Offset from the beginning of the message.
+     */
+    public void getSamples(float[] samples, int offset) {
+
+    }
+
 
     /**
      * Checksum of bytes (could be used only up to 64 bytes)
@@ -186,7 +209,9 @@ public class QRTone {
             writer.write("t");
             for (int idfreq = 0; idfreq < frequencies.length; idfreq++) {
                 writer.write(",");
-                writer.write(String.format(Locale.ROOT, "%.0f Hz", frequencies[idfreq]));
+                writer.write(String.format(Locale.ROOT, "%.0f Hz (L)", frequencies[idfreq]));
+                writer.write(String.format(Locale.ROOT, ",%.0f Hz (L05)", frequencies[idfreq]));
+                writer.write(String.format(Locale.ROOT, ",%.0f Hz (Peak)", frequencies[idfreq]));
             }
             writer.write("\n");
             for (int i = 0; i < toneAnalyzers[0].values.size(); i++) {
@@ -206,7 +231,7 @@ public class QRTone {
         int processed = 0;
         while(processed < samples.length) {
             int toProcess = Math.min(samples.length - processed,windowAnalyze - windowOffset);
-            applyHann(samples,processed, processed + toProcess, windowAnalyze, windowOffset);
+            //applyHann(samples,processed, processed + toProcess, windowAnalyze, windowOffset);
             for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
                 toneAnalyzers[idfreq].processSamples(samples, processed, processed + toProcess);
             }
