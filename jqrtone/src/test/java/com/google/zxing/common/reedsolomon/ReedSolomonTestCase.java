@@ -574,10 +574,10 @@ public final class ReedSolomonTestCase extends Assert {
 
   @Test
   public void testGF16() throws ReedSolomonException {
-    testRS16(14, 2);
-    testRS16(6, 2);
-    testRS16(4, 2);
-    testRS16(10, 6);
+    testRS16(14, 2); // L ecc level 7% error correction level
+    testRS16(6, 2); // M ecc level 15% error correction level
+    testRS16(4, 2); // Q ecc level 25% error correction level
+    testRS16(10, 6); // H ecc level 30% error correction level
   }
 
 }

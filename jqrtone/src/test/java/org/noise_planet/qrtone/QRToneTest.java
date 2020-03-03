@@ -84,8 +84,6 @@ public class QRToneTest {
                 audio.length);
         while (cursor < audio.length) {
             int windowSize = Math.min(random.nextInt(115) + 20, audio.length - cursor);
-            //float[] window = new float[windowSize];
-            //System.arraycopy(audio, cursor, window, 0, window.length);
             goertzel.processSamples(audio, cursor, cursor + windowSize);
             cursor += windowSize;
         }
@@ -274,6 +272,38 @@ public class QRToneTest {
         for(int i=0; i < tone.length; i++) {
             signal[location+i] += tone[i];
         }
+    }
+
+    @Test
+    public void randTest() {
+        // This specific random must give the same results regardless of the platform/compiler
+        int[] expected= new int[] {1199,22292,14258,30291,11005,15335,22572,27361,8276,27653};
+        AtomicLong seed = new AtomicLong(1337);
+        for(int expectedValue : expected) {
+            assertEquals(expectedValue, QRTone.warbleRand(seed));
+        }
+    }
+
+    @Test
+    public void testShuffle1() {
+        int[] expectedPayload = new int[]{18, 32, -117, -93, -50, 2, 52, 26, -117, 93};
+        int[] swappedPayload = new int[]{26, -50, -93, 18, -117, 93, 2, 32, -117, 52};
+        int[] index = new int[expectedPayload.length];
+        QRTone.fisherYatesShuffleIndex(QRTone.PERMUTATION_SEED, index);
+        int[] symbols = Arrays.copyOf(expectedPayload, expectedPayload.length);
+        QRTone.swapSymbols(symbols, index);
+        assertArrayEquals(swappedPayload, symbols);
+    }
+
+    @Test
+    public void testShuffle() {
+        int[] expectedPayload = new int[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93};
+        int[] index = new int[expectedPayload.length];
+        QRTone.fisherYatesShuffleIndex(QRTone.PERMUTATION_SEED, index);
+        int[] symbols = Arrays.copyOf(expectedPayload, expectedPayload.length);
+        QRTone.swapSymbols(symbols, index);
+        QRTone.unswapSymbols(symbols, index);
+        assertArrayEquals(expectedPayload, symbols);
     }
 
 

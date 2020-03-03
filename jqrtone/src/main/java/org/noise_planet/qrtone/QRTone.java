@@ -33,19 +33,28 @@
 
 package org.noise_planet.qrtone;
 
+import com.google.zxing.common.reedsolomon.GenericGF;
+import com.google.zxing.common.reedsolomon.ReedSolomonEncoder;
+
 import java.io.*;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class QRTone {
     public static final double M2PI = Math.PI * 2;
+    public static final long PERMUTATION_SEED = 3141592653589793238L;
+    private static final int MAX_PAYLOAD_LENGTH = 0xFFF;
+    // Header size in bytes
+    private final static int HEADER_SIZE = 2;
     final int wordLength;
     private Configuration configuration;
     // DTMF 16*16 frequencies
     public final static int NUM_FREQUENCIES = 32;
+    // Column and rows of DTMF that make a char
+    public final static int FREQUENCY_ROOT = 16;
     private final double[] frequencies;
     ToneAnalyzer[] toneAnalyzers = new ToneAnalyzer[NUM_FREQUENCIES];
-    private byte[] symbolsToDeliver;
+    private int[] symbolsToDeliver;
     private int windowOffset = 0;
     private final int windowAnalyze;
 
@@ -71,12 +80,78 @@ public class QRTone {
         return frequencies;
     }
 
+    public int setPayload(byte[] payload) {
+        return setPayload(payload, Configuration.DEFAULT_ECC_LEVEL);
+    }
+
+
+    private int[] payloadToSymbols(byte[] payload, Configuration.ECC_LEVEL eccLevel) {
+        int blockSize =  Configuration.getTotalSymbolsForEcc(eccLevel);
+        int payloadSize = blockSize - Configuration.getEccSymbolsForEcc(eccLevel);
+        int numberOfBlocks = (int)Math.ceil((payload.length * 2) / (double) payloadSize);
+        int[] symbols = new int[numberOfBlocks * blockSize];
+        for(int i=0; i < payload.length; i++) {
+            symbols[i * 2] = (payload[i] & 255) % FREQUENCY_ROOT;
+            symbols[i * 2 + 1] =  (payload[i] & 255) / FREQUENCY_ROOT;
+        }
+        // Add ECC parity symbols
+        GenericGF gallois = GenericGF.AZTEC_PARAM;
+        ReedSolomonEncoder encoder = new ReedSolomonEncoder(gallois);
+        encoder.encode(symbols, Configuration.getEccSymbolsForEcc(eccLevel));
+        // Permute symbols
+        int[] index = new int[symbols.length];
+        fisherYatesShuffleIndex(PERMUTATION_SEED, index);
+        swapSymbols(symbols, index);
+        return symbols;
+    }
+
+    /**
+     * @param eccLevel Error correction level
+     * @return Maximum payload length in bytes
+     */
+    public int maxPayloadLength(Configuration.ECC_LEVEL eccLevel) {
+        return MAX_PAYLOAD_LENGTH;
+    }
+
+    protected byte[] encodeHeader(Header qrToneHeader) {
+        if(qrToneHeader.length > MAX_PAYLOAD_LENGTH) {
+            throw new IllegalArgumentException(String.format("Payload length cannot be superior than %d bytes", MAX_PAYLOAD_LENGTH));
+        }
+        // Generate header
+        byte[] header = new byte[HEADER_SIZE];
+        // Payload length
+        header[0] = (byte)(qrToneHeader.length & 0xFF);
+        // ECC level
+        header[1] = (byte)(0x0F & qrToneHeader.eccLevel.ordinal());
+        byte crc = crc8(header, 0, header.length);
+        header[1] = (byte)((crc & 0xF0) | header[1] & 0x0F);
+        return header;
+    }
+
+    protected Header decodeHeader(byte[] data) {
+        // Check
+        byte[] header = new byte[HEADER_SIZE];
+        header[0] = data[0];
+        header[1] = (byte)(data[1] & 0x0F);
+        byte crc = crc8(header, 0, header.length);
+        if((crc & 0xF0) != (data[1] & 0xF0)) {
+            // CRC error
+            return null;
+        }
+        return new Header(data[0] & 0xFF, Configuration.ECC_LEVEL.values()[data[1] & 0x0F]);
+    }
+
     /**
      * Set the payload to send
      * @param payload Payload content
      * @return Number of samples of the signal for {@link #getSamples(float[], int)}
      */
-    public int setPayload(byte[] payload) {
+    public int setPayload(byte[] payload, Configuration.ECC_LEVEL eccLevel) {
+        byte[] header = encodeHeader(new Header(payload.length, eccLevel));
+        // Convert bytes to hexadecimal array
+        byte[] msg = new byte[header.length+payload.length];
+        int[] headerSymbols = payloadToSymbols(header, Configuration.ECC_LEVEL.ECC_M);
+        int[] payloadSymbols = payloadToSymbols(payload, eccLevel);
 
         return 0;
     }
@@ -119,28 +194,37 @@ public class QRTone {
 
     /**
      * randomly swap specified integer
-     * @param n
-     * @param index
+     * @param seed Seed number for pseudo random generation
+     * @param index Array of elements to permute
      */
-    public static void fisherYatesShuffleIndex(int n, int[] index) {
+    public static void fisherYatesShuffleIndex(long seed, int[] index) {
         int i;
-        AtomicLong rndCache = new AtomicLong(n);
+        AtomicLong rndCache = new AtomicLong(seed);
         for (i = index.length - 1; i > 0; i--) {
             index[index.length - 1 - i] = warbleRand(rndCache) % (i + 1);
         }
     }
 
-    public static void swapChars(byte[] inputString, int[] index) {
+    public static void swapSymbols(int[] inputData, int[] index) {
         int i;
-        for (i = inputString.length - 1; i > 0; i--)
+        for (i = inputData.length - 1; i > 0; i--)
         {
-            int v = index[inputString.length - 1 - i];
-            byte tmp = inputString[i];
-            inputString[i] = inputString[v];
-            inputString[v] = tmp;
+            final int v = index[inputData.length - 1 - i];
+            final int tmp = inputData[i];
+            inputData[i] = inputData[v];
+            inputData[v] = tmp;
         }
     }
 
+    public static void unswapSymbols(int[] inputData, int[] index) {
+        int i;
+        for (i = 1; i < inputData.length; i++) {
+            final int v = index[inputData.length - 1 - i];
+            final int tmp = inputData[i];
+            inputData[i] = inputData[v];
+            inputData[v] = tmp;
+        }
+    }
     /**
      * Pseudo random generator
      * @param next Seed
@@ -241,6 +325,16 @@ public class QRTone {
                 windowOffset = 0;
                 // TODO process data
             }
+        }
+    }
+
+    protected class Header {
+        public final int length;
+        public final Configuration.ECC_LEVEL eccLevel;
+
+        public Header(int length, Configuration.ECC_LEVEL eccLevel) {
+            this.length = length;
+            this.eccLevel = eccLevel;
         }
     }
 }

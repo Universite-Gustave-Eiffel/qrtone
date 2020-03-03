@@ -66,15 +66,14 @@ public class IterativeGeneralizedGoertzel {
             throw new IllegalArgumentException("Exceed window length");
         }
         final int size;
-        // Do not loop over the last sample of the window
         if(processedSamples + length == windowSize) {
-            lastSample = samples[length - 1];
             size = length - 1;
+            lastSample = samples[from + size];
         } else {
             size = length;
         }
-        for(int i=from; i < size - from; i++) {
-            s0 = samples[i] + cosPikTerm2 * s1 - s2;
+        for(int i=0; i < size; i++) {
+            s0 = samples[i+from] + cosPikTerm2 * s1 - s2;
             s2 = s1;
             s1 = s0;
         }

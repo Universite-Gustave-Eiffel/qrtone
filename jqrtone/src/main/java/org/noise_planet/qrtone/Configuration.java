@@ -37,12 +37,15 @@ package org.noise_planet.qrtone;
  * OpenWarble configuration object
  */
 public class Configuration {
+  public enum ECC_LEVEL {ECC_L, ECC_M, ECC_Q, ECC_H}
+  private static final int[][] ECC_SYMBOLS = new int[][] {{14, 2}, {6, 2}, {4, 2}, {10, 6}};
   public static final double MULT_SEMITONE = Math.pow(2, 1/12.0);
   public static final double DEFAULT_WORD_TIME = 0.06;
   public static final double DEFAULT_AUDIBLE_FIRST_FREQUENCY = 1720;
   public static final double DEFAULT_INAUDIBLE_FIRST_FREQUENCY = 18200;
   public static final int DEFAULT_INAUDIBLE_STEP = 120;
   public static final double DEFAULT_TRIGGER_SNR = 15;
+  public static final ECC_LEVEL DEFAULT_ECC_LEVEL = ECC_LEVEL.ECC_Q;
 
   public final double sampleRate;
   public final double firstFrequency;
@@ -107,5 +110,21 @@ public class Configuration {
     // Minimum window size without leaks
     int window_size = (int)(Math.ceil(sampleRate / max_bin_size));
     return Math.max(window_size, (int)Math.ceil(sampleRate*(5*(1/targetFrequency))));
+  }
+
+  /**
+   * @param eccLevel Ecc level
+   * @return Number of symbols (Payload+Ecc) corresponding to this level
+   */
+  public static int getTotalSymbolsForEcc(ECC_LEVEL eccLevel) {
+    return ECC_SYMBOLS[eccLevel.ordinal()][0];
+  }
+
+  /**
+   * @param eccLevel Ecc level
+   * @return Number of Ecc symbols corresponding to this level (Correctable errors is 50 % of this number)
+   */
+  public static int getEccSymbolsForEcc(ECC_LEVEL eccLevel) {
+    return ECC_SYMBOLS[eccLevel.ordinal()][1];
   }
 }
