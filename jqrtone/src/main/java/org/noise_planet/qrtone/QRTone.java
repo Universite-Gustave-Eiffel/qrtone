@@ -34,16 +34,19 @@
 package org.noise_planet.qrtone;
 
 import com.google.zxing.common.reedsolomon.GenericGF;
+import com.google.zxing.common.reedsolomon.ReedSolomonDecoder;
 import com.google.zxing.common.reedsolomon.ReedSolomonEncoder;
+import com.google.zxing.common.reedsolomon.ReedSolomonException;
 
 import java.io.*;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class QRTone {
     public static final double M2PI = Math.PI * 2;
     public static final long PERMUTATION_SEED = 3141592653589793238L;
-    private static final int MAX_PAYLOAD_LENGTH = 0xFFF;
+    protected static final int MAX_PAYLOAD_LENGTH = 0xFF;
     // Header size in bytes
     private final static int HEADER_SIZE = 2;
     final int wordLength;
@@ -85,24 +88,54 @@ public class QRTone {
     }
 
 
-    private int[] payloadToSymbols(byte[] payload, Configuration.ECC_LEVEL eccLevel) {
-        int blockSize =  Configuration.getTotalSymbolsForEcc(eccLevel);
-        int payloadSize = blockSize - Configuration.getEccSymbolsForEcc(eccLevel);
-        int numberOfBlocks = (int)Math.ceil((payload.length * 2) / (double) payloadSize);
-        int[] symbols = new int[numberOfBlocks * blockSize];
-        for(int i=0; i < payload.length; i++) {
-            symbols[i * 2] = (payload[i] & 255) % FREQUENCY_ROOT;
-            symbols[i * 2 + 1] =  (payload[i] & 255) / FREQUENCY_ROOT;
+    static int[] payloadToSymbols(byte[] payload, Configuration.ECC_LEVEL eccLevel) {
+        final int blockSymbolsSize =  Configuration.getTotalSymbolsForEcc(eccLevel);
+        final int payloadSymbolsSize = blockSymbolsSize - Configuration.getEccSymbolsForEcc(eccLevel);
+        final int payloadByteSize = payloadSymbolsSize / 2;
+        final int numberOfBlocks = (int)Math.ceil((payload.length * 2) / (double) payloadSymbolsSize);
+        int[] symbols = new int[numberOfBlocks * blockSymbolsSize];
+        for(int blockId = 0; blockId < numberOfBlocks; blockId++) {
+            int[] blockSymbols = new int[blockSymbolsSize];
+            for (int i = 0; i < payloadByteSize; i++) {
+                blockSymbols[i * 2] = (payload[i + blockId * payloadByteSize] >>> 4) & 0x0F;
+                blockSymbols[i * 2 + 1] = payload[i + blockId * payloadByteSize] & 0x0F;
+            }
+            // Add ECC parity symbols
+            GenericGF gallois = GenericGF.AZTEC_PARAM;
+            ReedSolomonEncoder encoder = new ReedSolomonEncoder(gallois);
+            encoder.encode(blockSymbols, Configuration.getEccSymbolsForEcc(eccLevel));
+            // Copy block to main symbols
+            System.arraycopy(blockSymbols, 0, symbols, blockId * blockSymbolsSize, blockSymbols.length);
         }
-        // Add ECC parity symbols
-        GenericGF gallois = GenericGF.AZTEC_PARAM;
-        ReedSolomonEncoder encoder = new ReedSolomonEncoder(gallois);
-        encoder.encode(symbols, Configuration.getEccSymbolsForEcc(eccLevel));
         // Permute symbols
         int[] index = new int[symbols.length];
         fisherYatesShuffleIndex(PERMUTATION_SEED, index);
         swapSymbols(symbols, index);
         return symbols;
+    }
+
+    static byte[] symbolsToPayload(int[] symbols, Configuration.ECC_LEVEL eccLevel, int payloadLength) throws ReedSolomonException {
+        final int blockSymbolsSize =  Configuration.getTotalSymbolsForEcc(eccLevel);
+        final int payloadSymbolsSize = blockSymbolsSize - Configuration.getEccSymbolsForEcc(eccLevel);
+        final int payloadByteSize = payloadSymbolsSize / 2;
+        final int numberOfBlocks = symbols.length / blockSymbolsSize;
+        // Cancel permutation of symbols
+        int[] index = new int[symbols.length];
+        fisherYatesShuffleIndex(PERMUTATION_SEED, index);
+        unswapSymbols(symbols, index);
+        byte[] payload = new byte[payloadLength];
+        for(int blockId = 0; blockId < numberOfBlocks; blockId++) {
+            int[] blockSymbols = Arrays.copyOfRange(symbols, blockId * blockSymbolsSize,
+                    blockId * blockSymbolsSize + blockSymbolsSize);
+            // Fix symbols thanks to ECC parity symbols
+            GenericGF gallois = GenericGF.AZTEC_PARAM;
+            ReedSolomonDecoder decoder = new ReedSolomonDecoder(gallois);
+            decoder.decode(blockSymbols, Configuration.getEccSymbolsForEcc(eccLevel));
+            for (int i = 0; i < payloadByteSize; i++) {
+                payload[i + blockId * payloadByteSize] = (byte) ((blockSymbols[i * 2] << 4) | (blockSymbols[i * 2 + 1] & 0x0F));
+            }
+        }
+        return payload;
     }
 
     /**
@@ -113,7 +146,7 @@ public class QRTone {
         return MAX_PAYLOAD_LENGTH;
     }
 
-    protected byte[] encodeHeader(Header qrToneHeader) {
+    byte[] encodeHeader(Header qrToneHeader) {
         if(qrToneHeader.length > MAX_PAYLOAD_LENGTH) {
             throw new IllegalArgumentException(String.format("Payload length cannot be superior than %d bytes", MAX_PAYLOAD_LENGTH));
         }
@@ -128,7 +161,7 @@ public class QRTone {
         return header;
     }
 
-    protected Header decodeHeader(byte[] data) {
+    Header decodeHeader(byte[] data) {
         // Check
         byte[] header = new byte[HEADER_SIZE];
         header[0] = data[0];
@@ -136,6 +169,10 @@ public class QRTone {
         byte crc = crc8(header, 0, header.length);
         if((crc & 0xF0) != (data[1] & 0xF0)) {
             // CRC error
+            return null;
+        }
+        if((data[1] & 0x0F) >= Configuration.ECC_LEVEL.values().length) {
+            // Out of bound FEC code index
             return null;
         }
         return new Header(data[0] & 0xFF, Configuration.ECC_LEVEL.values()[data[1] & 0x0F]);
@@ -328,7 +365,7 @@ public class QRTone {
         }
     }
 
-    protected class Header {
+    protected static class Header {
         public final int length;
         public final Configuration.ECC_LEVEL eccLevel;
 

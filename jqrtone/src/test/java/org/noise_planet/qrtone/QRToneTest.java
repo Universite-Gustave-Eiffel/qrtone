@@ -1,11 +1,13 @@
 package org.noise_planet.qrtone;
 
+import com.google.zxing.common.reedsolomon.ReedSolomonException;
 import org.junit.Test;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Locale;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
@@ -306,6 +308,57 @@ public class QRToneTest {
         assertArrayEquals(expectedPayload, symbols);
     }
 
+    @Test
+    public void testEncodeDecodeHeader() {
+        QRTone.Header expectedHeader = new QRTone.Header(QRTone.MAX_PAYLOAD_LENGTH, Configuration.ECC_LEVEL.ECC_H);
+        QRTone qrTone = new QRTone(Configuration.getAudible(44100));
+        byte[] headerBytes = qrTone.encodeHeader(expectedHeader);
+        QRTone.Header decodedHeader = qrTone.decodeHeader(headerBytes);
+        assertEquals(expectedHeader.length, decodedHeader.length);
+        assertEquals(expectedHeader.eccLevel, decodedHeader.eccLevel);
+    }
+
+    @Test
+    public void testEncodeDecodeHeaderCRC() {
+        QRTone.Header expectedHeader = new QRTone.Header(QRTone.MAX_PAYLOAD_LENGTH, Configuration.ECC_LEVEL.ECC_H);
+        QRTone qrTone = new QRTone(Configuration.getAudible(44100));
+        byte[] headerBytes = qrTone.encodeHeader(expectedHeader);
+        headerBytes[1] = (byte)(headerBytes[1] | 0x04);
+        QRTone.Header decodedHeader = qrTone.decodeHeader(headerBytes);
+        assertNull(decodedHeader);
+    }
+
+    @Test
+    public void testEncodeDecodeHeaderCRC2() {
+        QRTone.Header expectedHeader = new QRTone.Header(QRTone.MAX_PAYLOAD_LENGTH, Configuration.ECC_LEVEL.ECC_H);
+        QRTone qrTone = new QRTone(Configuration.getAudible(44100));
+        byte[] headerBytes = qrTone.encodeHeader(expectedHeader);
+        headerBytes[0] = (byte)(0xFE);
+        QRTone.Header decodedHeader = qrTone.decodeHeader(headerBytes);
+        assertNull(decodedHeader);
+    }
+
+
+    @Test
+    public void testSymbolEncodingDecoding() throws ReedSolomonException {
+        String payloadStr = "Hello world !";
+        byte[] payloadBytes = payloadStr.getBytes();
+        Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_Q;
+        int[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
+        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, payloadBytes.length);
+        assertArrayEquals(payloadBytes, processedBytes);
+    }
+
+    @Test
+    public void testSymbolEncodingDecodingCRC1() throws ReedSolomonException {
+        byte[] expectedPayload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4,
+                31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
+        Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_Q;
+        int[] symbols = QRTone.payloadToSymbols(expectedPayload, eccLevel);
+        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, expectedPayload.length);
+        assertArrayEquals(expectedPayload, processedBytes);
+
+    }
 
     @Test
     public void testToneDetection() throws IOException {
@@ -334,7 +387,8 @@ public class QRToneTest {
 
         writeFloatToFile("target/inputSignal.raw", Arrays.copyOfRange(audio,toneLocation - toneDuration * 3, toneLocation + toneDuration * 8));
         long start = System.currentTimeMillis();
-        int cursor = 0;
+        // Worst case, window in perfect sync with tone
+        int cursor = toneLocation % qrTone.wordLength;
         while (cursor < audio.length) {
             int windowSize = Math.min(random.nextInt(115) + 20, audio.length - cursor);
             float[] window = new float[windowSize];
