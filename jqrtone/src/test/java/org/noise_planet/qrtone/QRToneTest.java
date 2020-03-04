@@ -48,14 +48,20 @@ import java.util.concurrent.atomic.AtomicLong;
 import static org.junit.Assert.*;
 
 public class QRToneTest {
+    // Send Ipfs address
+    // Python code:
+    // import base58
+    // import struct
+    // s = struct.Struct('b').unpack
+    // payload = map(lambda v : s(v)[0], base58.b58decode("QmXjkFQjnD8i8ntmwehoAHBfJEApETx8ebScyVzAHqgjpD"))
+    public static final byte[] IPFS_PAYLOAD = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
 
     @Test
     public void crcTest() {
-        byte[] expectedPayload = new byte[]{18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
-        byte base = QRTone.crc8(expectedPayload, 0, expectedPayload.length);
+        byte base = QRTone.crc8(IPFS_PAYLOAD, 0, IPFS_PAYLOAD.length);
         AtomicLong next = new AtomicLong(1337);
-        for(int i=0; i < expectedPayload.length; i++) {
-            byte[] alteredPayload = Arrays.copyOf(expectedPayload, expectedPayload.length);
+        for(int i=0; i < IPFS_PAYLOAD.length; i++) {
+            byte[] alteredPayload = Arrays.copyOf(IPFS_PAYLOAD, IPFS_PAYLOAD.length);
             alteredPayload[i] = (byte) (QRTone.warbleRand(next) % 255);
             assertNotEquals(base, QRTone.crc8(alteredPayload, 0, alteredPayload.length));
         }
@@ -424,13 +430,35 @@ public class QRToneTest {
 
     @Test
     public void testSymbolEncodingDecodingCRC1() throws ReedSolomonException {
-        byte[] expectedPayload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4,
-                31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_Q;
-        int[] symbols = QRTone.payloadToSymbols(expectedPayload, eccLevel);
+        int[] symbols = QRTone.payloadToSymbols(IPFS_PAYLOAD, eccLevel);
         System.out.println(String.format(Locale.ROOT, "Signal length %.3f seconds", (symbols.length / 2) * 0.06 + 0.012));
         byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel);
-        assertArrayEquals(expectedPayload, processedBytes);
+        assertArrayEquals(IPFS_PAYLOAD, processedBytes);
+    }
+
+    @Test
+    public void testToneGeneration() throws IOException {
+        double sampleRate = 44100;
+        double powerRMS = Math.pow(10, -26.0 / 20.0); // -26 dBFS
+        double powerPeak = powerRMS * Math.sqrt(2);
+        Configuration configuration = new Configuration(sampleRate, Configuration.DEFAULT_AUDIBLE_FIRST_FREQUENCY,
+                128, 0, Configuration.DEFAULT_WORD_TIME,
+                Configuration.DEFAULT_TRIGGER_SNR, Configuration.DEFAULT_GATE_TIME);
+        QRTone qrTone = new QRTone(configuration);
+        final int dataSampleLength = qrTone.setPayload(IPFS_PAYLOAD);
+        float[] samples = new float[dataSampleLength];
+        Random random = new Random(QRTone.PERMUTATION_SEED);
+        int cursor = 0;
+        while (cursor < samples.length) {
+            int windowSize = Math.min(random.nextInt(115) + 20, samples.length - cursor);
+            float[] window = new float[windowSize];
+            qrTone.getSamples(window, cursor, powerPeak);
+            System.arraycopy(window, 0, samples, cursor, window.length);
+            cursor += windowSize;
+        }
+        writeFloatToFile("target/toneSignal.raw", samples);
+
     }
 
     @Test
@@ -448,7 +476,7 @@ public class QRToneTest {
         for (int s = 0; s < audio.length; s++) {
             audio[s] = (float)(random.nextGaussian() * noisePeak);
         }
-        int toneDuration = (int)(configuration.wordTime * sampleRate);
+        int toneDuration = (int)(configuration.gateTime * sampleRate);
         int toneLocation = audio.length / 2 - toneDuration / 2 + random.nextInt(toneDuration);
 
         int checkFrequency = 0;

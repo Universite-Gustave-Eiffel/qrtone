@@ -46,17 +46,23 @@ import java.util.concurrent.atomic.AtomicLong;
 public class QRTone {
     public static final double M2PI = Math.PI * 2;
     public static final long PERMUTATION_SEED = 3141592653589793238L;
+    private enum STATE {WAITING_TRIGGER, PARSING_SYMBOLS};
+    private STATE qrToneState = STATE.WAITING_TRIGGER;
+    private long firstToneSampleIndex = -1;
     protected static final int MAX_PAYLOAD_LENGTH = 0xFF;
     // Header size in bytes
     private final static int HEADER_SIZE = 2;
     final int wordLength;
+    final int gateLength;
+    final double gate1Frequency;
+    final double gate2Frequency;
     private Configuration configuration;
     // DTMF 16*16 frequencies
     public final static int NUM_FREQUENCIES = 32;
     // Column and rows of DTMF that make a char
     public final static int FREQUENCY_ROOT = 16;
     private final double[] frequencies;
-    ToneAnalyzer[] toneAnalyzers = new ToneAnalyzer[NUM_FREQUENCIES];
+    ToneAnalyzer[] toneAnalyzers = new ToneAnalyzer[2];
     private int[] symbolsToDeliver;
     private int windowOffset = 0;
     private final int windowAnalyze;
@@ -64,13 +70,16 @@ public class QRTone {
     public QRTone(Configuration configuration) {
         this.configuration = configuration;
         this.wordLength = (int)(configuration.sampleRate * configuration.wordTime);
+        this.gateLength = (int)(configuration.sampleRate * configuration.gateTime);
         this.frequencies = configuration.computeFrequencies(NUM_FREQUENCIES);
         windowAnalyze = wordLength / 2;
         if(windowAnalyze < Configuration.computeMinimumWindowSize(configuration.sampleRate, frequencies[0], frequencies[1])) {
             throw new IllegalArgumentException("Tone length are not compatible with sample rate and selected frequencies");
         }
-        for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
-            toneAnalyzers[idfreq] = new ToneAnalyzer(configuration.sampleRate, frequencies[idfreq],
+        gate1Frequency = frequencies[frequencies.length-1];
+        gate2Frequency = frequencies[frequencies.length-2];
+        for(int idfreq = 0; idfreq < toneAnalyzers.length; idfreq++) {
+            toneAnalyzers[idfreq] = new ToneAnalyzer(configuration.sampleRate, frequencies[frequencies.length-toneAnalyzers.length+idfreq],
                     windowAnalyze, this.wordLength);
         }
     }
@@ -198,25 +207,41 @@ public class QRTone {
     /**
      * Set the payload to send
      * @param payload Payload content
-     * @return Number of samples of the signal for {@link #getSamples(float[], int)}
+     * @return Number of samples of the signal for {@link #getSamples(float[], int, double)}
      */
     public int setPayload(byte[] payload, Configuration.ECC_LEVEL eccLevel) {
         byte[] header = encodeHeader(new Header(payload.length, eccLevel));
         // Convert bytes to hexadecimal array
-        byte[] msg = new byte[header.length+payload.length];
         int[] headerSymbols = payloadToSymbols(header, Configuration.ECC_LEVEL.ECC_Q);
         int[] payloadSymbols = payloadToSymbols(payload, eccLevel);
-
-        return 0;
+        symbolsToDeliver = new int[headerSymbols.length+payloadSymbols.length];
+        System.arraycopy(headerSymbols, 0, symbolsToDeliver, 0, headerSymbols.length);
+        System.arraycopy(payloadSymbols, 0, symbolsToDeliver, headerSymbols.length, payloadSymbols.length);
+        return 2 * gateLength + (symbolsToDeliver.length / 2) * wordLength;
     }
 
     /**
      * Compute the audio samples for sending the message.
+     *
      * @param samples Write samples here
-     * @param offset Offset from the beginning of the message.
+     * @param offset  Offset from the beginning of the message.
      */
-    public void getSamples(float[] samples, int offset) {
-
+    public void getSamples(float[] samples, int offset, double power) {
+        int cursor = 0;
+        generatePitch(samples, Math.max(0, cursor - offset), gateLength, offset, configuration.sampleRate, gate1Frequency, power);
+        applyHann(samples, Math.max(0, cursor - offset), cursor + gateLength, gateLength, offset);
+        cursor += gateLength;
+        generatePitch(samples, Math.max(0, cursor - offset), gateLength, offset - cursor, configuration.sampleRate, gate2Frequency, power);
+        applyHann(samples, Math.max(0, cursor - offset), cursor + gateLength, gateLength, offset - cursor);
+        cursor += gateLength;
+        for (int i = 0; i < symbolsToDeliver.length; i += 2) {
+            double f1 = frequencies[symbolsToDeliver[i]];
+            double f2 = frequencies[symbolsToDeliver[i + 1] + FREQUENCY_ROOT];
+            generatePitch(samples, Math.max(0, cursor - offset), wordLength, offset - cursor, configuration.sampleRate, f1, power / 2);
+            generatePitch(samples, Math.max(0, cursor - offset), wordLength, offset - cursor, configuration.sampleRate, f2, power / 2);
+            applyHann(samples, Math.max(0, cursor - offset), cursor + wordLength, wordLength, offset - cursor);
+            cursor += wordLength;
+        }
     }
 
 
@@ -323,7 +348,7 @@ public class QRTone {
      * @param offset If the signal length is inferior than windowLength, give the offset of the hamming window
      */
     public static void applyHann(float[] signal, int from, int to, int windowLength, int offset) {
-        for (int i = 0; i < to - from && offset + i < windowLength; i++) {
+        for (int i = 0; i < to - from && offset + i < windowLength && i+from < signal.length; i++) {
             signal[i + from] *= ((0.5 - 0.5 * Math.cos((M2PI * (i + offset)) / (windowLength - 1))));
         }
     }
@@ -352,10 +377,19 @@ public class QRTone {
         }
     }
 
+    /**
+     * @param signal_out Where to write pitch samples
+     * @param location Location index of pitch start
+     * @param length Length of the pitch
+     * @param offset Offset in samples of the pitch generation
+     * @param sample_rate Samples rate in Hz
+     * @param frequency Frequency of the pitch
+     * @param powerPeak Peak RMS power of the pitch
+     */
     public static void generatePitch(float[] signal_out, int location, int length, final int offset, double sample_rate, double frequency, double powerPeak) {
         double tStep = 1 / sample_rate;
-        for(int i=location; i - location < length && i < signal_out.length; i++) {
-            signal_out[i] += Math.sin((i - location + offset) * tStep * M2PI * frequency) * powerPeak;
+        for(int i=0; i+offset < length && i+location < signal_out.length; i++) {
+            signal_out[i+location] += Math.sin((i + offset) * tStep * M2PI * frequency) * powerPeak;
         }
     }
 
@@ -372,16 +406,16 @@ public class QRTone {
             BufferedOutputStream bos = new BufferedOutputStream(fos);
             Writer writer = new OutputStreamWriter(bos);
             writer.write("t");
-            for (int idfreq = 0; idfreq < frequencies.length; idfreq++) {
+            for (int idfreq = 0; idfreq < toneAnalyzers.length; idfreq++) {
                 writer.write(",");
-                writer.write(String.format(Locale.ROOT, "%.0f Hz (L)", frequencies[idfreq]));
-                writer.write(String.format(Locale.ROOT, ",%.0f Hz (L05)", frequencies[idfreq]));
-                writer.write(String.format(Locale.ROOT, ",%.0f Hz (Peak)", frequencies[idfreq]));
+                writer.write(String.format(Locale.ROOT, "%.0f Hz (L)", frequencies[frequencies.length - toneAnalyzers.length + idfreq]));
+                writer.write(String.format(Locale.ROOT, ",%.0f Hz (L05)", frequencies[frequencies.length - toneAnalyzers.length +idfreq]));
+                writer.write(String.format(Locale.ROOT, ",%.0f Hz (Peak)", frequencies[frequencies.length - toneAnalyzers.length +idfreq]));
             }
             writer.write("\n");
             for (int i = 0; i < toneAnalyzers[0].values.size(); i++) {
                 writer.write(String.format(Locale.ROOT, "%.3f", (i * windowAnalyze) / configuration.sampleRate));
-                for (int idfreq = 0; idfreq < frequencies.length; idfreq++) {
+                for (int idfreq = 0; idfreq < toneAnalyzers.length; idfreq++) {
                     for(double val : toneAnalyzers[idfreq].values.get(i)) {
                         writer.write(String.format(Locale.ROOT, ",%.2f", val));
                     }
@@ -397,7 +431,7 @@ public class QRTone {
         while(processed < samples.length) {
             int toProcess = Math.min(samples.length - processed,windowAnalyze - windowOffset);
             //applyHann(samples,processed, processed + toProcess, windowAnalyze, windowOffset);
-            for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
+            for(int idfreq = 0; idfreq < toneAnalyzers.length; idfreq++) {
                 toneAnalyzers[idfreq].processSamples(samples, processed, processed + toProcess);
             }
             processed += toProcess;
