@@ -39,8 +39,9 @@ package org.noise_planet.qrtone;
 public class Configuration {
   public enum ECC_LEVEL {ECC_L, ECC_M, ECC_Q, ECC_H}
   private static final int[][] ECC_SYMBOLS = new int[][] {{14, 2}, {6, 2}, {4, 2}, {10, 6}};
-  public static final double MULT_SEMITONE = Math.pow(2, 1/12.0);
+  public static final double MULT_SEMITONE = Math.pow(2, 1/15.0);
   public static final double DEFAULT_WORD_TIME = 0.06;
+  public static final double DEFAULT_WORD_SILENCE_TIME = 0.01;
   public static final double DEFAULT_GATE_TIME = 0.12;
   public static final double DEFAULT_AUDIBLE_FIRST_FREQUENCY = 1720;
   public static final double DEFAULT_INAUDIBLE_FIRST_FREQUENCY = 18200;
@@ -55,9 +56,10 @@ public class Configuration {
   public final double wordTime;
   public final double triggerSnr;
   public final double gateTime;
+  public final double wordSilenceTime;
 
   public Configuration(double sampleRate, double firstFrequency, int frequencyIncrement, double frequencyMulti,
-                       double wordTime, double triggerSnr, double gateTime) {
+                       double wordTime, double triggerSnr, double gateTime, double wordSilenceTime) {
     this.sampleRate = sampleRate;
     this.firstFrequency = firstFrequency;
     this.frequencyIncrement = frequencyIncrement;
@@ -65,6 +67,7 @@ public class Configuration {
     this.wordTime = wordTime;
     this.triggerSnr = triggerSnr;
     this.gateTime = gateTime;
+    this.wordSilenceTime = wordSilenceTime;
   }
 
   /**
@@ -73,8 +76,8 @@ public class Configuration {
    * @return Default configuration for this profile
    */
   public static Configuration getAudible(double sampleRate) {
-    return new Configuration(sampleRate, DEFAULT_AUDIBLE_FIRST_FREQUENCY,
-            0, MULT_SEMITONE, DEFAULT_WORD_TIME, DEFAULT_TRIGGER_SNR, DEFAULT_GATE_TIME);
+    return new Configuration(sampleRate, DEFAULT_AUDIBLE_FIRST_FREQUENCY,0, MULT_SEMITONE,
+            DEFAULT_WORD_TIME, DEFAULT_TRIGGER_SNR, DEFAULT_GATE_TIME, DEFAULT_WORD_SILENCE_TIME);
   }
 
 
@@ -84,8 +87,8 @@ public class Configuration {
    * @return Default configuration for this profile
    */
   public static Configuration getInaudible(double sampleRate) {
-    return new Configuration(sampleRate, DEFAULT_INAUDIBLE_FIRST_FREQUENCY,
-            DEFAULT_INAUDIBLE_STEP, 0, DEFAULT_WORD_TIME, DEFAULT_TRIGGER_SNR, DEFAULT_GATE_TIME);
+    return new Configuration(sampleRate, DEFAULT_INAUDIBLE_FIRST_FREQUENCY, DEFAULT_INAUDIBLE_STEP, 0,
+            DEFAULT_WORD_TIME, DEFAULT_TRIGGER_SNR, DEFAULT_GATE_TIME, DEFAULT_WORD_SILENCE_TIME);
   }
 
   public double[] computeFrequencies(int frequencyCount) {

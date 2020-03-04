@@ -440,22 +440,29 @@ public class QRToneTest {
     @Test
     public void testToneGeneration() throws IOException {
         double sampleRate = 44100;
+        double timeBlankBefore = 3;
+        double timeBlankAfter = 2;
         double powerRMS = Math.pow(10, -26.0 / 20.0); // -26 dBFS
         double powerPeak = powerRMS * Math.sqrt(2);
-        Configuration configuration = new Configuration(sampleRate, Configuration.DEFAULT_AUDIBLE_FIRST_FREQUENCY,
-                128, 0, Configuration.DEFAULT_WORD_TIME,
-                Configuration.DEFAULT_TRIGGER_SNR, Configuration.DEFAULT_GATE_TIME);
+        double noisePeak = Math.pow(10, -80.0 / 20.0); // -26 dBFS
+        int samplesBefore = (int)(timeBlankBefore * sampleRate);
+        int samplesAfter = (int)(timeBlankAfter * sampleRate);
+        Configuration configuration = Configuration.getAudible(sampleRate);
         QRTone qrTone = new QRTone(configuration);
+        System.out.println(String.format(Locale.ROOT, "%.1f Hz", qrTone.getFrequencies()[31]));
         final int dataSampleLength = qrTone.setPayload(IPFS_PAYLOAD);
-        float[] samples = new float[dataSampleLength];
+        float[] samples = new float[samplesBefore + dataSampleLength + samplesAfter];
         Random random = new Random(QRTone.PERMUTATION_SEED);
         int cursor = 0;
-        while (cursor < samples.length) {
+        while (cursor < dataSampleLength) {
             int windowSize = Math.min(random.nextInt(115) + 20, samples.length - cursor);
             float[] window = new float[windowSize];
             qrTone.getSamples(window, cursor, powerPeak);
-            System.arraycopy(window, 0, samples, cursor, window.length);
+            System.arraycopy(window, 0, samples, cursor + samplesBefore, window.length);
             cursor += windowSize;
+        }
+        for (int s = 0; s < samples.length; s++) {
+            samples[s] += (float)(random.nextGaussian() * noisePeak);
         }
         writeFloatToFile("target/toneSignal.raw", samples);
 

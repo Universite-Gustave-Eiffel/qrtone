@@ -47,6 +47,7 @@ public class QRTone {
     public static final double M2PI = Math.PI * 2;
     public static final long PERMUTATION_SEED = 3141592653589793238L;
     private enum STATE {WAITING_TRIGGER, PARSING_SYMBOLS};
+    private static final double TUKEY_ALPHA  = 0.5;
     private STATE qrToneState = STATE.WAITING_TRIGGER;
     private long firstToneSampleIndex = -1;
     protected static final int MAX_PAYLOAD_LENGTH = 0xFF;
@@ -54,6 +55,7 @@ public class QRTone {
     private final static int HEADER_SIZE = 2;
     final int wordLength;
     final int gateLength;
+    final int wordSilenceLength;
     final double gate1Frequency;
     final double gate2Frequency;
     private Configuration configuration;
@@ -71,13 +73,14 @@ public class QRTone {
         this.configuration = configuration;
         this.wordLength = (int)(configuration.sampleRate * configuration.wordTime);
         this.gateLength = (int)(configuration.sampleRate * configuration.gateTime);
+        this.wordSilenceLength = (int)(configuration.sampleRate * configuration.wordSilenceTime);
         this.frequencies = configuration.computeFrequencies(NUM_FREQUENCIES);
         windowAnalyze = wordLength / 2;
         if(windowAnalyze < Configuration.computeMinimumWindowSize(configuration.sampleRate, frequencies[0], frequencies[1])) {
             throw new IllegalArgumentException("Tone length are not compatible with sample rate and selected frequencies");
         }
-        gate1Frequency = frequencies[frequencies.length-1];
-        gate2Frequency = frequencies[frequencies.length-2];
+        gate1Frequency = frequencies[frequencies.length / 2 - 1];
+        gate2Frequency = frequencies[frequencies.length / 2 - 2];
         for(int idfreq = 0; idfreq < toneAnalyzers.length; idfreq++) {
             toneAnalyzers[idfreq] = new ToneAnalyzer(configuration.sampleRate, frequencies[frequencies.length-toneAnalyzers.length+idfreq],
                     windowAnalyze, this.wordLength);
@@ -217,7 +220,7 @@ public class QRTone {
         symbolsToDeliver = new int[headerSymbols.length+payloadSymbols.length];
         System.arraycopy(headerSymbols, 0, symbolsToDeliver, 0, headerSymbols.length);
         System.arraycopy(payloadSymbols, 0, symbolsToDeliver, headerSymbols.length, payloadSymbols.length);
-        return 2 * gateLength + (symbolsToDeliver.length / 2) * wordLength;
+        return 2 * gateLength + (symbolsToDeliver.length / 2) * (wordSilenceLength + wordLength);
     }
 
     /**
@@ -235,11 +238,12 @@ public class QRTone {
         applyHann(samples, Math.max(0, cursor - offset), cursor + gateLength, gateLength, offset - cursor);
         cursor += gateLength;
         for (int i = 0; i < symbolsToDeliver.length; i += 2) {
+            cursor += wordSilenceLength;
             double f1 = frequencies[symbolsToDeliver[i]];
             double f2 = frequencies[symbolsToDeliver[i + 1] + FREQUENCY_ROOT];
             generatePitch(samples, Math.max(0, cursor - offset), wordLength, offset - cursor, configuration.sampleRate, f1, power / 2);
             generatePitch(samples, Math.max(0, cursor - offset), wordLength, offset - cursor, configuration.sampleRate, f2, power / 2);
-            applyHann(samples, Math.max(0, cursor - offset), cursor + wordLength, wordLength, offset - cursor);
+            applyTukey(samples, Math.max(0, cursor - offset), cursor + wordLength, TUKEY_ALPHA, wordLength, offset - cursor);
             cursor += wordLength;
         }
     }
@@ -366,12 +370,12 @@ public class QRTone {
         int index_begin_flat = (int)(Math.floor(alpha * (windowLength - 1) / 2.0));
         int index_end_flat = windowLength - index_begin_flat;
         double window_value = 0;
-        for(int i=offset; i < index_begin_flat + 1 && i - offset + from < to; i++) {
-            window_value = 0.5 * (1 + Math.cos(Math.PI * (-1 + 2.0*i/alpha/(windowLength-1))));
+        for(int i=offset; i < index_begin_flat + 1 && i - offset + from < signal.length; i++) {
+            window_value = 0.5 * (1 + Math.cos(Math.PI * (-1 + 2.0*(i)/alpha/(windowLength-1))));
             signal[i - offset + from] *= window_value;
         }
         // End Hann part
-        for(int i=Math.max(offset, index_end_flat - 1); i < offset + windowLength && i - offset + from < to; i++) {
+        for(int i=Math.max(offset , index_end_flat - 1); i < windowLength && i - offset + from < signal.length; i++) {
             window_value =0.5 * (1 +  Math.cos(Math.PI * (-2.0/alpha + 1 + 2.0*i/alpha/(windowLength-1))));
             signal[i - offset + from] *= window_value;
         }
