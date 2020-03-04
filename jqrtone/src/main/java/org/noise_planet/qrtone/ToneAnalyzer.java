@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Analyze single tone, looking for expected peaks levels and duration
+ * Analyze trigger tone, overlapped windows
  */
 public class ToneAnalyzer {
     private final Percentile backgroundNoiseEvaluator = new Percentile(128);

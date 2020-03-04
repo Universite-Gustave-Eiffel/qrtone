@@ -444,7 +444,7 @@ public class QRToneTest {
         double timeBlankAfter = 2;
         double powerRMS = Math.pow(10, -26.0 / 20.0); // -26 dBFS
         double powerPeak = powerRMS * Math.sqrt(2);
-        double noisePeak = Math.pow(10, -80.0 / 20.0); // -26 dBFS
+        double noisePeak = Math.pow(10, -80.0 / 20.0);
         int samplesBefore = (int)(timeBlankBefore * sampleRate);
         int samplesAfter = (int)(timeBlankAfter * sampleRate);
         Configuration configuration = Configuration.getAudible(sampleRate);
@@ -471,40 +471,36 @@ public class QRToneTest {
     @Test
     public void testToneDetection() throws IOException {
         double sampleRate = 44100;
+        double timeBlankBefore = 3;
+        double timeBlankAfter = 2;
         double powerRMS = Math.pow(10, -26.0 / 20.0); // -26 dBFS
         double powerPeak = powerRMS * Math.sqrt(2);
-        double noisePeak = powerPeak; // -26 dBFS
+        double noisePeak = Math.pow(10, -50.0 / 20.0); // -26 dBFS
+        int samplesBefore = (int)(timeBlankBefore * sampleRate);
+        int samplesAfter = (int)(timeBlankAfter * sampleRate);
         Configuration configuration = Configuration.getAudible(sampleRate);
         QRTone qrTone = new QRTone(configuration);
-        double[] frequencies = configuration.computeFrequencies(QRTone.NUM_FREQUENCIES);
 
-        float[] audio = new float[(int)(sampleRate * 4.0)];
+        final int dataSampleLength = qrTone.setPayload(IPFS_PAYLOAD);
+        float[] audio = new float[dataSampleLength];
+        float[] samples = new float[samplesBefore + dataSampleLength + samplesAfter];
+        qrTone.getSamples(audio, 0, powerPeak);
+        System.arraycopy(audio, 0, samples, samplesBefore, qrTone.gateLength * 2);
         Random random = new Random(1337);
-        for (int s = 0; s < audio.length; s++) {
-            audio[s] = (float)(random.nextGaussian() * noisePeak);
+        for (int s = 0; s < samples.length; s++) {
+            samples[s] += (float)(random.nextGaussian() * noisePeak);
         }
-        int toneDuration = (int)(configuration.gateTime * sampleRate);
-        int toneLocation = audio.length / 2 - toneDuration / 2 + random.nextInt(toneDuration);
-
-        int checkFrequency = 0;
-        pushTone(audio, toneLocation, frequencies[checkFrequency], qrTone, powerPeak);
-        pushTone(audio, toneLocation + 3 * toneDuration, frequencies[checkFrequency], qrTone, powerPeak);
-        pushTone(audio, toneLocation + 4 * toneDuration, frequencies[checkFrequency], qrTone, powerPeak);
-        pushTone(audio, toneLocation + toneDuration, frequencies[checkFrequency + 1], qrTone, powerPeak);
-        pushTone(audio, toneLocation + 2 * toneDuration, frequencies[checkFrequency + 2], qrTone, powerPeak);
-
-        writeFloatToFile("target/inputSignal.raw", Arrays.copyOfRange(audio,toneLocation - toneDuration * 3, toneLocation + toneDuration * 8));
         long start = System.currentTimeMillis();
-        // Worst case, window in perfect sync with tone
-        int cursor = toneLocation % qrTone.wordLength;
-        while (cursor < audio.length) {
-            int windowSize = Math.min(random.nextInt(115) + 20, audio.length - cursor);
+        int cursor = 0;
+        while (cursor < samples.length) {
+            int windowSize = Math.min(random.nextInt(115) + 20, samples.length - cursor);
             float[] window = new float[windowSize];
-            System.arraycopy(audio, cursor, window, 0, window.length);
+            System.arraycopy(samples, cursor, window, 0, window.length);
             qrTone.pushSamples(window);
             cursor += windowSize;
         }
         System.out.println(String.format("Done in %.3f",(System.currentTimeMillis() - start) /1e3));
+        writeFloatToFile("target/inputSignal.raw", samples);
         qrTone.writeCSV("target/spectrum.csv");
     }
 }

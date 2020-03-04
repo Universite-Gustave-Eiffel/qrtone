@@ -79,12 +79,10 @@ public class QRTone {
         if(windowAnalyze < Configuration.computeMinimumWindowSize(configuration.sampleRate, frequencies[0], frequencies[1])) {
             throw new IllegalArgumentException("Tone length are not compatible with sample rate and selected frequencies");
         }
-        gate1Frequency = frequencies[frequencies.length / 2 - 1];
-        gate2Frequency = frequencies[frequencies.length / 2 - 2];
-        for(int idfreq = 0; idfreq < toneAnalyzers.length; idfreq++) {
-            toneAnalyzers[idfreq] = new ToneAnalyzer(configuration.sampleRate, frequencies[frequencies.length-toneAnalyzers.length+idfreq],
-                    windowAnalyze, this.wordLength);
-        }
+        gate1Frequency = frequencies[frequencies.length - FREQUENCY_ROOT / 2];
+        gate2Frequency = frequencies[FREQUENCY_ROOT / 2];
+        toneAnalyzers[0] = new ToneAnalyzer(configuration.sampleRate, gate1Frequency, windowAnalyze, this.wordLength);
+        toneAnalyzers[1] = new ToneAnalyzer(configuration.sampleRate, gate2Frequency, windowAnalyze, this.wordLength);
     }
 
     public Configuration getConfiguration() {
