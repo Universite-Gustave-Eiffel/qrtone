@@ -1,3 +1,36 @@
+/*
+ * BSD 3-Clause License
+ *
+ * Copyright (c) Ifsttar
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ *  Redistributions of source code must retain the above copyright notice, this
+ *   list of conditions and the following disclaimer.
+ *
+ *  Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ *
+ *  Neither the name of the copyright holder nor the names of its
+ *   contributors may be used to endorse or promote products derived from
+ *   this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ */
+
 package org.noise_planet.qrtone;
 
 import com.google.zxing.common.reedsolomon.ReedSolomonException;
@@ -28,6 +61,17 @@ public class QRToneTest {
         }
     }
 
+    @Test
+    public void crc4Test() {
+        byte[] expectedPayload = new byte[]{18, 32};
+        byte base = QRTone.crc8(expectedPayload, 0, expectedPayload.length);
+        AtomicLong next = new AtomicLong(1337);
+        for(int i=0; i < expectedPayload.length; i++) {
+            byte[] alteredPayload = Arrays.copyOf(expectedPayload, expectedPayload.length);
+            alteredPayload[i] = (byte) (QRTone.warbleRand(next) % 255);
+            assertNotEquals(base, QRTone.crc4(alteredPayload, 0, alteredPayload.length));
+        }
+    }
     @Test
     public void hannTest() {
         float[] ref= {0f,0.0039426493f,0.015708419f,0.035111757f,0.06184666f,0.095491503f,0.13551569f,0.18128801f,
@@ -338,14 +382,43 @@ public class QRToneTest {
         assertNull(decodedHeader);
     }
 
+    @Test
+    public void testSymbolEncodingDecodingL() throws ReedSolomonException {
+        String payloadStr = "Hello world !";
+        byte[] payloadBytes = payloadStr.getBytes();
+        Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_L;
+        int[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
+        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel);
+        assertArrayEquals(payloadBytes, processedBytes);
+    }
 
     @Test
-    public void testSymbolEncodingDecoding() throws ReedSolomonException {
+    public void testSymbolEncodingDecodingM() throws ReedSolomonException {
+        String payloadStr = "Hello world !";
+        byte[] payloadBytes = payloadStr.getBytes();
+        Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_M;
+        int[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
+        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel);
+        assertArrayEquals(payloadBytes, processedBytes);
+    }
+
+    @Test
+    public void testSymbolEncodingDecodingQ() throws ReedSolomonException {
         String payloadStr = "Hello world !";
         byte[] payloadBytes = payloadStr.getBytes();
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_Q;
         int[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
-        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, payloadBytes.length);
+        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel);
+        assertArrayEquals(payloadBytes, processedBytes);
+    }
+
+    @Test
+    public void testSymbolEncodingDecodingH() throws ReedSolomonException {
+        String payloadStr = "Hello world !";
+        byte[] payloadBytes = payloadStr.getBytes();
+        Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_H;
+        int[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
+        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel);
         assertArrayEquals(payloadBytes, processedBytes);
     }
 
@@ -355,9 +428,9 @@ public class QRToneTest {
                 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114};
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_Q;
         int[] symbols = QRTone.payloadToSymbols(expectedPayload, eccLevel);
-        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, expectedPayload.length);
+        System.out.println(String.format(Locale.ROOT, "Signal length %.3f seconds", (symbols.length / 2) * 0.06 + 0.012));
+        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel);
         assertArrayEquals(expectedPayload, processedBytes);
-
     }
 
     @Test
