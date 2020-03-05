@@ -64,9 +64,8 @@ public class QRTone {
     // Column and rows of DTMF that make a char
     public final static int FREQUENCY_ROOT = 16;
     private final double[] frequencies;
-    ToneAnalyzer[] toneAnalyzers = new ToneAnalyzer[2];
+    final TriggerAnalyzer triggerAnalyzer;
     private int[] symbolsToDeliver;
-    private int windowOffset = 0;
     private final int windowAnalyze;
 
     public QRTone(Configuration configuration) {
@@ -81,8 +80,7 @@ public class QRTone {
         }
         gate1Frequency = frequencies[frequencies.length - FREQUENCY_ROOT / 2];
         gate2Frequency = frequencies[FREQUENCY_ROOT / 2];
-        toneAnalyzers[0] = new ToneAnalyzer(configuration.sampleRate, gate1Frequency, windowAnalyze, this.gateLength);
-        toneAnalyzers[1] = new ToneAnalyzer(configuration.sampleRate, gate2Frequency, windowAnalyze, this.gateLength);
+        triggerAnalyzer = new TriggerAnalyzer(configuration.sampleRate, windowAnalyze, new double[]{gate1Frequency, gate2Frequency});
     }
 
     public Configuration getConfiguration() {
@@ -395,6 +393,10 @@ public class QRTone {
         }
     }
 
+    void setTriggerCallback(TriggerAnalyzer.TriggerCallback triggerCallback) {
+        triggerAnalyzer.setTriggerCallback(triggerCallback);
+    }
+
     public static double computeRms(float[] signal) {
         double sum = 0;
         for (double aSignal : signal) {
@@ -403,46 +405,9 @@ public class QRTone {
         return Math.sqrt(sum / signal.length);
     }
 
-    public void writeCSV(String path) throws IOException {
-        try(FileOutputStream fos = new FileOutputStream(path)) {
-            BufferedOutputStream bos = new BufferedOutputStream(fos);
-            Writer writer = new OutputStreamWriter(bos);
-            writer.write("t");
-            for (int idfreq = 0; idfreq < toneAnalyzers.length; idfreq++) {
-                writer.write(",");
-                writer.write(String.format(Locale.ROOT, "%.0f Hz (L)", frequencies[frequencies.length - toneAnalyzers.length + idfreq]));
-                writer.write(String.format(Locale.ROOT, ",%.0f Hz (L05)", frequencies[frequencies.length - toneAnalyzers.length +idfreq]));
-                writer.write(String.format(Locale.ROOT, ",%.0f Hz (Peak)", frequencies[frequencies.length - toneAnalyzers.length +idfreq]));
-            }
-            writer.write("\n");
-            for (int i = 0; i < toneAnalyzers[0].values.size(); i++) {
-                writer.write(String.format(Locale.ROOT, "%.3f", (i * windowAnalyze) / configuration.sampleRate));
-                for (int idfreq = 0; idfreq < toneAnalyzers.length; idfreq++) {
-                    for(double val : toneAnalyzers[idfreq].values.get(i)) {
-                        writer.write(String.format(Locale.ROOT, ",%.2f", val));
-                    }
-                }
-                writer.write("\n");
-            }
-            writer.flush();
-        }
-    }
-
     public void pushSamples(float[] samples) {
-        int processed = 0;
-        while(processed < samples.length) {
-            int toProcess = Math.min(samples.length - processed,windowAnalyze - windowOffset);
-            applyHann(samples,processed, processed + toProcess, windowAnalyze, windowOffset);
-            for(int idfreq = 0; idfreq < toneAnalyzers.length; idfreq++) {
-                toneAnalyzers[idfreq].processSamples(samples, processed, processed + toProcess);
-            }
-            processed += toProcess;
-            windowOffset += toProcess;
-            if(windowOffset == windowAnalyze) {
-                windowOffset = 0;
-                // TODO process data
-            }
-        }
+        // todo if state==trigger
+        triggerAnalyzer.processSamples(samples);
     }
 
     protected static class Header {

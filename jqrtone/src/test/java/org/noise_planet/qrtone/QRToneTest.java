@@ -36,8 +36,7 @@ package org.noise_planet.qrtone;
 import com.google.zxing.common.reedsolomon.ReedSolomonException;
 import org.junit.Test;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
@@ -481,7 +480,9 @@ public class QRToneTest {
         int samplesAfter = (int)(timeBlankAfter * sampleRate);
         Configuration configuration = Configuration.getAudible(sampleRate);
         QRTone qrTone = new QRTone(configuration);
-
+        CSVWriter csvWriter = new CSVWriter();
+        csvWriter.open("target/spectrum.csv");
+        qrTone.setTriggerCallback(csvWriter);
         final int dataSampleLength = qrTone.setPayload(IPFS_PAYLOAD);
         float[] audio = new float[dataSampleLength];
         float[] samples = new float[samplesBefore + dataSampleLength + samplesAfter];
@@ -501,7 +502,44 @@ public class QRToneTest {
             cursor += windowSize;
         }
         System.out.println(String.format("Done in %.3f",(System.currentTimeMillis() - start) /1e3));
+        csvWriter.close();
         writeFloatToFile("target/inputSignal.raw", samples);
-        qrTone.writeCSV("target/spectrum.csv");
+    }
+
+    static class CSVWriter implements TriggerAnalyzer.TriggerCallback {
+        double[] frequencies;
+        Writer writer;
+        public void open(String path) throws FileNotFoundException {
+            FileOutputStream fos = new FileOutputStream(path);
+            BufferedOutputStream bos = new BufferedOutputStream(fos);
+            writer = new OutputStreamWriter(bos);
+        }
+
+        @Override
+        public void onNewLevels(TriggerAnalyzer triggerAnalyzer, double[] spl) {
+            try {
+                if (frequencies == null) {
+                    frequencies = triggerAnalyzer.frequencies;
+                    writer.write("t");
+                    for (double frequency : frequencies) {
+                        writer.write(",");
+                        writer.write(String.format(Locale.ROOT, "%.0f Hz (L)", frequency));
+                    }
+                    writer.write("\n");
+                }
+                writer.write(String.format(Locale.ROOT, "%.3f", triggerAnalyzer.getTotalProcessed() / triggerAnalyzer.sampleRate));
+                for (double v : spl) {
+                    writer.write(String.format(Locale.ROOT, ",%.2f", v));
+                }
+                writer.write("\n");
+            } catch (IOException ex) {
+                System.err.println(ex.getLocalizedMessage());
+            }
+        }
+
+        public void close() throws IOException {
+            writer.flush();
+            writer.close();
+        }
     }
 }
