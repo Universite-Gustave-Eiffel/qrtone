@@ -55,15 +55,15 @@ public class TriggerAnalyzer {
             windowProcessed.addAndGet(toProcess);
             if(windowProcessed.get() == windowAnalyze) {
                 windowProcessed.set(0);
-                if(triggerCallback != null) {
-                    double[] splLevels = new double[frequencies.length];
-                    for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
-                        splLevels[idfreq] = 20 * Math.log10(frequencyAnalyzers[idfreq].
-                                computeRMS(false).rms);
-                    }
-                    triggerCallback.onNewLevels(this, totalProcessed + processed, splLevels);
+                double[] splLevels = new double[frequencies.length];
+                for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
+                    splLevels[idfreq] = 20 * Math.log10(frequencyAnalyzers[idfreq].
+                            computeRMS(false).rms);
                 }
                 // TODO process data
+                if(triggerCallback != null) {
+                    triggerCallback.onNewLevels(this, totalProcessed + processed, splLevels);
+                }
             }
         }
     }

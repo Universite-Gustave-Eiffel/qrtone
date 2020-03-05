@@ -309,7 +309,6 @@ public class QRToneTest {
         for (double aSignal : signal) {
             maxValue = Math.max(maxValue, Math.abs(aSignal));
         }
-        System.out.println("Max value " + maxValue);
         maxValue *= 2;
         for(int i=0; i<signal.length;i++) {
             shortSignal[i] = (short)((signal[i] / maxValue) * Short.MAX_VALUE);
@@ -471,7 +470,7 @@ public class QRToneTest {
     @Test
     public void testToneDetection() throws IOException {
         double sampleRate = 44100;
-        double timeBlankBefore = 3;
+        double timeBlankBefore = 1.1333;
         double timeBlankAfter = 2;
         double powerRMS = Math.pow(10, -26.0 / 20.0); // -26 dBFS
         double powerPeak = powerRMS * Math.sqrt(2);
@@ -482,7 +481,7 @@ public class QRToneTest {
         QRTone qrTone = new QRTone(configuration);
         CSVWriter csvWriter = new CSVWriter();
         csvWriter.open("target/spectrum.csv");
-        qrTone.setTriggerCallback(csvWriter);
+        //qrTone.setTriggerCallback(csvWriter);
         final int dataSampleLength = qrTone.setPayload(IPFS_PAYLOAD);
         float[] audio = new float[dataSampleLength];
         float[] samples = new float[samplesBefore + dataSampleLength + samplesAfter];
