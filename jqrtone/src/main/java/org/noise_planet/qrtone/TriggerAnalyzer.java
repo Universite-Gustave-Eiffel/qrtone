@@ -86,18 +86,24 @@ public class TriggerAnalyzer {
      * Quadratic interpolation of three adjacent samples
      * @param p0 y value of left point
      * @param p1 y value of center point (maximum height)
-     * @param p3 y value of right point
+     * @param p2 y value of right point
      * @return location [-1; 1] relative to center point, height and half-curvature of a parabolic fit through
+     * @link https://www.dsprelated.com/freebooks/sasp/Sinusoidal_Peak_Interpolation.html
      * three points
      */
-    public static double[] peakLocation(double p0, double p1, double p3) {
+    public static double[] quadraticInterpolation(double p0, double p1, double p2) {
         double location;
         double height;
         double halfCurvature;
-        location = (p3 - p0) / (2.0 * (2 * p1 - p3 - p0));
-        height = p1 - 0.25 * (p0 - p3) * location;
-        halfCurvature = 0.5 * (p0 - 2 * p1 + p3);
+        location = (p2 - p0) / (2.0 * (2 * p1 - p2 - p0));
+        height = p1 - 0.25 * (p0 - p2) * location;
+        halfCurvature = 0.5 * (p0 - 2 * p1 + p2);
         return new double[]{location, height, halfCurvature};
+    }
+
+    public static long findPeakLocation(double p0, double p1, double p2, long p1Location, int windowLength) {
+        double location = quadraticInterpolation(p0, p1, p2)[0];
+        return p1Location + (int)(location*windowLength);
     }
 
     public interface TriggerCallback {
