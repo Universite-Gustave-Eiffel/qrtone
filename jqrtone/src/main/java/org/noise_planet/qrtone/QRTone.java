@@ -81,8 +81,8 @@ public class QRTone {
         }
         gate1Frequency = frequencies[frequencies.length - FREQUENCY_ROOT / 2];
         gate2Frequency = frequencies[FREQUENCY_ROOT / 2];
-        toneAnalyzers[0] = new ToneAnalyzer(configuration.sampleRate, gate1Frequency, windowAnalyze, this.wordLength);
-        toneAnalyzers[1] = new ToneAnalyzer(configuration.sampleRate, gate2Frequency, windowAnalyze, this.wordLength);
+        toneAnalyzers[0] = new ToneAnalyzer(configuration.sampleRate, gate1Frequency, windowAnalyze, this.gateLength);
+        toneAnalyzers[1] = new ToneAnalyzer(configuration.sampleRate, gate2Frequency, windowAnalyze, this.gateLength);
     }
 
     public Configuration getConfiguration() {
@@ -432,7 +432,7 @@ public class QRTone {
         int processed = 0;
         while(processed < samples.length) {
             int toProcess = Math.min(samples.length - processed,windowAnalyze - windowOffset);
-            //applyHann(samples,processed, processed + toProcess, windowAnalyze, windowOffset);
+            applyHann(samples,processed, processed + toProcess, windowAnalyze, windowOffset);
             for(int idfreq = 0; idfreq < toneAnalyzers.length; idfreq++) {
                 toneAnalyzers[idfreq].processSamples(samples, processed, processed + toProcess);
             }

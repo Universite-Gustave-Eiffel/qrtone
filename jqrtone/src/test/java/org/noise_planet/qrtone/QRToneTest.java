@@ -308,8 +308,9 @@ public class QRToneTest {
         short[] shortSignal = new short[signal.length];
         double maxValue = Double.MIN_VALUE;
         for (double aSignal : signal) {
-            maxValue = Math.max(maxValue, aSignal);
+            maxValue = Math.max(maxValue, Math.abs(aSignal));
         }
+        System.out.println("Max value " + maxValue);
         maxValue *= 2;
         for(int i=0; i<signal.length;i++) {
             shortSignal[i] = (short)((signal[i] / maxValue) * Short.MAX_VALUE);
