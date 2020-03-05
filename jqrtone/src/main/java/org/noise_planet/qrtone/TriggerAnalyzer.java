@@ -91,7 +91,7 @@ public class TriggerAnalyzer {
      * @link https://www.dsprelated.com/freebooks/sasp/Sinusoidal_Peak_Interpolation.html
      * three points
      */
-    public static double[] quadraticInterpolation(double p0, double p1, double p2) {
+    private static double[] quadraticInterpolation(double p0, double p1, double p2) {
         double location;
         double height;
         double halfCurvature;
@@ -101,6 +101,15 @@ public class TriggerAnalyzer {
         return new double[]{location, height, halfCurvature};
     }
 
+    /**
+     * Evaluate peak location of a gaussian
+     * @param p0 y value of left point
+     * @param p1 y value of center point (maximum height)
+     * @param p2 y value of right point
+     * @param p1Location x value of p1
+     * @param windowLength x delta between points
+     * @return Peak x value
+     */
     public static long findPeakLocation(double p0, double p1, double p2, long p1Location, int windowLength) {
         double location = quadraticInterpolation(p0, p1, p2)[0];
         return p1Location + (int)(location*windowLength);
