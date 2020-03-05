@@ -436,7 +436,7 @@ public class QRToneTest {
         assertArrayEquals(IPFS_PAYLOAD, processedBytes);
     }
 
-    @Test
+
     public void testToneGeneration() throws IOException {
         double sampleRate = 44100;
         double timeBlankBefore = 3;
@@ -481,7 +481,7 @@ public class QRToneTest {
         QRTone qrTone = new QRTone(configuration);
         CSVWriter csvWriter = new CSVWriter();
         csvWriter.open("target/spectrum.csv");
-        //qrTone.setTriggerCallback(csvWriter);
+        qrTone.setTriggerCallback(csvWriter);
         final int dataSampleLength = qrTone.setPayload(IPFS_PAYLOAD);
         float[] audio = new float[dataSampleLength];
         float[] samples = new float[samplesBefore + dataSampleLength + samplesAfter];
@@ -502,7 +502,7 @@ public class QRToneTest {
         }
         System.out.println(String.format("Done in %.3f",(System.currentTimeMillis() - start) /1e3));
         csvWriter.close();
-        writeFloatToFile("target/inputSignal.raw", samples);
+        //writeFloatToFile("target/inputSignal.raw", samples);
     }
 
     static class CSVWriter implements TriggerAnalyzer.TriggerCallback {
