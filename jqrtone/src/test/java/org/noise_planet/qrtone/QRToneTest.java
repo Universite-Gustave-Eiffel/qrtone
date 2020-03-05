@@ -516,7 +516,7 @@ public class QRToneTest {
         }
 
         @Override
-        public void onNewLevels(TriggerAnalyzer triggerAnalyzer, double[] spl) {
+        public void onNewLevels(TriggerAnalyzer triggerAnalyzer, long location, double[] spl) {
             try {
                 if (frequencies == null) {
                     frequencies = triggerAnalyzer.frequencies;
@@ -527,7 +527,7 @@ public class QRToneTest {
                     }
                     writer.write("\n");
                 }
-                writer.write(String.format(Locale.ROOT, "%.3f", triggerAnalyzer.getTotalProcessed() / triggerAnalyzer.sampleRate));
+                writer.write(String.format(Locale.ROOT, "%.3f", location / triggerAnalyzer.sampleRate));
                 for (double v : spl) {
                     writer.write(String.format(Locale.ROOT, ",%.2f", v));
                 }

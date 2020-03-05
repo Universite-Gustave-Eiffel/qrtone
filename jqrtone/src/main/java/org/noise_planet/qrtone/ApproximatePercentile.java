@@ -54,20 +54,10 @@ public class ApproximatePercentile {
 
 
     private int allocateMarkers(int count) {
-        double[] newq = new double[marker_count + count];
-        double[] newdn = new double[marker_count + count];
-        double[] newnp = new double[marker_count + count];
-        int[] newn = new int[marker_count + count];
-
-        System.arraycopy(q, 0, newq, 0, marker_count);
-        System.arraycopy(dn, 0, newdn, 0, marker_count);
-        System.arraycopy(np, 0, newnp, 0, marker_count);
-        System.arraycopy(n, 0, newn, 0, marker_count);
-
-        q = newq;
-        dn = newdn;
-        np = newnp;
-        n = newn;
+        q = Arrays.copyOf(q, marker_count + count);
+        dn = Arrays.copyOf(dn, marker_count + count);
+        np = Arrays.copyOf(np, marker_count + count);
+        n = Arrays.copyOf(n, marker_count + count);
 
         marker_count += count;
 

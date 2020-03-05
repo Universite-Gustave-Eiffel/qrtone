@@ -1,7 +1,9 @@
 package org.noise_planet.qrtone;
 
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class TriggerAnalyzer {
     private AtomicInteger processedWindowAlpha = new AtomicInteger(0);
@@ -40,7 +42,8 @@ public class TriggerAnalyzer {
         return totalProcessed;
     }
 
-    private void doProcess(float[] samples, AtomicInteger windowProcessed, IterativeGeneralizedGoertzel[] frequencyAnalyzers) {
+    private void doProcess(float[] samples, AtomicInteger windowProcessed,
+                           IterativeGeneralizedGoertzel[] frequencyAnalyzers) {
         int processed = 0;
         while(processed < samples.length) {
             int toProcess = Math.min(samples.length - processed,windowAnalyze - windowProcessed.get());
@@ -58,7 +61,7 @@ public class TriggerAnalyzer {
                         splLevels[idfreq] = 20 * Math.log10(frequencyAnalyzers[idfreq].
                                 computeRMS(false).rms);
                     }
-                    triggerCallback.onNewLevels(this, splLevels);
+                    triggerCallback.onNewLevels(this, totalProcessed + processed, splLevels);
                 }
                 // TODO process data
             }
@@ -66,19 +69,19 @@ public class TriggerAnalyzer {
     }
 
     public void processSamples(float[] samples) {
-        doProcess(samples, processedWindowAlpha, frequencyAnalyzersAlpha);
+        doProcess(Arrays.copyOf(samples, samples.length), processedWindowAlpha, frequencyAnalyzersAlpha);
         if(totalProcessed > startProcessBeta) {
-            doProcess(samples, processedWindowBeta, frequencyAnalyzersBeta);
+            doProcess(Arrays.copyOf(samples, samples.length), processedWindowBeta, frequencyAnalyzersBeta);
         } else if(startProcessBeta - totalProcessed < samples.length){
             // Start to process on the part used by the offset window
             doProcess(Arrays.copyOfRange(samples, startProcessBeta - (int)totalProcessed,
-                    samples.length - startProcessBeta - (int)totalProcessed), processedWindowBeta,
+                    samples.length), processedWindowBeta,
                     frequencyAnalyzersBeta);
         }
         totalProcessed+=samples.length;
     }
 
     public interface TriggerCallback {
-        void onNewLevels(TriggerAnalyzer triggerAnalyzer, double[] spl);
+        void onNewLevels(TriggerAnalyzer triggerAnalyzer, long location, double[] spl);
     }
 }
