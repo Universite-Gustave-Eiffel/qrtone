@@ -85,9 +85,10 @@ public class TriggerAnalyzer {
     /**
      * Quadratic interpolation of three adjacent samples
      * @param p0 y value of left point
-     * @param p1 y value of center point
+     * @param p1 y value of center point (maximum height)
      * @param p3 y value of right point
-     * @return location, height and half-curvature of a parabolic fit through three points
+     * @return location [-1; 1] relative to center point, height and half-curvature of a parabolic fit through
+     * three points
      */
     public static double[] peakLocation(double p0, double p1, double p3) {
         double location;
