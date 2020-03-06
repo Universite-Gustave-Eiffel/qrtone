@@ -91,7 +91,7 @@ public class TriggerAnalyzer {
      * @link https://www.dsprelated.com/freebooks/sasp/Sinusoidal_Peak_Interpolation.html
      * three points
      */
-    private static double[] quadraticInterpolation(double p0, double p1, double p2) {
+     static double[] quadraticInterpolation(double p0, double p1, double p2) {
         double location;
         double height;
         double halfCurvature;

@@ -541,4 +541,33 @@ public class QRToneTest {
             writer.close();
         }
     }
+
+    @Test
+    public void testPeakFinding() {
+        float[] samples = new float[521];
+        double sigma = 0.5;
+        // Create gaussian
+        float maxVal = Float.MIN_VALUE;
+        int maxIndex = 0;
+        for(int i = 0; i < samples.length; i++) {
+            samples[i] = (float)Math.exp(-1.0/2.0 * Math.pow((i - samples.length / 2.) / (sigma * samples.length / 2.), 2));
+            if(maxVal < samples[i]) {
+                maxVal = samples[i];
+                maxIndex = i;
+            }
+        }
+        maxVal = Float.MIN_VALUE;
+        int windowIndex = 0;
+        int window = 35;
+        for(int i=window; i < samples.length; i+=window) {
+            if(maxVal < samples[i]) {
+                maxVal = samples[i];
+                windowIndex = i;
+            }
+        }
+        // Estimation of peak position
+        assertEquals(maxIndex, TriggerAnalyzer.findPeakLocation(samples[windowIndex-window], samples[windowIndex], samples[windowIndex+window], windowIndex, window));
+        // Estimation of peak height, should be 1.0
+        assertEquals(1.0, TriggerAnalyzer.quadraticInterpolation(samples[windowIndex-window], samples[windowIndex], samples[windowIndex+window])[1], 1e-3);
+    }
 }
