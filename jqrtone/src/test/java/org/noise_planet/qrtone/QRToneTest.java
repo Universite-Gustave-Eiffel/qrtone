@@ -316,15 +316,6 @@ public class QRToneTest {
         writeShortToFile(path, shortSignal);
     }
 
-    private void pushTone(float[] signal,int location,double frequency, QRTone qrTone, double powerPeak) {
-        float[] tone = new float[qrTone.wordLength];
-        QRTone.generatePitch(tone, 0, qrTone.wordLength, 0, qrTone.getConfiguration().sampleRate, frequency, powerPeak);
-        QRTone.applyTukey(tone, 0, tone.length, 0.8, tone.length, 0);
-        for(int i=0; i < tone.length; i++) {
-            signal[location+i] += tone[i];
-        }
-    }
-
     @Test
     public void randTest() {
         // This specific random must give the same results regardless of the platform/compiler
@@ -437,6 +428,7 @@ public class QRToneTest {
     }
 
 
+    @Test
     public void testToneGeneration() throws IOException {
         double sampleRate = 44100;
         double timeBlankBefore = 3;
@@ -486,7 +478,7 @@ public class QRToneTest {
         float[] audio = new float[dataSampleLength];
         float[] samples = new float[samplesBefore + dataSampleLength + samplesAfter];
         qrTone.getSamples(audio, 0, powerPeak);
-        System.arraycopy(audio, 0, samples, samplesBefore, qrTone.gateLength * 2);
+        System.arraycopy(audio, 0, samples, samplesBefore, dataSampleLength);
         Random random = new Random(1337);
         for (int s = 0; s < samples.length; s++) {
             samples[s] += (float)(random.nextGaussian() * noisePeak);
@@ -502,7 +494,7 @@ public class QRToneTest {
         }
         System.out.println(String.format("Done in %.3f",(System.currentTimeMillis() - start) /1e3));
         csvWriter.close();
-        //writeFloatToFile("target/inputSignal.raw", samples);
+        writeFloatToFile("target/inputSignal.raw", samples);
     }
 
     static class CSVWriter implements TriggerAnalyzer.TriggerCallback {
@@ -512,6 +504,11 @@ public class QRToneTest {
             FileOutputStream fos = new FileOutputStream(path);
             BufferedOutputStream bos = new BufferedOutputStream(fos);
             writer = new OutputStreamWriter(bos);
+        }
+
+        @Override
+        public void onTrigger(TriggerAnalyzer triggerAnalyzer, long messageStartLocation) {
+            System.out.println(String.format(Locale.ROOT, "Found trigger at %.3f",messageStartLocation / triggerAnalyzer.sampleRate));
         }
 
         @Override

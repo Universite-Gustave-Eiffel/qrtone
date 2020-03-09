@@ -73,8 +73,8 @@ public class QRTone {
         this.gateLength = (int)(configuration.sampleRate * configuration.gateTime);
         this.wordSilenceLength = (int)(configuration.sampleRate * configuration.wordSilenceTime);
         this.frequencies = configuration.computeFrequencies(NUM_FREQUENCIES);
-        gate1Frequency = frequencies[FREQUENCY_ROOT / 2];
-        gate2Frequency = frequencies[FREQUENCY_ROOT / 2 + 1];
+        gate1Frequency = frequencies[FREQUENCY_ROOT ];
+        gate2Frequency = frequencies[FREQUENCY_ROOT + 2];
         triggerAnalyzer = new TriggerAnalyzer(configuration.sampleRate, gateLength, new double[]{gate1Frequency, gate2Frequency}, configuration.triggerSnr);
     }
 
@@ -222,19 +222,19 @@ public class QRTone {
      */
     public void getSamples(float[] samples, int offset, double power) {
         int cursor = 0;
-        generatePitch(samples, Math.max(0, cursor - offset), gateLength, offset, configuration.sampleRate, gate1Frequency, power);
+        generatePitch(samples, Math.max(0, cursor - offset), gateLength, Math.max(0, offset - cursor), configuration.sampleRate, gate1Frequency, power);
         applyHann(samples, Math.max(0, cursor - offset), cursor + gateLength, gateLength, offset);
         cursor += gateLength;
-        generatePitch(samples, Math.max(0, cursor - offset), gateLength, offset - cursor, configuration.sampleRate, gate2Frequency, power);
+        generatePitch(samples, Math.max(0, cursor - offset), gateLength, Math.max(0, offset - cursor), configuration.sampleRate, gate2Frequency, power);
         applyHann(samples, Math.max(0, cursor - offset), cursor + gateLength, gateLength, offset - cursor);
         cursor += gateLength;
         for (int i = 0; i < symbolsToDeliver.length; i += 2) {
             cursor += wordSilenceLength;
             double f1 = frequencies[symbolsToDeliver[i]];
             double f2 = frequencies[symbolsToDeliver[i + 1] + FREQUENCY_ROOT];
-            generatePitch(samples, Math.max(0, cursor - offset), wordLength, offset - cursor, configuration.sampleRate, f1, power / 2);
-            generatePitch(samples, Math.max(0, cursor - offset), wordLength, offset - cursor, configuration.sampleRate, f2, power / 2);
-            applyTukey(samples, Math.max(0, cursor - offset), cursor + wordLength, TUKEY_ALPHA, wordLength, offset - cursor);
+            generatePitch(samples, Math.max(0, cursor - offset), wordLength, Math.max(0, offset - cursor), configuration.sampleRate, f1, power / 2);
+            generatePitch(samples, Math.max(0, cursor - offset), wordLength, Math.max(0, offset - cursor), configuration.sampleRate, f2, power / 2);
+            applyTukey(samples, Math.max(0, cursor - offset), cursor + wordLength, TUKEY_ALPHA, wordLength, Math.max(0, offset - cursor));
             cursor += wordLength;
         }
     }

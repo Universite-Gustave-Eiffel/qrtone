@@ -113,7 +113,7 @@ public class PeakFinder {
             decreaseCount = 0;
         } else {
             decreaseCount++;
-            if(decreaseCount > minDecreaseCount && added) {
+            if(decreaseCount >= minDecreaseCount && added) {
                 // condition for decrease fulfilled
                 added = false;
                 ret = true;

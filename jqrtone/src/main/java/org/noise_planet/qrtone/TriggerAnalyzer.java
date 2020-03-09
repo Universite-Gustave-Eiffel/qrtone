@@ -24,7 +24,7 @@ public class TriggerAnalyzer {
 
 
     public TriggerAnalyzer(double sampleRate, int gateLength, double[] frequencies, double triggerSnr) {
-        this.windowAnalyze = gateLength / 2;
+        this.windowAnalyze = gateLength / 3;
         this.frequencies = frequencies;
         this.sampleRate = sampleRate;
         this.triggerSnr = triggerSnr;
@@ -39,7 +39,7 @@ public class TriggerAnalyzer {
         backgroundNoiseEvaluator = new ApproximatePercentile[frequencies.length];
         splHistory = new CircularArray[frequencies.length];
         peakFinder = new PeakFinder();
-        peakFinder.setMinIncreaseCount(gateLength / windowOffset / 2);
+        peakFinder.setMinIncreaseCount(Math.max(1, gateLength / windowOffset / 2 - 1));
         peakFinder.setMinDecreaseCount(peakFinder.getMinIncreaseCount());
         for(int i=0; i<frequencies.length; i++) {
             frequencyAnalyzersAlpha[i] = new IterativeGeneralizedGoertzel(sampleRate, frequencies[i], windowAnalyze);
@@ -100,12 +100,14 @@ public class TriggerAnalyzer {
                                 // Evaluate the exact position of the first tone
                                 long peakLocation = findPeakLocation(splHistory[frequencies.length - 1].get(peakIndex-1)
                                         ,element.value,splHistory[frequencies.length - 1].get(peakIndex+1),element.index,windowOffset);
-                                firstToneLocation = peakLocation + gateLength / 2;
+                                firstToneLocation = peakLocation + gateLength / 2 + windowOffset;
+                                if(triggerCallback != null) {
+                                    triggerCallback.onTrigger(this, peakLocation - gateLength / 2 - gateLength + windowOffset);
+                                }
                             }
                         }
                     }
                 }
-                // TODO process data
                 if(triggerCallback != null) {
                     triggerCallback.onNewLevels(this, location, splLevels);
                 }
@@ -161,5 +163,6 @@ public class TriggerAnalyzer {
 
     public interface TriggerCallback {
         void onNewLevels(TriggerAnalyzer triggerAnalyzer, long location, double[] spl);
+        void onTrigger(TriggerAnalyzer triggerAnalyzer, long messageStartLocation);
     }
 }
