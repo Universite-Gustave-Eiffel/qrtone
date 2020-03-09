@@ -6,9 +6,9 @@ import java.util.AbstractList;
  * Keep fixed sized array of element, without moving elements at each insertion
  */
 public class CircularArray extends AbstractList<Float> {
-    float[] values;
-    int cursor=0;
-    int inserted = 0;
+    private float[] values;
+    private int cursor=0;
+    private int inserted = 0;
 
     public CircularArray(int size) {
         values = new float[size];
@@ -21,6 +21,13 @@ public class CircularArray extends AbstractList<Float> {
             cicularIndex += values.length;
         }
         return values[cicularIndex];
+    }
+
+    public Float last() {
+        if(inserted == 0) {
+            return null;
+        }
+        return get(size() - 1);
     }
 
     @Override

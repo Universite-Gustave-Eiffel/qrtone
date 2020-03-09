@@ -1,36 +1,51 @@
 package org.noise_planet.qrtone;
 
 import java.util.Arrays;
-import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class TriggerAnalyzer {
     private AtomicInteger processedWindowAlpha = new AtomicInteger(0);
     private AtomicInteger processedWindowBeta = new AtomicInteger(0);
-    private final ApproximatePercentile[] backgroundNoiseEvaluator;
-    private final int startProcessBeta;
+    private final int windowOffset;
+    private final int gateLength;
     private IterativeGeneralizedGoertzel[] frequencyAnalyzersAlpha;
     private IterativeGeneralizedGoertzel[] frequencyAnalyzersBeta;
+    final ApproximatePercentile[] backgroundNoiseEvaluator;
+    final CircularArray[] splHistory;
+    final PeakFinder peakFinder;
     private final int windowAnalyze;
     private long totalProcessed = 0;
     private TriggerCallback triggerCallback = null;
     final double[] frequencies;
     final double sampleRate;
+    public final double triggerSnr;
+    private long firstToneLocation = -1;
 
-    public TriggerAnalyzer(double sampleRate, int windowAnalyze, double[] frequencies) {
-        this.windowAnalyze = windowAnalyze;
+
+
+    public TriggerAnalyzer(double sampleRate, int gateLength, double[] frequencies, double triggerSnr) {
+        this.windowAnalyze = gateLength / 2;
         this.frequencies = frequencies;
         this.sampleRate = sampleRate;
+        this.triggerSnr = triggerSnr;
+        this.gateLength = gateLength;
+        if(windowAnalyze < Configuration.computeMinimumWindowSize(sampleRate, frequencies[0], frequencies[1])) {
+            throw new IllegalArgumentException("Tone length are not compatible with sample rate and selected frequencies");
+        }
         // 50% overlap
-        startProcessBeta = windowAnalyze / 2;
+        windowOffset = windowAnalyze / 2;
         frequencyAnalyzersAlpha = new IterativeGeneralizedGoertzel[frequencies.length];
         frequencyAnalyzersBeta = new IterativeGeneralizedGoertzel[frequencies.length];
         backgroundNoiseEvaluator = new ApproximatePercentile[frequencies.length];
+        splHistory = new CircularArray[frequencies.length];
+        peakFinder = new PeakFinder();
+        peakFinder.setMinIncreaseCount(gateLength / windowOffset / 2);
+        peakFinder.setMinDecreaseCount(peakFinder.getMinIncreaseCount());
         for(int i=0; i<frequencies.length; i++) {
             frequencyAnalyzersAlpha[i] = new IterativeGeneralizedGoertzel(sampleRate, frequencies[i], windowAnalyze);
             frequencyAnalyzersBeta[i] = new IterativeGeneralizedGoertzel(sampleRate, frequencies[i], windowAnalyze);
             backgroundNoiseEvaluator[i] = new ApproximatePercentile(0.5);
+            splHistory[i] = new CircularArray((gateLength * 3) / windowOffset);
         }
     }
 
@@ -57,13 +72,42 @@ public class TriggerAnalyzer {
                 windowProcessed.set(0);
                 double[] splLevels = new double[frequencies.length];
                 for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
-                    splLevels[idfreq] = 20 * Math.log10(frequencyAnalyzers[idfreq].
+                    double splLevel = 20 * Math.log10(frequencyAnalyzers[idfreq].
                             computeRMS(false).rms);
-                    backgroundNoiseEvaluator[idfreq].add(splLevels[idfreq]);
+                    splLevels[idfreq] = splLevel;
+                    backgroundNoiseEvaluator[idfreq].add(splLevel);
+                    splHistory[idfreq].add((float)splLevel);
+                }
+                final long location = totalProcessed + processed - windowAnalyze;
+                if(peakFinder.add(location, splHistory[frequencies.length - 1].last())) {
+                    // Find peak
+                    PeakFinder.Element element = peakFinder.getLastPeak();
+                    // Check if peak value is greater than specified Signal Noise ratio
+                    double backgroundNoiseSecondPeak = backgroundNoiseEvaluator[frequencies.length - 1].result();
+                    if(element.value > backgroundNoiseSecondPeak + triggerSnr) {
+                        // Check if the level on other triggering frequencies is below triggering level (at the same time)
+                        int peakIndex = splHistory[frequencies.length - 1].size() - 1 -
+                                (int)(location / windowOffset - element.index / windowOffset);
+                        double backgroundNoiseFirstPeak = backgroundNoiseEvaluator[0].result();
+                        if(peakIndex >= 0 && peakIndex < splHistory[0].size() &&
+                                splHistory[0].get(peakIndex) < backgroundNoiseFirstPeak + triggerSnr) {
+                            int firstPeakIndex = peakIndex - (gateLength / windowOffset);
+                            // Check if for the first peak the level was
+                            if(firstPeakIndex >= 0 && firstPeakIndex < splHistory[0].size()
+                                    && splHistory[0].get(firstPeakIndex) > backgroundNoiseFirstPeak + triggerSnr &&
+                                    splHistory[frequencies.length - 1].get(firstPeakIndex) < backgroundNoiseSecondPeak + triggerSnr) {
+                                // All trigger conditions are met
+                                // Evaluate the exact position of the first tone
+                                long peakLocation = findPeakLocation(splHistory[frequencies.length - 1].get(peakIndex-1)
+                                        ,element.value,splHistory[frequencies.length - 1].get(peakIndex+1),element.index,windowOffset);
+                                firstToneLocation = peakLocation + gateLength / 2;
+                            }
+                        }
+                    }
                 }
                 // TODO process data
                 if(triggerCallback != null) {
-                    triggerCallback.onNewLevels(this, totalProcessed + processed - windowAnalyze, splLevels);
+                    triggerCallback.onNewLevels(this, location, splLevels);
                 }
             }
         }
@@ -71,11 +115,11 @@ public class TriggerAnalyzer {
 
     public void processSamples(float[] samples) {
         doProcess(Arrays.copyOf(samples, samples.length), processedWindowAlpha, frequencyAnalyzersAlpha);
-        if(totalProcessed > startProcessBeta) {
+        if(totalProcessed > windowOffset) {
             doProcess(Arrays.copyOf(samples, samples.length), processedWindowBeta, frequencyAnalyzersBeta);
-        } else if(startProcessBeta - totalProcessed < samples.length){
+        } else if(windowOffset - totalProcessed < samples.length){
             // Start to process on the part used by the offset window
-            doProcess(Arrays.copyOfRange(samples, startProcessBeta - (int)totalProcessed,
+            doProcess(Arrays.copyOfRange(samples, windowOffset - (int)totalProcessed,
                     samples.length), processedWindowBeta,
                     frequencyAnalyzersBeta);
         }

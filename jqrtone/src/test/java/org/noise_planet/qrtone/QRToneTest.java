@@ -521,14 +521,15 @@ public class QRToneTest {
                     frequencies = triggerAnalyzer.frequencies;
                     writer.write("t");
                     for (double frequency : frequencies) {
-                        writer.write(",");
-                        writer.write(String.format(Locale.ROOT, "%.0f Hz (L)", frequency));
+                        writer.write(String.format(Locale.ROOT, ",%.0f Hz (L)", frequency));
+                        writer.write(String.format(Locale.ROOT, ",%.0f Hz (L50)", frequency));
                     }
                     writer.write("\n");
                 }
                 writer.write(String.format(Locale.ROOT, "%.3f", location / triggerAnalyzer.sampleRate));
-                for (double v : spl) {
-                    writer.write(String.format(Locale.ROOT, ",%.2f", v));
+                for (int idFreq=0; idFreq<spl.length; idFreq++) {
+                    writer.write(String.format(Locale.ROOT, ",%.2f", spl[idFreq]));
+                    writer.write(String.format(Locale.ROOT, ",%.2f", triggerAnalyzer.backgroundNoiseEvaluator[idFreq].result() + 15));
                 }
                 writer.write("\n");
             } catch (IOException ex) {
@@ -568,6 +569,7 @@ public class QRToneTest {
         // Estimation of peak position
         assertEquals(maxIndex, TriggerAnalyzer.findPeakLocation(samples[windowIndex-window], samples[windowIndex], samples[windowIndex+window], windowIndex, window));
         // Estimation of peak height, should be 1.0
-        assertEquals(1.0, TriggerAnalyzer.quadraticInterpolation(samples[windowIndex-window], samples[windowIndex], samples[windowIndex+window])[1], 1e-3);
+        double[] vals = TriggerAnalyzer.quadraticInterpolation(samples[windowIndex-window], samples[windowIndex], samples[windowIndex+window]);
+        assertEquals(1.0, vals[1], 1e-3);
     }
 }

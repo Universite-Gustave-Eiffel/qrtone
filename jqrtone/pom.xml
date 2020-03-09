@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <artifactId>qrtone</artifactId>
     <parent>
-        <artifactId>openwarble-parent</artifactId>
+        <artifactId>qrtone-parent</artifactId>
         <groupId>org.noise-planet</groupId>
         <version>0.2.4-SNAPSHOT</version>
         <relativePath>../</relativePath>

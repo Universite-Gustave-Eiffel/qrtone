@@ -16,14 +16,16 @@ public class PeakFinderTest {
         String line;
         BufferedReader br = new BufferedReader(new InputStreamReader(PeakFinderTest.class.getResourceAsStream("sunspot.dat")));
         long index = 1;
+        List<PeakFinder.Element> results = new ArrayList<>();
         while ((line = br.readLine()) != null) {
             StringTokenizer tokenizer = new StringTokenizer(line, " ");
             int year = Integer.parseInt(tokenizer.nextToken());
             float value = Float.parseFloat(tokenizer.nextToken());
-            peakFinder.add(index++, (double)value);
+            if(peakFinder.add(index++, (double)value)) {
+                results.add(peakFinder.getLastPeak());
+            }
         }
         int[] expectedIndex = new int[]{5,  17,  27,  38,  50,  52,  61,  69,  78,  87, 102, 104, 116, 130, 137, 148, 160, 164, 170, 177, 183, 193, 198, 205, 207, 217, 228, 237, 247, 257, 268, 272, 279, 290, 299};
-        List<PeakFinder.Element> results = peakFinder.getPeaks();
         int[] got = new int[results.size()];
         for(int i=0; i < results.size(); i++) {
             got[i] = (int)results.get(i).index;
@@ -37,14 +39,17 @@ public class PeakFinderTest {
         String line;
         BufferedReader br = new BufferedReader(new InputStreamReader(PeakFinderTest.class.getResourceAsStream("sunspot.dat")));
         long index = 1;
+        List<PeakFinder.Element> res = new ArrayList<>();
         while ((line = br.readLine()) != null) {
             StringTokenizer tokenizer = new StringTokenizer(line, " ");
             int year = Integer.parseInt(tokenizer.nextToken());
             float value = Float.parseFloat(tokenizer.nextToken());
-            peakFinder.add(index++, (double)value);
+            if(peakFinder.add(index++, (double)value)) {
+                res.add(peakFinder.getLastPeak());
+            }
         }
         int[] expectedIndex = new int[]{5, 17 ,27, 38, 50, 61, 69, 78, 87, 104, 116, 130, 137, 148, 160, 170, 183, 193, 205, 217, 228, 237, 247, 257, 268, 279, 290, 299};
-        List<PeakFinder.Element> results = PeakFinder.filter(peakFinder.getPeaks(),6);
+        List<PeakFinder.Element> results = PeakFinder.filter(res,6);
         int[] got = new int[results.size()];
         for(int i=0; i < results.size(); i++) {
             got[i] = (int)results.get(i).index;
@@ -58,11 +63,13 @@ public class PeakFinderTest {
         peakFinder.setMinIncreaseCount(3);
         double[] values = new double[] {4, 5, 7, 13, 10, 9, 9, 10, 4, 6, 7, 8, 11 , 3, 2, 2};
         long index = 0;
+        List<PeakFinder.Element> results = new ArrayList<>();
         for(double value : values) {
-            peakFinder.add(index++, value);
+            if(peakFinder.add(index++, (double)value)) {
+                results.add(peakFinder.getLastPeak());
+            }
         }
         int[] expectedIndex = new int[]{3, 12};
-        List<PeakFinder.Element> results = peakFinder.getPeaks();
         int[] got = new int[results.size()];
         for(int i=0; i < results.size(); i++) {
             got[i] = (int)results.get(i).index;
@@ -76,11 +83,13 @@ public class PeakFinderTest {
         peakFinder.setMinDecreaseCount(2);
         double[] values = new double[] {4, 5, 7, 13, 10, 9, 9, 10, 4, 6, 7, 8, 11 , 3, 2, 2};
         long index = 0;
+        List<PeakFinder.Element> results = new ArrayList<>();
         for(double value : values) {
-            peakFinder.add(index++, value);
+            if(peakFinder.add(index++, (double)value)) {
+                results.add(peakFinder.getLastPeak());
+            }
         }
         int[] expectedIndex = new int[]{3, 12};
-        List<PeakFinder.Element> results = peakFinder.getPeaks();
         int[] got = new int[results.size()];
         for(int i=0; i < results.size(); i++) {
             got[i] = (int)results.get(i).index;
@@ -96,11 +105,14 @@ public class PeakFinderTest {
         double[] v = new double[] {-54.86,-52.48,-57,-50.12,-50.69,-47.32,-61.58,-70.16,-71.9,-51.56,-46.97,-55.98,-54.46,-51.05,-65.05,-32.5,-31.67,-32.48,-31.63,-69.89,-58.76,-58.12,-48.7,-54.25,-54.53,-54.8,-52.81,-56.06,-39.28,-31.21,-31.8,-32.31,-35.8,-31.32,-31.98,-31.35,-31.94,-59.09,-48.31,-59.5,-59.78,-50.88,-56.3,-54.65,-72.44,-54.15,-56.22,-51.24,-57.68,-66.53,-48.31,-53.2,-57.56,-58.2,-65.03
         };
         PeakFinder peakFinder = new PeakFinder();
+        List<PeakFinder.Element> results = new ArrayList<>();
         for(int i = 0; i < t.length; i++) {
             long index = (long)(t[i] * 1000.0);
-            peakFinder.add(index, v[i]);
+            if(peakFinder.add(index, v[i])) {
+                results.add(peakFinder.getLastPeak());
+            }
         }
-        List<PeakFinder.Element> peaks = PeakFinder.filter(peakFinder.getPeaks(), 87);
+        List<PeakFinder.Element> peaks = PeakFinder.filter(results, 87);
         Map<Long, PeakFinder.Element> peaksMap = new HashMap<>(peaks.size());
         for (PeakFinder.Element el : peaks) {
             peaksMap.put(el.index, el);

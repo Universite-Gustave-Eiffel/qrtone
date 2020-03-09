@@ -66,7 +66,6 @@ public class QRTone {
     private final double[] frequencies;
     final TriggerAnalyzer triggerAnalyzer;
     private int[] symbolsToDeliver;
-    private final int windowAnalyze;
 
     public QRTone(Configuration configuration) {
         this.configuration = configuration;
@@ -74,13 +73,9 @@ public class QRTone {
         this.gateLength = (int)(configuration.sampleRate * configuration.gateTime);
         this.wordSilenceLength = (int)(configuration.sampleRate * configuration.wordSilenceTime);
         this.frequencies = configuration.computeFrequencies(NUM_FREQUENCIES);
-        windowAnalyze = wordLength / 2;
-        if(windowAnalyze < Configuration.computeMinimumWindowSize(configuration.sampleRate, frequencies[0], frequencies[1])) {
-            throw new IllegalArgumentException("Tone length are not compatible with sample rate and selected frequencies");
-        }
-        gate1Frequency = frequencies[frequencies.length - FREQUENCY_ROOT / 2];
-        gate2Frequency = frequencies[FREQUENCY_ROOT / 2];
-        triggerAnalyzer = new TriggerAnalyzer(configuration.sampleRate, windowAnalyze, new double[]{gate1Frequency, gate2Frequency});
+        gate1Frequency = frequencies[FREQUENCY_ROOT / 2];
+        gate2Frequency = frequencies[FREQUENCY_ROOT / 2 + 1];
+        triggerAnalyzer = new TriggerAnalyzer(configuration.sampleRate, gateLength, new double[]{gate1Frequency, gate2Frequency}, configuration.triggerSnr);
     }
 
     public Configuration getConfiguration() {

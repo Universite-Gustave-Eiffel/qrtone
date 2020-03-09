@@ -50,28 +50,14 @@ public class PeakFinder {
     private double oldVal = Double.MIN_VALUE;
     private long oldIndex = 0;
     boolean added = false;
-    private List<Element> peaks = new ArrayList<>();
+    private Element lastPeak = null;
     private int increaseCount = 0;
     private int decreaseCount = 0;
     private int minIncreaseCount = -1;
     private int minDecreaseCount = -1;
 
-    public List<Element> getPeaks() {
-        return peaks;
-    }
-
     public Element getLastPeak() {
-        if(peaks.isEmpty()) {
-            return null;
-        } else {
-            return peaks.get(peaks.size() - 1);
-        }
-    }
-
-    public void clearPeaks(long upTo) {
-        while(!peaks.isEmpty() && peaks.get(0).index < upTo) {
-            peaks.remove(0);
-        }
+        return lastPeak;
     }
 
     /**
@@ -108,14 +94,16 @@ public class PeakFinder {
         // Detect switch from increase to decrease/stall
         if(diff <= 0 && increase) {
             if(increaseCount >= minIncreaseCount) {
-                peaks.add(new Element(oldIndex, oldVal));
+                lastPeak = new Element(oldIndex, oldVal);
                 added = true;
-                ret = true;
+                if(minDecreaseCount <= 1 ) {
+                    ret = true;
+                }
             }
         } else if(diff > 0 && !increase) {
             // Detect switch from decreasing to increase
             if(added && minDecreaseCount != -1 && decreaseCount < minDecreaseCount) {
-                peaks.remove(peaks.size() - 1);
+                lastPeak = null;
                 added = false;
             }
         }
@@ -125,8 +113,10 @@ public class PeakFinder {
             decreaseCount = 0;
         } else {
             decreaseCount++;
-            if(decreaseCount > minDecreaseCount) {
+            if(decreaseCount > minDecreaseCount && added) {
+                // condition for decrease fulfilled
                 added = false;
+                ret = true;
             }
             increaseCount=0;
         }
