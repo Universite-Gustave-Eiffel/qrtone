@@ -177,9 +177,9 @@ public class QRTone {
         // Payload length
         header[0] = (byte)(qrToneHeader.length & 0xFF);
         // ECC level
-        header[1] = (byte)(0x0F & qrToneHeader.eccLevel.ordinal());
-        byte crc = crc4(header, 0, header.length);
-        header[1] = (byte)((crc << 4) | header[1] & 0x0F);
+        header[1] = (byte)(0x03 & qrToneHeader.eccLevel.ordinal());
+        byte crc = crc8(header, 0, header.length);
+        header[1] = (byte)((crc & 0xFC) | header[1] & 0x03);
         return header;
     }
 
@@ -187,17 +187,13 @@ public class QRTone {
         // Check
         byte[] header = new byte[HEADER_SIZE];
         header[0] = data[0];
-        header[1] = (byte)(data[1] & 0x0F);
-        byte crc = crc4(header, 0, header.length);
-        if((crc << 4) != (data[1] & 0xF0)) {
+        header[1] = (byte)(data[1] & 0x03);
+        byte crc = crc8(header, 0, header.length);
+        if((crc & 0xFC) != (data[1] & 0xFC)) {
             // CRC error
             return null;
         }
-        if((data[1] & 0x0F) >= Configuration.ECC_LEVEL.values().length) {
-            // Out of bound FEC code index
-            return null;
-        }
-        return new Header(data[0] & 0xFF, Configuration.ECC_LEVEL.values()[data[1] & 0x0F]);
+        return new Header(data[0] & 0xFF, Configuration.ECC_LEVEL.values()[data[1] & 0x03]);
     }
 
     /**
