@@ -90,10 +90,12 @@ public class QRTone {
         return setPayload(payload, Configuration.DEFAULT_ECC_LEVEL);
     }
 
-
     static int[] payloadToSymbols(byte[] payload, Configuration.ECC_LEVEL eccLevel) {
-        final int blockSymbolsSize =  Configuration.getTotalSymbolsForEcc(eccLevel);
+        final int blockSymbolsSize = Configuration.getTotalSymbolsForEcc(eccLevel);
         final int blockECCSymbols = Configuration.getEccSymbolsForEcc(eccLevel);
+        return payloadToSymbols(payload, blockSymbolsSize, blockECCSymbols);
+    }
+    static int[] payloadToSymbols(byte[] payload, int blockSymbolsSize, int blockECCSymbols) {
         final int payloadSymbolsSize = blockSymbolsSize - blockECCSymbols;
         final int payloadByteSize = payloadSymbolsSize / 2;
         final int numberOfBlocks = (int)Math.ceil((payload.length * 2) / (double)payloadSymbolsSize);
@@ -111,7 +113,7 @@ public class QRTone {
             // Add ECC parity symbols
             GenericGF gallois = GenericGF.AZTEC_PARAM;
             ReedSolomonEncoder encoder = new ReedSolomonEncoder(gallois);
-            encoder.encode(blockSymbols, Configuration.getEccSymbolsForEcc(eccLevel));
+            encoder.encode(blockSymbols, blockECCSymbols);
             // Copy data to main symbols
             System.arraycopy(blockSymbols, 0, symbols, blockId * blockSymbolsSize, payloadSize * 2);
             // Copy parity to main symbols
@@ -206,7 +208,7 @@ public class QRTone {
     public int setPayload(byte[] payload, Configuration.ECC_LEVEL eccLevel) {
         byte[] header = encodeHeader(new Header(payload.length, eccLevel));
         // Convert bytes to hexadecimal array
-        int[] headerSymbols = payloadToSymbols(header, Configuration.ECC_LEVEL.ECC_Q);
+        int[] headerSymbols = payloadToSymbols(header, header.length * 2 + 2, 2);
         int[] payloadSymbols = payloadToSymbols(payload, eccLevel);
         symbolsToDeliver = new int[headerSymbols.length+payloadSymbols.length];
         System.arraycopy(headerSymbols, 0, symbolsToDeliver, 0, headerSymbols.length);
