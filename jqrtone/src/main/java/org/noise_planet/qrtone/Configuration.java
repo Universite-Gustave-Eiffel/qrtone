@@ -38,7 +38,7 @@ package org.noise_planet.qrtone;
  */
 public class Configuration {
   public enum ECC_LEVEL {ECC_L, ECC_M, ECC_Q, ECC_H}
-  private static final int[][] ECC_SYMBOLS = new int[][] {{14, 2}, {6, 2}, {4, 2}, {10, 6}};
+  private static final int[][] ECC_SYMBOLS = new int[][] {{14, 2}, {14, 4}, {12, 6}, {10, 6}};
   public static final double MULT_SEMITONE = Math.pow(2, 1/15.0);
   public static final double DEFAULT_WORD_TIME = 0.06;
   public static final double DEFAULT_WORD_SILENCE_TIME = 0.01;
