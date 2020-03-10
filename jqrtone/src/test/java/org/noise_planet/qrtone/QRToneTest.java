@@ -317,21 +317,21 @@ public class QRToneTest {
 
     @Test
     public void testShuffle1() {
-        int[] expectedPayload = new int[]{18, 32, -117, -93, -50, 2, 52, 26, -117, 93};
-        int[] swappedPayload = new int[]{26, -50, -93, 18, -117, 93, 2, 32, -117, 52};
+        byte[] expectedPayload = new byte[]{18, 32, -117, -93, -50, 2, 52, 26, -117, 93};
+        byte[] swappedPayload = new byte[]{26, -50, -93, 18, -117, 93, 2, 32, -117, 52};
         int[] index = new int[expectedPayload.length];
         QRTone.fisherYatesShuffleIndex(QRTone.PERMUTATION_SEED, index);
-        int[] symbols = Arrays.copyOf(expectedPayload, expectedPayload.length);
+        byte[] symbols = Arrays.copyOf(expectedPayload, expectedPayload.length);
         QRTone.swapSymbols(symbols, index);
         assertArrayEquals(swappedPayload, symbols);
     }
 
     @Test
     public void testShuffle() {
-        int[] expectedPayload = new int[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93};
+        byte[] expectedPayload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93};
         int[] index = new int[expectedPayload.length];
         QRTone.fisherYatesShuffleIndex(QRTone.PERMUTATION_SEED, index);
-        int[] symbols = Arrays.copyOf(expectedPayload, expectedPayload.length);
+        byte[] symbols = Arrays.copyOf(expectedPayload, expectedPayload.length);
         QRTone.swapSymbols(symbols, index);
         QRTone.unswapSymbols(symbols, index);
         assertArrayEquals(expectedPayload, symbols);
@@ -372,7 +372,7 @@ public class QRToneTest {
         String payloadStr = "Hello world !";
         byte[] payloadBytes = payloadStr.getBytes();
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_L;
-        int[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
+        byte[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
         byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel);
         assertArrayEquals(payloadBytes, processedBytes);
     }
@@ -382,7 +382,7 @@ public class QRToneTest {
         String payloadStr = "Hello world !";
         byte[] payloadBytes = payloadStr.getBytes();
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_M;
-        int[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
+        byte[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
         byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel);
         assertArrayEquals(payloadBytes, processedBytes);
     }
@@ -392,7 +392,7 @@ public class QRToneTest {
         String payloadStr = "Hello world !";
         byte[] payloadBytes = payloadStr.getBytes();
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_Q;
-        int[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
+        byte[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
         byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel);
         assertArrayEquals(payloadBytes, processedBytes);
     }
@@ -402,7 +402,7 @@ public class QRToneTest {
         String payloadStr = "Hello world !";
         byte[] payloadBytes = payloadStr.getBytes();
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_H;
-        int[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
+        byte[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
         byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel);
         assertArrayEquals(payloadBytes, processedBytes);
     }
@@ -410,7 +410,7 @@ public class QRToneTest {
     @Test
     public void testSymbolEncodingDecodingCRC1() throws ReedSolomonException {
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_Q;
-        int[] symbols = QRTone.payloadToSymbols(IPFS_PAYLOAD, eccLevel);
+        byte[] symbols = QRTone.payloadToSymbols(IPFS_PAYLOAD, eccLevel);
         System.out.println(String.format(Locale.ROOT, "Signal length %.3f seconds", (symbols.length / 2) * 0.06 + 0.012));
         byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel);
         assertArrayEquals(IPFS_PAYLOAD, processedBytes);
