@@ -7,7 +7,7 @@ import java.util.AbstractList;
  */
 public class CircularArray extends AbstractList<Float> {
     private float[] values;
-    private int cursor=0;
+    private int cursor = 0;
     private int inserted = 0;
 
     public CircularArray(int size) {
@@ -17,10 +17,16 @@ public class CircularArray extends AbstractList<Float> {
     @Override
     public Float get(int index) {
         int cicularIndex = cursor - inserted + index;
-        if(cicularIndex < 0) {
+        if (cicularIndex < 0) {
             cicularIndex += values.length;
         }
         return values[cicularIndex];
+    }
+
+    @Override
+    public void clear() {
+        cursor = 0;
+        inserted = 0;
     }
 
     public Float last() {

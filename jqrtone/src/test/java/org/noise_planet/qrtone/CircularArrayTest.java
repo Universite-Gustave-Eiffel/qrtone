@@ -30,6 +30,8 @@ public class CircularArrayTest {
         assertEquals(0.3f, a.get(a.size() - 3), 1e-6);
         assertEquals(0.2f, a.get(a.size() - 4), 1e-6);
         assertEquals(0.1f, a.get(a.size() - 5), 1e-6);
+        a.clear();
+        assertEquals(0, a.size());
     }
 
 }

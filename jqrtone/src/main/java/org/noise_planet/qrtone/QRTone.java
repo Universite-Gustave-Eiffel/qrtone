@@ -402,7 +402,18 @@ public class QRTone {
 
     public void pushSamples(float[] samples) {
         // todo if state==trigger
-        triggerAnalyzer.processSamples(samples);
+        if(qrToneState == STATE.WAITING_TRIGGER) {
+            triggerAnalyzer.processSamples(samples);
+            if(triggerAnalyzer.getFirstToneLocation() != -1) {
+                qrToneState = STATE.PARSING_SYMBOLS;
+                int firstToneIndex = (int)(triggerAnalyzer.getTotalProcessed() -
+                        triggerAnalyzer.getFirstToneLocation());
+                if(firstToneIndex > wordSilenceLength) {
+                    // First tone is contained in the current samples
+                }
+                triggerAnalyzer.reset();
+            }
+        }
     }
 
     protected static class Header {

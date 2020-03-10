@@ -3,6 +3,10 @@ package org.noise_planet.qrtone;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Analyse audio samples in order to detect trigger signal
+ * Evaluate the exact position of the first tone
+ */
 public class TriggerAnalyzer {
     private AtomicInteger processedWindowAlpha = new AtomicInteger(0);
     private AtomicInteger processedWindowBeta = new AtomicInteger(0);
@@ -49,12 +53,27 @@ public class TriggerAnalyzer {
         }
     }
 
+    public void reset() {
+        firstToneLocation = -1;
+        peakFinder.reset();
+        totalProcessed = 0;
+        for(int i=0; i<frequencies.length; i++) {
+            frequencyAnalyzersAlpha[i].reset();
+            frequencyAnalyzersBeta[i].reset();
+            splHistory[i].clear();
+        }
+    }
+
     public void setTriggerCallback(TriggerCallback triggerCallback) {
         this.triggerCallback = triggerCallback;
     }
 
     public long getTotalProcessed() {
         return totalProcessed;
+    }
+
+    public long getFirstToneLocation() {
+        return firstToneLocation;
     }
 
     private void doProcess(float[] samples, AtomicInteger windowProcessed,

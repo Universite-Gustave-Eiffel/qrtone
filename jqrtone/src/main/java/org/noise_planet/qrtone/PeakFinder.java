@@ -45,7 +45,6 @@ import java.util.Objects;
  * This class results are equivalent with Octave(R) findpeaks function
  */
 public class PeakFinder {
-    private float epsilon = 1;
     private boolean increase = true;
     private double oldVal = Double.MIN_VALUE;
     private long oldIndex = 0;
@@ -58,6 +57,18 @@ public class PeakFinder {
 
     public Element getLastPeak() {
         return lastPeak;
+    }
+
+    public void reset() {
+        increase = true;
+        oldVal = Double.MIN_VALUE;
+        oldIndex = 0;
+        added = false;
+        lastPeak = null;
+        increaseCount = 0;
+        decreaseCount = 0;
+        minIncreaseCount = -1;
+        minDecreaseCount = -1;
     }
 
     /**
