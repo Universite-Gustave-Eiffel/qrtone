@@ -90,10 +90,12 @@ public class QRTone {
         return setPayload(payload, Configuration.DEFAULT_ECC_LEVEL);
     }
 
-
     static int[] payloadToSymbols(byte[] payload, Configuration.ECC_LEVEL eccLevel) {
-        final int blockSymbolsSize =  Configuration.getTotalSymbolsForEcc(eccLevel);
+        final int blockSymbolsSize = Configuration.getTotalSymbolsForEcc(eccLevel);
         final int blockECCSymbols = Configuration.getEccSymbolsForEcc(eccLevel);
+        return payloadToSymbols(payload, blockSymbolsSize, blockECCSymbols);
+    }
+    static int[] payloadToSymbols(byte[] payload, int blockSymbolsSize, int blockECCSymbols) {
         final int payloadSymbolsSize = blockSymbolsSize - blockECCSymbols;
         final int payloadByteSize = payloadSymbolsSize / 2;
         final int numberOfBlocks = (int)Math.ceil((payload.length * 2) / (double)payloadSymbolsSize);
@@ -111,7 +113,7 @@ public class QRTone {
             // Add ECC parity symbols
             GenericGF gallois = GenericGF.AZTEC_PARAM;
             ReedSolomonEncoder encoder = new ReedSolomonEncoder(gallois);
-            encoder.encode(blockSymbols, Configuration.getEccSymbolsForEcc(eccLevel));
+            encoder.encode(blockSymbols, blockECCSymbols);
             // Copy data to main symbols
             System.arraycopy(blockSymbols, 0, symbols, blockId * blockSymbolsSize, payloadSize * 2);
             // Copy parity to main symbols
@@ -175,9 +177,9 @@ public class QRTone {
         // Payload length
         header[0] = (byte)(qrToneHeader.length & 0xFF);
         // ECC level
-        header[1] = (byte)(0x0F & qrToneHeader.eccLevel.ordinal());
-        byte crc = crc4(header, 0, header.length);
-        header[1] = (byte)((crc << 4) | header[1] & 0x0F);
+        header[1] = (byte)(0x03 & qrToneHeader.eccLevel.ordinal());
+        byte crc = crc8(header, 0, header.length);
+        header[1] = (byte)((crc & 0xFC) | header[1] & 0x03);
         return header;
     }
 
@@ -185,17 +187,13 @@ public class QRTone {
         // Check
         byte[] header = new byte[HEADER_SIZE];
         header[0] = data[0];
-        header[1] = (byte)(data[1] & 0x0F);
-        byte crc = crc4(header, 0, header.length);
-        if((crc << 4) != (data[1] & 0xF0)) {
+        header[1] = (byte)(data[1] & 0x03);
+        byte crc = crc8(header, 0, header.length);
+        if((crc & 0xFC) != (data[1] & 0xFC)) {
             // CRC error
             return null;
         }
-        if((data[1] & 0x0F) >= Configuration.ECC_LEVEL.values().length) {
-            // Out of bound FEC code index
-            return null;
-        }
-        return new Header(data[0] & 0xFF, Configuration.ECC_LEVEL.values()[data[1] & 0x0F]);
+        return new Header(data[0] & 0xFF, Configuration.ECC_LEVEL.values()[data[1] & 0x03]);
     }
 
     /**
@@ -206,7 +204,7 @@ public class QRTone {
     public int setPayload(byte[] payload, Configuration.ECC_LEVEL eccLevel) {
         byte[] header = encodeHeader(new Header(payload.length, eccLevel));
         // Convert bytes to hexadecimal array
-        int[] headerSymbols = payloadToSymbols(header, Configuration.ECC_LEVEL.ECC_Q);
+        int[] headerSymbols = payloadToSymbols(header, header.length * 2 + 2, 2);
         int[] payloadSymbols = payloadToSymbols(payload, eccLevel);
         symbolsToDeliver = new int[headerSymbols.length+payloadSymbols.length];
         System.arraycopy(headerSymbols, 0, symbolsToDeliver, 0, headerSymbols.length);
