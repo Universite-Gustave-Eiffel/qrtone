@@ -67,17 +67,6 @@ public class QRToneTest {
     }
 
     @Test
-    public void crc4Test() {
-        byte[] expectedPayload = new byte[]{18, 32};
-        byte base = QRTone.crc8(expectedPayload, 0, expectedPayload.length);
-        AtomicLong next = new AtomicLong(1337);
-        for(int i=0; i < expectedPayload.length; i++) {
-            byte[] alteredPayload = Arrays.copyOf(expectedPayload, expectedPayload.length);
-            alteredPayload[i] = (byte) (QRTone.warbleRand(next) % 255);
-            assertNotEquals(base, QRTone.crc4(alteredPayload, 0, alteredPayload.length));
-        }
-    }
-    @Test
     public void hannTest() {
         float[] ref= {0f,0.0039426493f,0.015708419f,0.035111757f,0.06184666f,0.095491503f,0.13551569f,0.18128801f,
                 0.2320866f,0.28711035f,0.3454915f,0.40630934f,0.46860474f,0.53139526f,0.59369066f,0.6545085f,

@@ -49,10 +49,13 @@ public class QRTone {
     private enum STATE {WAITING_TRIGGER, PARSING_SYMBOLS};
     private static final double TUKEY_ALPHA  = 0.5;
     private STATE qrToneState = STATE.WAITING_TRIGGER;
+    private IterativeGeneralizedGoertzel[] frequencyAnalyzers;
     private long firstToneSampleIndex = -1;
     protected static final int MAX_PAYLOAD_LENGTH = 0xFF;
     // Header size in bytes
     private final static int HEADER_SIZE = 2;
+    private final static int HEADER_ECC_SYMBOLS = 2;
+    private final static int HEADER_SYMBOLS = HEADER_SIZE*2+HEADER_ECC_SYMBOLS;
     final int wordLength;
     final int gateLength;
     final int wordSilenceLength;
@@ -63,9 +66,16 @@ public class QRTone {
     public final static int NUM_FREQUENCIES = 32;
     // Column and rows of DTMF that make a char
     public final static int FREQUENCY_ROOT = 16;
+    // Number of aggregated frequencies for each background noise evaluators
+    private final static int BACKGROUND_NUM_FREQUENCIES_AGG = 4;
+    private final ApproximatePercentile[] backgroundLvls = new ApproximatePercentile[NUM_FREQUENCIES / BACKGROUND_NUM_FREQUENCIES_AGG];
     private final double[] frequencies;
     final TriggerAnalyzer triggerAnalyzer;
     private int[] symbolsToDeliver;
+    private byte[] symbolsCache;
+    private Header headerCache;
+    private long pushedSamples = 0;
+    private int symbolIndex = 0;
 
     public QRTone(Configuration configuration) {
         this.configuration = configuration;
@@ -204,7 +214,7 @@ public class QRTone {
     public int setPayload(byte[] payload, Configuration.ECC_LEVEL eccLevel) {
         byte[] header = encodeHeader(new Header(payload.length, eccLevel));
         // Convert bytes to hexadecimal array
-        int[] headerSymbols = payloadToSymbols(header, header.length * 2 + 2, 2);
+        int[] headerSymbols = payloadToSymbols(header, HEADER_SYMBOLS, HEADER_ECC_SYMBOLS);
         int[] payloadSymbols = payloadToSymbols(payload, eccLevel);
         symbolsToDeliver = new int[headerSymbols.length+payloadSymbols.length];
         System.arraycopy(headerSymbols, 0, symbolsToDeliver, 0, headerSymbols.length);
@@ -261,34 +271,6 @@ public class QRTone {
             crc8 = (byte) crc;
         }
         return (byte) (crc8 & 0x0FF);
-    }
-
-    /**
-     * Checksum of bytes
-     * @param payload payload to crc
-     * @param from payload index to begin crc
-     * @param to excluded index to end crc
-     * @return crc value
-     */
-    public static byte crc4(byte[] payload, int from, int to) {
-        int crc4 = 0;
-        for (int i=from; i < to; i++) {
-            int crc = 0;
-            int accumulator = (crc4 ^ payload[i]) & 0x00F;
-            for (int j = 0; j < 8; j++) {
-                if (((accumulator ^ crc) & 0x01) == 0x01) {
-                    // best polynomial for crc4 0x9
-                    // shifted to right so polynomial is 0x90
-                    // https://users.ece.cmu.edu/~koopman/crc/index.html
-                    crc = ((crc ^ 0x18) >> 1) | 0x90;
-                } else {
-                    crc = crc >> 1;
-                }
-                accumulator = accumulator >> 1;
-            }
-            crc4 = (byte) crc;
-        }
-        return (byte) (crc4 & 0x00F);
     }
 
     /**
@@ -399,19 +381,63 @@ public class QRTone {
     }
 
     public void pushSamples(float[] samples) {
-        // todo if state==trigger
+        pushedSamples += samples.length;
         if(qrToneState == STATE.WAITING_TRIGGER) {
             triggerAnalyzer.processSamples(samples);
             if(triggerAnalyzer.getFirstToneLocation() != -1) {
                 qrToneState = STATE.PARSING_SYMBOLS;
-                int firstToneIndex = (int)(triggerAnalyzer.getTotalProcessed() -
-                        triggerAnalyzer.getFirstToneLocation());
-                if(firstToneIndex > wordSilenceLength) {
-                    // First tone is contained in the current samples
+                firstToneSampleIndex = pushedSamples - (triggerAnalyzer.getTotalProcessed() - triggerAnalyzer.getFirstToneLocation());
+                frequencyAnalyzers = new IterativeGeneralizedGoertzel[frequencies.length];
+                for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
+                    frequencyAnalyzers[idfreq] = new IterativeGeneralizedGoertzel(configuration.sampleRate, frequencies[idfreq], wordLength);
                 }
+                for(int id=0; id < backgroundLvls.length; id++) {
+                    backgroundLvls[id] = new ApproximatePercentile(TriggerAnalyzer.PERCENTILE_BACKGROUND);
+                }
+                symbolsCache = new byte[HEADER_SYMBOLS];
                 triggerAnalyzer.reset();
             }
         }
+        if(qrToneState == STATE.PARSING_SYMBOLS && firstToneSampleIndex + wordSilenceLength < pushedSamples) {
+            int cursor = Math.max(0, getToneIndex(samples.length));
+            while (cursor < samples.length) {
+                int windowLength = Math.min(samples.length - cursor, Math.max(0, getToneIndex(samples.length)));
+                for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
+                    frequencyAnalyzers[idfreq].processSamples(samples, cursor, cursor + windowLength);
+                }
+                if(frequencyAnalyzers[0].getProcessedSamples() == wordLength) {
+                    double[] spl = new double[frequencies.length];
+                    double[] rms = new double[backgroundLvls.length];
+                    for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
+                        double rmsValue = frequencyAnalyzers[idfreq].computeRMS(false).rms;
+                        spl[idfreq] = 20 * Math.log10(rmsValue);
+                        rms[idfreq / BACKGROUND_NUM_FREQUENCIES_AGG] += rmsValue;
+                    }
+                    for(int id=0; id < rms.length; id++) {
+                        backgroundLvls[id].add(rms[id]);
+                    }
+                    for(int symbolIndex = 0; symbolIndex < 2; symbolIndex++) {
+                        int maxSymbolId = -1;
+                        double maxSymbolGain = Double.MIN_VALUE;
+                        for(int i = symbolIndex * FREQUENCY_ROOT; i < (symbolIndex + 1) * FREQUENCY_ROOT; i++) {
+                            double gain = spl[i];
+                            if(symbolIndex > 0) {
+
+                            }
+                        }
+                    }
+
+
+
+                    symbolIndex+=1;
+                }
+                cursor += windowLength;
+            }
+        }
+    }
+
+    private int getToneIndex(int bufferLength) {
+        return (int)(bufferLength - (pushedSamples - (firstToneSampleIndex + symbolIndex * (wordLength + wordSilenceLength) + wordSilenceLength)));
     }
 
     protected static class Header {

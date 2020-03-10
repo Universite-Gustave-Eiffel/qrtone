@@ -24,6 +24,9 @@ public class ApproximatePercentile {
     }
 
     public ApproximatePercentile(double quant) {
+        if(quant < 0 || quant > 1) {
+            throw new IllegalArgumentException("Quantile only between 0 and 1");
+        }
         count = 0;
         addEndMarkers();
         addQuantile(quant);

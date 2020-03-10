@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Evaluate the exact position of the first tone
  */
 public class TriggerAnalyzer {
+    public static final double PERCENTILE_BACKGROUND = 0.05;
     private AtomicInteger processedWindowAlpha = new AtomicInteger(0);
     private AtomicInteger processedWindowBeta = new AtomicInteger(0);
     private final int windowOffset;
@@ -48,7 +49,7 @@ public class TriggerAnalyzer {
         for(int i=0; i<frequencies.length; i++) {
             frequencyAnalyzersAlpha[i] = new IterativeGeneralizedGoertzel(sampleRate, frequencies[i], windowAnalyze);
             frequencyAnalyzersBeta[i] = new IterativeGeneralizedGoertzel(sampleRate, frequencies[i], windowAnalyze);
-            backgroundNoiseEvaluator[i] = new ApproximatePercentile(0.5);
+            backgroundNoiseEvaluator[i] = new ApproximatePercentile(PERCENTILE_BACKGROUND);
             splHistory[i] = new CircularArray((gateLength * 3) / windowOffset);
         }
     }

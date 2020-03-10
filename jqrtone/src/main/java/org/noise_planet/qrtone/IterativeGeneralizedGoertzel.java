@@ -23,7 +23,6 @@ public class IterativeGeneralizedGoertzel {
     private double sampleRate;
     private int windowSize;
     private int processedSamples = 0;
-    private Complex cc;
 
     /**
      * @param sampleRate Sampling rate in Hz
@@ -37,7 +36,6 @@ public class IterativeGeneralizedGoertzel {
         double samplingRateFactor = windowSize / sampleRate;
         pikTerm = M2PI * (frequency * samplingRateFactor) / windowSize;
         cosPikTerm2 = Math.cos(pikTerm) * 2.0;
-        cc = new Complex(pikTerm, 0).exp();
     }
 
     public void reset() {
@@ -85,6 +83,7 @@ public class IterativeGeneralizedGoertzel {
         if(processedSamples != windowSize) {
             throw new IllegalStateException("Not enough processed samples");
         }
+        final Complex cc = new Complex(pikTerm, 0).exp();
 
         // final computations
         s0 = lastSample + cosPikTerm2 * s1 - s2;
