@@ -66,9 +66,6 @@ public class QRTone {
     public final static int NUM_FREQUENCIES = 32;
     // Column and rows of DTMF that make a char
     public final static int FREQUENCY_ROOT = 16;
-    // Number of aggregated frequencies for each background noise evaluators
-    private final static int BACKGROUND_NUM_FREQUENCIES_AGG = 4;
-    private final ApproximatePercentile[] backgroundLvls = new ApproximatePercentile[NUM_FREQUENCIES / BACKGROUND_NUM_FREQUENCIES_AGG];
     private final double[] frequencies;
     final TriggerAnalyzer triggerAnalyzer;
     private int[] symbolsToDeliver;
@@ -391,9 +388,6 @@ public class QRTone {
                 for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
                     frequencyAnalyzers[idfreq] = new IterativeGeneralizedGoertzel(configuration.sampleRate, frequencies[idfreq], wordLength);
                 }
-                for(int id=0; id < backgroundLvls.length; id++) {
-                    backgroundLvls[id] = new ApproximatePercentile(TriggerAnalyzer.PERCENTILE_BACKGROUND);
-                }
                 symbolsCache = new byte[HEADER_SYMBOLS];
                 triggerAnalyzer.reset();
             }
@@ -401,34 +395,31 @@ public class QRTone {
         if(qrToneState == STATE.PARSING_SYMBOLS && firstToneSampleIndex + wordSilenceLength < pushedSamples) {
             int cursor = Math.max(0, getToneIndex(samples.length));
             while (cursor < samples.length) {
-                int windowLength = Math.min(samples.length - cursor, Math.max(0, getToneIndex(samples.length)));
+                int windowLength = Math.min(samples.length - cursor, wordLength - frequencyAnalyzers[0].getProcessedSamples());
+                if(windowLength == 0) {
+                    break;
+                }
                 for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
                     frequencyAnalyzers[idfreq].processSamples(samples, cursor, cursor + windowLength);
                 }
                 if(frequencyAnalyzers[0].getProcessedSamples() == wordLength) {
                     double[] spl = new double[frequencies.length];
-                    double[] rms = new double[backgroundLvls.length];
                     for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
                         double rmsValue = frequencyAnalyzers[idfreq].computeRMS(false).rms;
                         spl[idfreq] = 20 * Math.log10(rmsValue);
-                        rms[idfreq / BACKGROUND_NUM_FREQUENCIES_AGG] += rmsValue;
                     }
-                    for(int id=0; id < rms.length; id++) {
-                        backgroundLvls[id].add(rms[id]);
-                    }
-                    for(int symbolIndex = 0; symbolIndex < 2; symbolIndex++) {
+                    for(int symbolOffset = 0; symbolOffset < 2; symbolOffset++) {
                         int maxSymbolId = -1;
-                        double maxSymbolGain = Double.MIN_VALUE;
-                        for(int i = symbolIndex * FREQUENCY_ROOT; i < (symbolIndex + 1) * FREQUENCY_ROOT; i++) {
+                        double maxSymbolGain = Double.NEGATIVE_INFINITY;
+                        for(int i = symbolOffset * FREQUENCY_ROOT; i < (symbolOffset + 1) * FREQUENCY_ROOT; i++) {
                             double gain = spl[i];
-                            if(symbolIndex > 0) {
-
+                            if(gain > maxSymbolGain) {
+                                maxSymbolGain = gain;
+                                maxSymbolId = i;
                             }
                         }
+                        symbolsCache[this.symbolIndex * 2 + symbolOffset] = (byte)(maxSymbolId - symbolOffset * FREQUENCY_ROOT);
                     }
-
-
-
                     symbolIndex+=1;
                 }
                 cursor += windowLength;
@@ -436,8 +427,11 @@ public class QRTone {
         }
     }
 
+    private long getToneLocation() {
+        return firstToneSampleIndex + symbolIndex * (wordLength + wordSilenceLength) + wordSilenceLength;
+    }
     private int getToneIndex(int bufferLength) {
-        return (int)(bufferLength - (pushedSamples - (firstToneSampleIndex + symbolIndex * (wordLength + wordSilenceLength) + wordSilenceLength)));
+        return (int)(bufferLength - (pushedSamples - getToneLocation()));
     }
 
     protected static class Header {
