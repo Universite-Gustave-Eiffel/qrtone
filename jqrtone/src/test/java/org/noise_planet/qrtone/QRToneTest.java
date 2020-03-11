@@ -344,7 +344,7 @@ public class QRToneTest {
         byte[] headerBytes = qrTone.encodeHeader(expectedHeader);
         QRTone.Header decodedHeader = qrTone.decodeHeader(headerBytes);
         assertEquals(expectedHeader.length, decodedHeader.length);
-        assertEquals(expectedHeader.eccLevel, decodedHeader.eccLevel);
+        assertEquals(expectedHeader.getEccLevel(), decodedHeader.getEccLevel());
     }
 
     @Test
@@ -485,11 +485,14 @@ public class QRToneTest {
             int windowSize = Math.min(random.nextInt(115) + 20, samples.length - cursor);
             float[] window = new float[windowSize];
             System.arraycopy(samples, cursor, window, 0, window.length);
-            qrTone.pushSamples(window);
+            if(qrTone.pushSamples(window)) {
+                break;
+            }
             cursor += windowSize;
         }
         System.out.println(String.format("Done in %.3f",(System.currentTimeMillis() - start) /1e3));
         csvWriter.close();
+        assertArrayEquals(IPFS_PAYLOAD, qrTone.getPayload());
         //writeFloatToFile("target/inputSignal.raw", samples);
     }
 

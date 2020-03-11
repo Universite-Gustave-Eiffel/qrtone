@@ -73,6 +73,7 @@ public class QRTone {
     private Header headerCache;
     private long pushedSamples = 0;
     private int symbolIndex = 0;
+    private byte[] payload;
 
     public QRTone(Configuration configuration) {
         this.configuration = configuration;
@@ -83,6 +84,17 @@ public class QRTone {
         gate1Frequency = frequencies[FREQUENCY_ROOT ];
         gate2Frequency = frequencies[FREQUENCY_ROOT + 2];
         triggerAnalyzer = new TriggerAnalyzer(configuration.sampleRate, gateLength, new double[]{gate1Frequency, gate2Frequency}, configuration.triggerSnr);
+    }
+
+    /**
+     * @return The maximum window length to push in order to not loosing a second queued message
+     */
+    public int getMaximumWindowLength() {
+        if(qrToneState == STATE.WAITING_TRIGGER) {
+            return triggerAnalyzer.getMaximumWindowLength();
+        } else {
+            return frequencyAnalyzers[0].getWindowSize() - frequencyAnalyzers[0].getProcessedSamples();
+        }
     }
 
     public Configuration getConfiguration() {
@@ -108,10 +120,11 @@ public class QRTone {
             payload = Arrays.copyOf(payload, payload.length + 1);
             payload[payload.length - 1] = crc8(payload, 0, payload.length - 1);
         }
-        final int payloadSymbolsSize = blockSymbolsSize - blockECCSymbols;
-        final int payloadByteSize = payloadSymbolsSize / 2;
-        final int numberOfBlocks = (int)Math.ceil((payload.length * 2) / (double)payloadSymbolsSize);
-        final int numberOfSymbols = numberOfBlocks * blockECCSymbols + payload.length * 2;
+        Header header = new Header(payload.length, blockSymbolsSize, blockECCSymbols);
+        final int payloadSymbolsSize = header.payloadSymbolsSize;
+        final int payloadByteSize = header.payloadByteSize;
+        final int numberOfBlocks = header.numberOfBlocks;
+        final int numberOfSymbols = header.numberOfSymbols;
         byte[] symbols = new byte[numberOfSymbols];
         for(int blockId = 0; blockId < numberOfBlocks; blockId++) {
             int[] blockSymbols = new int[blockSymbolsSize];
@@ -156,6 +169,13 @@ public class QRTone {
         return symbolsToPayload(symbols, blockSymbolsSize, blockECCSymbols, hasCRC);
     }
 
+    /**
+     * @return Parsed payload
+     */
+    public byte[] getPayload() {
+        return payload;
+    }
+
     static byte[] symbolsToPayload(byte[] symbols, int blockSymbolsSize, int blockECCSymbols, boolean hasCRC) throws ReedSolomonException {
         final int payloadSymbolsSize = blockSymbolsSize - blockECCSymbols;
         final int payloadByteSize = payloadSymbolsSize / 2;
@@ -172,6 +192,7 @@ public class QRTone {
         }
         byte[] payload = new byte[payloadLength + offset];
         boolean attemptECC = true;
+        byte crcValue = 0;
         if(hasCRC) {
             // Check CRC on payload bytes
             CRC8 crc8 = new CRC8();
@@ -202,6 +223,15 @@ public class QRTone {
             int payloadBlockByteSize = Math.min(payloadByteSize, payloadLength + offset - blockId * payloadByteSize);
             for (int i = 0; i < payloadBlockByteSize; i++) {
                 payload[i + blockId * payloadByteSize] = (byte) ((blockSymbols[i * 2] << 4) | (blockSymbols[i * 2 + 1] & 0x0F));
+            }
+            if(hasCRC && blockId == numberOfBlocks - 1) {
+                crcValue =  (byte) ((blockSymbols[payloadBlockByteSize * 2] << 4) | (blockSymbols[payloadBlockByteSize * 2 + 1] & 0x0F));
+            }
+        }
+        if(attemptECC && hasCRC) {
+            // Check if fixed payload+CRC give a correct result
+            if(crc8(payload, 0, payload.length) != crcValue) {
+                throw new ReedSolomonException("CRC check failed");
             }
         }
         return payload;
@@ -249,7 +279,7 @@ public class QRTone {
      * @return Number of samples of the signal for {@link #getSamples(float[], int, double)}
      */
     public int setPayload(byte[] payload, Configuration.ECC_LEVEL eccLevel) {
-        byte[] header = encodeHeader(new Header(payload.length, eccLevel));
+        byte[] header = encodeHeader(new Header(payload.length + 1, eccLevel));
         // Convert bytes to hexadecimal array
         byte[] headerSymbols = payloadToSymbols(header, HEADER_SYMBOLS, HEADER_ECC_SYMBOLS, false);
         byte[] payloadSymbols = payloadToSymbols(payload, eccLevel);
@@ -405,71 +435,101 @@ public class QRTone {
         return Math.sqrt(sum / signal.length);
     }
 
-    public void pushSamples(float[] samples) {
-        pushedSamples += samples.length;
-        if(qrToneState == STATE.WAITING_TRIGGER) {
-            triggerAnalyzer.processSamples(samples);
-            if(triggerAnalyzer.getFirstToneLocation() != -1) {
-                qrToneState = STATE.PARSING_SYMBOLS;
-                firstToneSampleIndex = pushedSamples - (triggerAnalyzer.getTotalProcessed() - triggerAnalyzer.getFirstToneLocation());
-                frequencyAnalyzers = new IterativeGeneralizedGoertzel[frequencies.length];
-                for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
-                    frequencyAnalyzers[idfreq] = new IterativeGeneralizedGoertzel(configuration.sampleRate, frequencies[idfreq], wordLength);
-                }
-                symbolsCache = new byte[HEADER_SYMBOLS];
-                triggerAnalyzer.reset();
+    private void feedTriggerAnalyzer(float[] samples) {
+        triggerAnalyzer.processSamples(samples);
+        if(triggerAnalyzer.getFirstToneLocation() != -1) {
+            qrToneState = STATE.PARSING_SYMBOLS;
+            firstToneSampleIndex = pushedSamples - (triggerAnalyzer.getTotalProcessed() - triggerAnalyzer.getFirstToneLocation());
+            frequencyAnalyzers = new IterativeGeneralizedGoertzel[frequencies.length];
+            for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
+                frequencyAnalyzers[idfreq] = new IterativeGeneralizedGoertzel(configuration.sampleRate, frequencies[idfreq], wordLength);
             }
+            symbolsCache = new byte[HEADER_SYMBOLS];
+            triggerAnalyzer.reset();
         }
-        if(qrToneState == STATE.PARSING_SYMBOLS && firstToneSampleIndex + wordSilenceLength < pushedSamples) {
-            int cursor = Math.max(0, getToneIndex(samples.length));
-            while (cursor < samples.length) {
-                int windowLength = Math.min(samples.length - cursor, wordLength - frequencyAnalyzers[0].getProcessedSamples());
-                if(windowLength == 0) {
-                    break;
-                }
+    }
+
+    private boolean analyzeTones(float[] samples) {
+
+        int cursor = Math.max(0, getToneIndex(samples.length));
+        while (cursor < samples.length) {
+            int windowLength = Math.min(samples.length - cursor, wordLength - frequencyAnalyzers[0].getProcessedSamples());
+            if(windowLength == 0) {
+                break;
+            }
+            for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
+                frequencyAnalyzers[idfreq].processSamples(samples, cursor, cursor + windowLength);
+            }
+            if(frequencyAnalyzers[0].getProcessedSamples() == wordLength) {
+                double[] spl = new double[frequencies.length];
                 for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
-                    frequencyAnalyzers[idfreq].processSamples(samples, cursor, cursor + windowLength);
+                    double rmsValue = frequencyAnalyzers[idfreq].computeRMS(false).rms;
+                    spl[idfreq] = 20 * Math.log10(rmsValue);
                 }
-                if(frequencyAnalyzers[0].getProcessedSamples() == wordLength) {
-                    double[] spl = new double[frequencies.length];
-                    for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
-                        double rmsValue = frequencyAnalyzers[idfreq].computeRMS(false).rms;
-                        spl[idfreq] = 20 * Math.log10(rmsValue);
-                    }
-                    for(int symbolOffset = 0; symbolOffset < 2; symbolOffset++) {
-                        int maxSymbolId = -1;
-                        double maxSymbolGain = Double.NEGATIVE_INFINITY;
-                        for(int i = symbolOffset * FREQUENCY_ROOT; i < (symbolOffset + 1) * FREQUENCY_ROOT; i++) {
-                            double gain = spl[i];
-                            if(gain > maxSymbolGain) {
-                                maxSymbolGain = gain;
-                                maxSymbolId = i;
-                            }
+                for(int symbolOffset = 0; symbolOffset < 2; symbolOffset++) {
+                    int maxSymbolId = -1;
+                    double maxSymbolGain = Double.NEGATIVE_INFINITY;
+                    for(int i = symbolOffset * FREQUENCY_ROOT; i < (symbolOffset + 1) * FREQUENCY_ROOT; i++) {
+                        double gain = spl[i];
+                        if(gain > maxSymbolGain) {
+                            maxSymbolGain = gain;
+                            maxSymbolId = i;
                         }
-                        symbolsCache[this.symbolIndex * 2 + symbolOffset] = (byte)(maxSymbolId - symbolOffset * FREQUENCY_ROOT);
                     }
-                    symbolIndex+=1;
-                    if(symbolIndex * 2 == symbolsCache.length) {
-                        if(headerCache == null) {
-                            try {
-                                byte[] payloads = symbolsToPayload(symbolsCache, HEADER_SYMBOLS, HEADER_ECC_SYMBOLS, false);
-                                headerCache = decodeHeader(payloads);
-                                // CRC error
-                                if(headerCache == null) {
-                                    reset();
-                                    break;
-                                }
-                            } catch (ReedSolomonException rs) {
-                                // Unable to fix errors
+                    symbolsCache[this.symbolIndex * 2 + symbolOffset] = (byte)(maxSymbolId - symbolOffset * FREQUENCY_ROOT);
+                }
+                symbolIndex+=1;
+                if(symbolIndex * 2 == symbolsCache.length) {
+                    if(headerCache == null) {
+                        try {
+                            byte[] payloads = symbolsToPayload(symbolsCache, HEADER_SYMBOLS, HEADER_ECC_SYMBOLS, false);
+                            headerCache = decodeHeader(payloads);
+                            // CRC error
+                            if(headerCache == null) {
                                 reset();
                                 break;
                             }
+                            symbolsCache = new byte[headerCache.numberOfSymbols];
+                            symbolIndex = 0;
+                            firstToneSampleIndex += (HEADER_SYMBOLS / 2) * (wordLength+wordSilenceLength);
+                        } catch (ReedSolomonException rs) {
+                            // Unable to fix errors
+                            reset();
+                            break;
+                        }
+                    } else {
+                        // Decoding complete
+                        try {
+                            payload = symbolsToPayload(symbolsCache, headerCache.eccLevel, true);
+                            reset();
+                            return true;
+                        } catch (ReedSolomonException ex) {
+                            // Can't decode payload
+                            reset();
+                            break;
                         }
                     }
                 }
-                cursor += windowLength;
             }
+            cursor += windowLength;
         }
+        return false;
+    }
+
+    /**
+     * Analyze samples
+     * @param samples Samples. Should not be greater than {@link #getMaximumWindowLength()} in order to not miss multiple messages
+     * @return True if a payload has been decoded and can be retrieved with {@link #getPayload()}
+     */
+    public boolean pushSamples(float[] samples) {
+        pushedSamples += samples.length;
+        if(qrToneState == STATE.WAITING_TRIGGER) {
+            feedTriggerAnalyzer(samples);
+        }
+        if(qrToneState == STATE.PARSING_SYMBOLS && firstToneSampleIndex + wordSilenceLength < pushedSamples) {
+            return analyzeTones(samples);
+        }
+        return false;
     }
 
     public void reset() {
@@ -492,11 +552,27 @@ public class QRTone {
 
     protected static class Header {
         public final int length;
-        public final Configuration.ECC_LEVEL eccLevel;
+        private Configuration.ECC_LEVEL eccLevel = null;
+        public final int payloadSymbolsSize;
+        public final int payloadByteSize;
+        public final int numberOfBlocks;
+        public final int numberOfSymbols;
 
         public Header(int length, Configuration.ECC_LEVEL eccLevel) {
-            this.length = length;
+            this(length, Configuration.getTotalSymbolsForEcc(eccLevel), Configuration.getEccSymbolsForEcc(eccLevel));
             this.eccLevel = eccLevel;
+        }
+
+        public Header(int length, int blockSymbolsSize, int blockECCSymbols) {
+            this.length = length;
+            payloadSymbolsSize = blockSymbolsSize - blockECCSymbols;
+            payloadByteSize = payloadSymbolsSize / 2;
+            numberOfBlocks = (int)Math.ceil((length * 2) / (double)payloadSymbolsSize);
+            numberOfSymbols = numberOfBlocks * blockECCSymbols + length * 2;
+        }
+
+        public Configuration.ECC_LEVEL getEccLevel() {
+            return eccLevel;
         }
     }
 }

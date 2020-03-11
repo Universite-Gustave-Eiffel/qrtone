@@ -135,6 +135,13 @@ public class TriggerAnalyzer {
         }
     }
 
+    /**
+     * @return Maximum window length in order to have not more than 1 processed window
+     */
+    public int getMaximumWindowLength() {
+        return Math.min(windowAnalyze - processedWindowAlpha.get(), windowAnalyze - processedWindowBeta.get());
+    }
+
     public void processSamples(float[] samples) {
         doProcess(Arrays.copyOf(samples, samples.length), processedWindowAlpha, frequencyAnalyzersAlpha);
         if(totalProcessed > windowOffset) {
