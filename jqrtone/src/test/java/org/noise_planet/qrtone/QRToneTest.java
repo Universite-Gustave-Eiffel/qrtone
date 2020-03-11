@@ -373,7 +373,7 @@ public class QRToneTest {
         byte[] payloadBytes = payloadStr.getBytes();
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_L;
         byte[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
-        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel);
+        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, true);
         assertArrayEquals(payloadBytes, processedBytes);
     }
 
@@ -383,7 +383,7 @@ public class QRToneTest {
         byte[] payloadBytes = payloadStr.getBytes();
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_M;
         byte[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
-        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel);
+        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, true);
         assertArrayEquals(payloadBytes, processedBytes);
     }
 
@@ -393,7 +393,7 @@ public class QRToneTest {
         byte[] payloadBytes = payloadStr.getBytes();
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_Q;
         byte[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
-        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel);
+        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, true);
         assertArrayEquals(payloadBytes, processedBytes);
     }
 
@@ -403,7 +403,7 @@ public class QRToneTest {
         byte[] payloadBytes = payloadStr.getBytes();
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_H;
         byte[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
-        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel);
+        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, true);
         assertArrayEquals(payloadBytes, processedBytes);
     }
 
@@ -411,13 +411,20 @@ public class QRToneTest {
     public void testSymbolEncodingDecodingCRC1() throws ReedSolomonException {
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_Q;
         byte[] symbols = QRTone.payloadToSymbols(IPFS_PAYLOAD, eccLevel);
-        System.out.println(String.format(Locale.ROOT, "Signal length %.3f seconds", (symbols.length / 2) * 0.06 + 0.012));
-        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel);
+        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, true);
         assertArrayEquals(IPFS_PAYLOAD, processedBytes);
     }
 
-
     @Test
+    public void testSymbolEncodingDecodingCRC2() throws ReedSolomonException {
+        Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_L;
+        byte[] symbols = QRTone.payloadToSymbols(IPFS_PAYLOAD, eccLevel);
+        // Push error
+        symbols[1] = 8;
+        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, true);
+        assertArrayEquals(IPFS_PAYLOAD, processedBytes);
+    }
+
     public void testToneGeneration() throws IOException {
         double sampleRate = 44100;
         double timeBlankBefore = 3;
@@ -483,7 +490,7 @@ public class QRToneTest {
         }
         System.out.println(String.format("Done in %.3f",(System.currentTimeMillis() - start) /1e3));
         csvWriter.close();
-        writeFloatToFile("target/inputSignal.raw", samples);
+        //writeFloatToFile("target/inputSignal.raw", samples);
     }
 
     static class CSVWriter implements TriggerAnalyzer.TriggerCallback {

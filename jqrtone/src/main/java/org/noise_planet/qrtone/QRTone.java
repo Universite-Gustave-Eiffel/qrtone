@@ -100,9 +100,14 @@ public class QRTone {
     static byte[] payloadToSymbols(byte[] payload, Configuration.ECC_LEVEL eccLevel) {
         final int blockSymbolsSize = Configuration.getTotalSymbolsForEcc(eccLevel);
         final int blockECCSymbols = Configuration.getEccSymbolsForEcc(eccLevel);
-        return payloadToSymbols(payload, blockSymbolsSize, blockECCSymbols);
+        return payloadToSymbols(payload, blockSymbolsSize, blockECCSymbols, true);
     }
-    static byte[] payloadToSymbols(byte[] payload, int blockSymbolsSize, int blockECCSymbols) {
+
+    static byte[] payloadToSymbols(byte[] payload, int blockSymbolsSize, int blockECCSymbols, boolean addCRC) {
+        if(addCRC) {
+            payload = Arrays.copyOf(payload, payload.length + 1);
+            payload[payload.length - 1] = crc8(payload, 0, payload.length - 1);
+        }
         final int payloadSymbolsSize = blockSymbolsSize - blockECCSymbols;
         final int payloadByteSize = payloadSymbolsSize / 2;
         final int numberOfBlocks = (int)Math.ceil((payload.length * 2) / (double)payloadSymbolsSize);
@@ -145,13 +150,13 @@ public class QRTone {
         }
     }
 
-    static byte[] symbolsToPayload(byte[] symbols, Configuration.ECC_LEVEL eccLevel) throws ReedSolomonException {
+    static byte[] symbolsToPayload(byte[] symbols, Configuration.ECC_LEVEL eccLevel, boolean hasCRC) throws ReedSolomonException {
         final int blockSymbolsSize = Configuration.getTotalSymbolsForEcc(eccLevel);
         final int blockECCSymbols = Configuration.getEccSymbolsForEcc(eccLevel);
-        return symbolsToPayload(symbols, blockSymbolsSize, blockECCSymbols);
+        return symbolsToPayload(symbols, blockSymbolsSize, blockECCSymbols, hasCRC);
     }
 
-    static byte[] symbolsToPayload(byte[] symbols, int blockSymbolsSize, int blockECCSymbols) throws ReedSolomonException {
+    static byte[] symbolsToPayload(byte[] symbols, int blockSymbolsSize, int blockECCSymbols, boolean hasCRC) throws ReedSolomonException {
         final int payloadSymbolsSize = blockSymbolsSize - blockECCSymbols;
         final int payloadByteSize = payloadSymbolsSize / 2;
         final int payloadLength = ((symbols.length / blockSymbolsSize) * payloadSymbolsSize + Math.max(0, symbols.length % blockSymbolsSize - blockECCSymbols)) / 2;
@@ -161,7 +166,25 @@ public class QRTone {
         int[] index = new int[symbols.length];
         fisherYatesShuffleIndex(PERMUTATION_SEED, index);
         unswapSymbols(symbols, index);
-        byte[] payload = new byte[payloadLength];
+        int offset = 0;
+        if(hasCRC) {
+            offset = -1;
+        }
+        byte[] payload = new byte[payloadLength + offset];
+        boolean attemptECC = true;
+        if(hasCRC) {
+            // Check CRC on payload bytes
+            CRC8 crc8 = new CRC8();
+            for (int blockId = 0; blockId < numberOfBlocks; blockId++) {
+                int payloadBlockByteSize = Math.min(payloadByteSize, payloadLength - 1 - blockId * payloadByteSize);
+                int payloadLocation = blockId * blockSymbolsSize;
+                for (int i = 0; i < payloadBlockByteSize; i++) {
+                    crc8.add((byte) ((symbols[payloadLocation + i * 2] << 4) | (symbols[payloadLocation + i * 2 + 1] & 0x0F)));
+                }
+            }
+            int crcLocation = symbols.length - blockECCSymbols - 2;
+            attemptECC = crc8.crc() != (byte) ((symbols[crcLocation] << 4) | (symbols[crcLocation+1] & 0x0F));
+        }
         for(int blockId = 0; blockId < numberOfBlocks; blockId++) {
             int[] blockSymbols = new int[blockSymbolsSize];
             int payloadSymbolsLength = Math.min(payloadSymbolsSize, symbols.length - blockECCSymbols - blockId * blockSymbolsSize);
@@ -169,13 +192,14 @@ public class QRTone {
             arraycopy(symbols, blockId * blockSymbolsSize, blockSymbols, 0, payloadSymbolsLength);
             // Copy parity sumbols
             arraycopy(symbols, blockId * blockSymbolsSize + payloadSymbolsLength, blockSymbols, payloadSymbolsSize, blockECCSymbols);
-            //int[] blockSymbols = Arrays.copyOfRange(symbols, blockId * blockSymbolsSize,
-            //        blockId * blockSymbolsSize + blockSymbolsSize);
-            // Fix symbols thanks to ECC parity symbols
-            GenericGF gallois = GenericGF.AZTEC_PARAM;
-            ReedSolomonDecoder decoder = new ReedSolomonDecoder(gallois);
-            decoder.decode(blockSymbols, blockECCSymbols);
-            int payloadBlockByteSize = Math.min(payloadByteSize, payload.length - blockId * payloadByteSize);
+            if(attemptECC) {
+                // Got CRC error or no CRC available, use Reed-Solomon in order to fix errors
+                // Fix symbols thanks to ECC parity symbols
+                GenericGF gallois = GenericGF.AZTEC_PARAM;
+                ReedSolomonDecoder decoder = new ReedSolomonDecoder(gallois);
+                decoder.decode(blockSymbols, blockECCSymbols);
+            }
+            int payloadBlockByteSize = Math.min(payloadByteSize, payloadLength + offset - blockId * payloadByteSize);
             for (int i = 0; i < payloadBlockByteSize; i++) {
                 payload[i + blockId * payloadByteSize] = (byte) ((blockSymbols[i * 2] << 4) | (blockSymbols[i * 2 + 1] & 0x0F));
             }
@@ -227,7 +251,7 @@ public class QRTone {
     public int setPayload(byte[] payload, Configuration.ECC_LEVEL eccLevel) {
         byte[] header = encodeHeader(new Header(payload.length, eccLevel));
         // Convert bytes to hexadecimal array
-        byte[] headerSymbols = payloadToSymbols(header, HEADER_SYMBOLS, HEADER_ECC_SYMBOLS);
+        byte[] headerSymbols = payloadToSymbols(header, HEADER_SYMBOLS, HEADER_ECC_SYMBOLS, false);
         byte[] payloadSymbols = payloadToSymbols(payload, eccLevel);
         symbolsToDeliver = new byte[headerSymbols.length+payloadSymbols.length];
         System.arraycopy(headerSymbols, 0, symbolsToDeliver, 0, headerSymbols.length);
@@ -269,21 +293,9 @@ public class QRTone {
      * @return crc value
      */
     public static byte crc8(byte[] payload, int from, int to) {
-        int crc8 = 0;
-        for (int i=from; i < to; i++) {
-            int crc = 0;
-            int accumulator = (crc8 ^ payload[i]) & 0x0FF;
-            for (int j = 0; j < 8; j++) {
-                if (((accumulator ^ crc) & 0x01) == 0x01) {
-                    crc = ((crc ^ 0x18) >> 1) | 0x80;
-                } else {
-                    crc = crc >> 1;
-                }
-                accumulator = accumulator >> 1;
-            }
-            crc8 = (byte) crc;
-        }
-        return (byte) (crc8 & 0x0FF);
+        CRC8 crc8 = new CRC8();
+        crc8.add(payload, from, to);
+        return crc8.crc();
     }
 
     /**
@@ -440,7 +452,7 @@ public class QRTone {
                     if(symbolIndex * 2 == symbolsCache.length) {
                         if(headerCache == null) {
                             try {
-                                byte[] payloads = symbolsToPayload(symbolsCache, HEADER_SYMBOLS, HEADER_ECC_SYMBOLS);
+                                byte[] payloads = symbolsToPayload(symbolsCache, HEADER_SYMBOLS, HEADER_ECC_SYMBOLS, false);
                                 headerCache = decodeHeader(payloads);
                                 // CRC error
                                 if(headerCache == null) {
