@@ -41,6 +41,7 @@ import com.google.zxing.common.reedsolomon.ReedSolomonException;
 import java.io.*;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class QRTone {
@@ -74,6 +75,7 @@ public class QRTone {
     private long pushedSamples = 0;
     private int symbolIndex = 0;
     private byte[] payload;
+    private AtomicInteger fixedErrors = new AtomicInteger(0);
 
     public QRTone(Configuration configuration) {
         this.configuration = configuration;
@@ -163,10 +165,10 @@ public class QRTone {
         }
     }
 
-    static byte[] symbolsToPayload(byte[] symbols, Configuration.ECC_LEVEL eccLevel, boolean hasCRC) throws ReedSolomonException {
+    static byte[] symbolsToPayload(byte[] symbols, Configuration.ECC_LEVEL eccLevel, boolean hasCRC, AtomicInteger fixedErrors) throws ReedSolomonException {
         final int blockSymbolsSize = Configuration.getTotalSymbolsForEcc(eccLevel);
         final int blockECCSymbols = Configuration.getEccSymbolsForEcc(eccLevel);
-        return symbolsToPayload(symbols, blockSymbolsSize, blockECCSymbols, hasCRC);
+        return symbolsToPayload(symbols, blockSymbolsSize, blockECCSymbols, hasCRC, fixedErrors);
     }
 
     /**
@@ -176,7 +178,7 @@ public class QRTone {
         return payload;
     }
 
-    static byte[] symbolsToPayload(byte[] symbols, int blockSymbolsSize, int blockECCSymbols, boolean hasCRC) throws ReedSolomonException {
+    static byte[] symbolsToPayload(byte[] symbols, int blockSymbolsSize, int blockECCSymbols, boolean hasCRC, AtomicInteger fixedErrors) throws ReedSolomonException {
         final int payloadSymbolsSize = blockSymbolsSize - blockECCSymbols;
         final int payloadByteSize = payloadSymbolsSize / 2;
         final int payloadLength = ((symbols.length / blockSymbolsSize) * payloadSymbolsSize + Math.max(0, symbols.length % blockSymbolsSize - blockECCSymbols)) / 2;
@@ -218,7 +220,10 @@ public class QRTone {
                 // Fix symbols thanks to ECC parity symbols
                 GenericGF gallois = GenericGF.AZTEC_PARAM;
                 ReedSolomonDecoder decoder = new ReedSolomonDecoder(gallois);
-                decoder.decode(blockSymbols, blockECCSymbols);
+                int errors = decoder.decode(blockSymbols, blockECCSymbols);
+                if(fixedErrors != null) {
+                    fixedErrors.addAndGet(errors);
+                }
             }
             int payloadBlockByteSize = Math.min(payloadByteSize, payloadLength + offset - blockId * payloadByteSize);
             for (int i = 0; i < payloadBlockByteSize; i++) {
@@ -446,6 +451,7 @@ public class QRTone {
             }
             symbolsCache = new byte[HEADER_SYMBOLS];
             triggerAnalyzer.reset();
+            fixedErrors.set(0);
         }
     }
 
@@ -457,8 +463,11 @@ public class QRTone {
             if(windowLength == 0) {
                 break;
             }
+            float[] window = new float[windowLength];
+            System.arraycopy(samples, cursor, window, 0, windowLength);
+            applyHann(window, 0, windowLength, wordLength, frequencyAnalyzers[0].getProcessedSamples());
             for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
-                frequencyAnalyzers[idfreq].processSamples(samples, cursor, cursor + windowLength);
+                frequencyAnalyzers[idfreq].processSamples(window, 0, windowLength);
             }
             if(frequencyAnalyzers[0].getProcessedSamples() == wordLength) {
                 double[] spl = new double[frequencies.length];
@@ -482,7 +491,7 @@ public class QRTone {
                 if(symbolIndex * 2 == symbolsCache.length) {
                     if(headerCache == null) {
                         try {
-                            byte[] payloads = symbolsToPayload(symbolsCache, HEADER_SYMBOLS, HEADER_ECC_SYMBOLS, false);
+                            byte[] payloads = symbolsToPayload(symbolsCache, HEADER_SYMBOLS, HEADER_ECC_SYMBOLS, false, fixedErrors);
                             headerCache = decodeHeader(payloads);
                             // CRC error
                             if(headerCache == null) {
@@ -500,7 +509,7 @@ public class QRTone {
                     } else {
                         // Decoding complete
                         try {
-                            payload = symbolsToPayload(symbolsCache, headerCache.eccLevel, true);
+                            payload = symbolsToPayload(symbolsCache, headerCache.eccLevel, true, fixedErrors);
                             reset();
                             return true;
                         } catch (ReedSolomonException ex) {
@@ -541,6 +550,13 @@ public class QRTone {
         symbolsToDeliver = null;
         frequencyAnalyzers = null;
         triggerAnalyzer.reset();
+    }
+
+    /**
+     * @return Errors corrected by Reed-Solomon algorithm
+     */
+    public int getFixedErrors() {
+        return fixedErrors.get();
     }
 
     private long getToneLocation() {

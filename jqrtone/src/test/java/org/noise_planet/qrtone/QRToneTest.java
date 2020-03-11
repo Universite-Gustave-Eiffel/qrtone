@@ -33,9 +33,23 @@
 
 package org.noise_planet.qrtone;
 
+import be.tarsos.dsp.AudioDispatcher;
+import be.tarsos.dsp.FadeIn;
+import be.tarsos.dsp.GainProcessor;
+import be.tarsos.dsp.effects.DelayEffect;
+import be.tarsos.dsp.effects.FlangerEffect;
+import be.tarsos.dsp.filters.BandPass;
+import be.tarsos.dsp.filters.LowPassFS;
+import be.tarsos.dsp.io.TarsosDSPAudioFloatConverter;
+import be.tarsos.dsp.io.TarsosDSPAudioFormat;
+import be.tarsos.dsp.io.jvm.AudioDispatcherFactory;
+import be.tarsos.dsp.synthesis.NoiseGenerator;
+import be.tarsos.dsp.writer.WriterProcessor;
 import com.google.zxing.common.reedsolomon.ReedSolomonException;
 import org.junit.Test;
+import org.noise_planet.qrtone.utils.ArrayWriteProcessor;
 
+import javax.sound.sampled.UnsupportedAudioFileException;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -43,6 +57,7 @@ import java.nio.ShortBuffer;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.*;
@@ -405,7 +420,7 @@ public class QRToneTest {
         byte[] payloadBytes = payloadStr.getBytes();
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_L;
         byte[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
-        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, true);
+        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, true, null);
         assertArrayEquals(payloadBytes, processedBytes);
     }
 
@@ -415,7 +430,7 @@ public class QRToneTest {
         byte[] payloadBytes = payloadStr.getBytes();
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_M;
         byte[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
-        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, true);
+        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, true, null);
         assertArrayEquals(payloadBytes, processedBytes);
     }
 
@@ -425,7 +440,7 @@ public class QRToneTest {
         byte[] payloadBytes = payloadStr.getBytes();
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_Q;
         byte[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
-        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, true);
+        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, true, null);
         assertArrayEquals(payloadBytes, processedBytes);
     }
 
@@ -435,7 +450,7 @@ public class QRToneTest {
         byte[] payloadBytes = payloadStr.getBytes();
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_H;
         byte[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
-        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, true);
+        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, true, null);
         assertArrayEquals(payloadBytes, processedBytes);
     }
 
@@ -443,7 +458,7 @@ public class QRToneTest {
     public void testSymbolEncodingDecodingCRC1() throws ReedSolomonException {
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_Q;
         byte[] symbols = QRTone.payloadToSymbols(IPFS_PAYLOAD, eccLevel);
-        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, true);
+        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, true, null);
         assertArrayEquals(IPFS_PAYLOAD, processedBytes);
     }
 
@@ -453,8 +468,10 @@ public class QRToneTest {
         byte[] symbols = QRTone.payloadToSymbols(IPFS_PAYLOAD, eccLevel);
         // Push error
         symbols[1] = 8;
-        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, true);
+        AtomicInteger fixedErros = new AtomicInteger(0);
+        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, true, fixedErros);
         assertArrayEquals(IPFS_PAYLOAD, processedBytes);
+        assertEquals(1, fixedErros.get());
     }
 
     public void testToneGeneration() throws IOException {
@@ -535,7 +552,7 @@ public class QRToneTest {
 
 
     @Test
-    public void testToneDetectionWithNoise() throws IOException {
+    public void testToneDetectionWithNoise() throws IOException, UnsupportedAudioFileException {
         boolean writeCSV = true;
         double sampleRate = 44100;
         double timeBlankBefore = 1.1333;
@@ -556,7 +573,15 @@ public class QRToneTest {
             samples = loadShortStream(fileInputStream, ByteOrder.LITTLE_ENDIAN);
         }
         qrTone.getSamples(audio, 0, powerPeak);
-        // TODO add effects
+        // Add audio effects
+        AudioDispatcher d = AudioDispatcherFactory.fromFloatArray(audio, (int)sampleRate, 1024, 0);
+        d.addAudioProcessor(new DelayEffect(0.04, 0.5, sampleRate));
+        d.addAudioProcessor(new LowPassFS((float)qrTone.getFrequencies()[QRTone.FREQUENCY_ROOT], (float)sampleRate));
+        d.addAudioProcessor(new GainProcessor(Math.pow(10, -3 / 20.0)));
+        ArrayWriteProcessor writer = new ArrayWriteProcessor((int)sampleRate);
+        d.addAudioProcessor(writer);
+        d.run();
+        audio = writer.getData();
         for(int i = 0; i < audio.length; i++) {
             samples[i+samplesBefore] += audio[i];
         }
@@ -564,18 +589,21 @@ public class QRToneTest {
         long start = System.currentTimeMillis();
         int cursor = 0;
         Random random = new Random(QRTone.PERMUTATION_SEED);
-        while (cursor < samples.length) {
-            int windowSize = Math.min(random.nextInt(115) + 20, samples.length - cursor);
-            float[] window = new float[windowSize];
-            System.arraycopy(samples, cursor, window, 0, window.length);
-            if(qrTone.pushSamples(window)) {
-                break;
+        try {
+            while (cursor < samples.length) {
+                int windowSize = Math.min(random.nextInt(115) + 20, samples.length - cursor);
+                float[] window = new float[windowSize];
+                System.arraycopy(samples, cursor, window, 0, window.length);
+                if (qrTone.pushSamples(window)) {
+                    break;
+                }
+                cursor += windowSize;
             }
-            cursor += windowSize;
-        }
-        System.out.println(String.format("Done in %.3f",(System.currentTimeMillis() - start) /1e3));
-        if(writeCSV) {
-            csvWriter.close();
+            System.out.println(String.format("Done in %.3f", (System.currentTimeMillis() - start) / 1e3));
+        } finally {
+            if(writeCSV) {
+                csvWriter.close();
+            }
         }
         assertArrayEquals(IPFS_PAYLOAD, qrTone.getPayload());
     }
@@ -602,7 +630,7 @@ public class QRToneTest {
                     writer.write("t");
                     for (double frequency : frequencies) {
                         writer.write(String.format(Locale.ROOT, ",%.0f Hz (L)", frequency));
-                        writer.write(String.format(Locale.ROOT, ",%.0f Hz (L50)", frequency));
+                        writer.write(String.format(Locale.ROOT, ",%.0f Hz (L50+15)", frequency));
                     }
                     writer.write("\n");
                 }
