@@ -69,7 +69,7 @@ public class QRTone {
     public final static int FREQUENCY_ROOT = 16;
     private final double[] frequencies;
     final TriggerAnalyzer triggerAnalyzer;
-    private byte[] symbolsToDeliver;
+    byte[] symbolsToDeliver;
     private byte[] symbolsCache;
     private Header headerCache;
     private long pushedSamples = 0;

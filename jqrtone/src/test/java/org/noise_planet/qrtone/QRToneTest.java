@@ -566,7 +566,8 @@ public class QRToneTest {
             csvWriter.open("target/spectrum.csv");
             qrTone.setTriggerCallback(csvWriter);
         }
-        final int dataSampleLength = qrTone.setPayload(IPFS_PAYLOAD);
+        final int dataSampleLength = qrTone.setPayload(IPFS_PAYLOAD, Configuration.ECC_LEVEL.ECC_Q);
+        int numberOfSymbols = qrTone.symbolsToDeliver.length;
         float[] audio = new float[dataSampleLength];
         float[] samples;
         try(InputStream fileInputStream = QRToneTest.class.getResourceAsStream("noisy_10sec_44100_16bitsPCMMono.raw")) {
@@ -585,7 +586,7 @@ public class QRToneTest {
         for(int i = 0; i < audio.length; i++) {
             samples[i+samplesBefore] += audio[i];
         }
-        writeFloatToFile("target/inputSignal.raw", samples);
+        //writeFloatToFile("target/inputSignal.raw", samples);
         long start = System.currentTimeMillis();
         int cursor = 0;
         Random random = new Random(QRTone.PERMUTATION_SEED);
@@ -606,6 +607,7 @@ public class QRToneTest {
             }
         }
         assertArrayEquals(IPFS_PAYLOAD, qrTone.getPayload());
+        System.out.println(qrTone.getFixedErrors()+" errors have been fixed on "+numberOfSymbols+" symbols");
     }
 
     static class QRToneCallback implements TriggerAnalyzer.TriggerCallback {

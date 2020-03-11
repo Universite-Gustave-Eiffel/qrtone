@@ -58,6 +58,8 @@ public class TriggerAnalyzer {
         firstToneLocation = -1;
         peakFinder.reset();
         totalProcessed = 0;
+        processedWindowAlpha.set(0);
+        processedWindowBeta.set(0);
         for(int i=0; i<frequencies.length; i++) {
             frequencyAnalyzersAlpha[i].reset();
             frequencyAnalyzersBeta[i].reset();
