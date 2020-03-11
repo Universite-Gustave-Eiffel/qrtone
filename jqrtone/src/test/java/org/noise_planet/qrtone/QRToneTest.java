@@ -34,17 +34,10 @@
 package org.noise_planet.qrtone;
 
 import be.tarsos.dsp.AudioDispatcher;
-import be.tarsos.dsp.FadeIn;
 import be.tarsos.dsp.GainProcessor;
 import be.tarsos.dsp.effects.DelayEffect;
-import be.tarsos.dsp.effects.FlangerEffect;
-import be.tarsos.dsp.filters.BandPass;
 import be.tarsos.dsp.filters.LowPassFS;
-import be.tarsos.dsp.io.TarsosDSPAudioFloatConverter;
-import be.tarsos.dsp.io.TarsosDSPAudioFormat;
 import be.tarsos.dsp.io.jvm.AudioDispatcherFactory;
-import be.tarsos.dsp.synthesis.NoiseGenerator;
-import be.tarsos.dsp.writer.WriterProcessor;
 import com.google.zxing.common.reedsolomon.ReedSolomonException;
 import org.junit.Test;
 import org.noise_planet.qrtone.utils.ArrayWriteProcessor;
