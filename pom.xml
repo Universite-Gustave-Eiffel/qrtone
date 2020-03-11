@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.noise-planet</groupId>
     <artifactId>qrtone-parent</artifactId>
-    <version>0.2.4-SNAPSHOT</version>
+    <version>0.3-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>qrtone-parent</name>
@@ -17,7 +17,6 @@
     </properties>
 
     <modules>
-        <module>jwarble</module>
         <module>jqrtone</module>
     </modules>
 
