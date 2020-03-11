@@ -26,6 +26,12 @@
             <version>3.6.1</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.github.axet</groupId>
+            <artifactId>TarsosDSP</artifactId>
+            <version>2.4-1</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <build>
         <plugins>        

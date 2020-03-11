@@ -38,8 +38,9 @@ import org.junit.Test;
 
 import java.io.*;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.ShortBuffer;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Locale;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
@@ -279,6 +280,37 @@ public class QRToneTest {
         assertEquals(signal_rms, Math.sqrt(iterativeRMS / audio.length), 1e-6);
     }
 
+    public static short[] convertBytesToShort(byte[] buffer, int length, ByteOrder byteOrder) {
+        ShortBuffer byteBuffer = ByteBuffer.wrap(buffer, 0, length).order(byteOrder).asShortBuffer();
+        short[] samplesShort = new short[byteBuffer.capacity()];
+        byteBuffer.order();
+        byteBuffer.get(samplesShort);
+        return samplesShort;
+    }
+
+    public static float[] loadShortStream(InputStream inputStream, ByteOrder byteOrder) throws IOException {
+        float[] fullArray = new float[0];
+        byte[] buffer = new byte[4096];
+        int read;
+        // Read input signal up to buffer.length
+        while ((read = inputStream.read(buffer)) != -1) {
+            // Convert bytes into double values. Samples array size is 8 times inferior than buffer size
+            if (read < buffer.length) {
+                buffer = Arrays.copyOfRange(buffer, 0, read);
+            }
+            short[] signal = convertBytesToShort(buffer, buffer.length, byteOrder);
+            float[] nextFullArray = new float[fullArray.length + signal.length];
+            if(fullArray.length > 0) {
+                System.arraycopy(fullArray, 0, nextFullArray, 0, fullArray.length);
+            }
+            for(int i = 0; i < signal.length; i++) {
+                nextFullArray[fullArray.length + i] = signal[i] / (float)Short.MAX_VALUE;
+            }
+            fullArray = nextFullArray;
+        }
+        return fullArray;
+    }
+
     public static void writeShortToFile(String path, short[] signal) throws IOException {
         FileOutputStream fileOutputStream = new FileOutputStream(path);
         try {
@@ -457,6 +489,7 @@ public class QRToneTest {
 
     @Test
     public void testToneDetection() throws IOException {
+        boolean writeCSV = false;
         double sampleRate = 44100;
         double timeBlankBefore = 1.1333;
         double timeBlankAfter = 2;
@@ -467,9 +500,11 @@ public class QRToneTest {
         int samplesAfter = (int)(timeBlankAfter * sampleRate);
         Configuration configuration = Configuration.getAudible(sampleRate);
         QRTone qrTone = new QRTone(configuration);
-        CSVWriter csvWriter = new CSVWriter();
-        csvWriter.open("target/spectrum.csv");
-        qrTone.setTriggerCallback(csvWriter);
+        QRToneCallback csvWriter = new QRToneCallback();
+        if(writeCSV) {
+            csvWriter.open("target/spectrum.csv");
+            qrTone.setTriggerCallback(csvWriter);
+        }
         final int dataSampleLength = qrTone.setPayload(IPFS_PAYLOAD);
         float[] audio = new float[dataSampleLength];
         float[] samples = new float[samplesBefore + dataSampleLength + samplesAfter];
@@ -491,12 +526,61 @@ public class QRToneTest {
             cursor += windowSize;
         }
         System.out.println(String.format("Done in %.3f",(System.currentTimeMillis() - start) /1e3));
-        csvWriter.close();
+        if(writeCSV) {
+            csvWriter.close();
+        }
         assertArrayEquals(IPFS_PAYLOAD, qrTone.getPayload());
-        //writeFloatToFile("target/inputSignal.raw", samples);
     }
 
-    static class CSVWriter implements TriggerAnalyzer.TriggerCallback {
+
+
+    @Test
+    public void testToneDetectionWithNoise() throws IOException {
+        boolean writeCSV = true;
+        double sampleRate = 44100;
+        double timeBlankBefore = 1.1333;
+        double powerRMS = Math.pow(10, -26.0 / 20.0); // -26 dBFS
+        double powerPeak = powerRMS * Math.sqrt(2);
+        int samplesBefore = (int)(timeBlankBefore * sampleRate);
+        Configuration configuration = Configuration.getAudible(sampleRate);
+        QRTone qrTone = new QRTone(configuration);
+        QRToneCallback csvWriter = new QRToneCallback();
+        if(writeCSV) {
+            csvWriter.open("target/spectrum.csv");
+            qrTone.setTriggerCallback(csvWriter);
+        }
+        final int dataSampleLength = qrTone.setPayload(IPFS_PAYLOAD);
+        float[] audio = new float[dataSampleLength];
+        float[] samples;
+        try(InputStream fileInputStream = QRToneTest.class.getResourceAsStream("noisy_10sec_44100_16bitsPCMMono.raw")) {
+            samples = loadShortStream(fileInputStream, ByteOrder.LITTLE_ENDIAN);
+        }
+        qrTone.getSamples(audio, 0, powerPeak);
+        // TODO add effects
+        for(int i = 0; i < audio.length; i++) {
+            samples[i+samplesBefore] += audio[i];
+        }
+        writeFloatToFile("target/inputSignal.raw", samples);
+        long start = System.currentTimeMillis();
+        int cursor = 0;
+        Random random = new Random(QRTone.PERMUTATION_SEED);
+        while (cursor < samples.length) {
+            int windowSize = Math.min(random.nextInt(115) + 20, samples.length - cursor);
+            float[] window = new float[windowSize];
+            System.arraycopy(samples, cursor, window, 0, window.length);
+            if(qrTone.pushSamples(window)) {
+                break;
+            }
+            cursor += windowSize;
+        }
+        System.out.println(String.format("Done in %.3f",(System.currentTimeMillis() - start) /1e3));
+        if(writeCSV) {
+            csvWriter.close();
+        }
+        assertArrayEquals(IPFS_PAYLOAD, qrTone.getPayload());
+    }
+
+    static class QRToneCallback implements TriggerAnalyzer.TriggerCallback {
         double[] frequencies;
         Writer writer;
         public void open(String path) throws FileNotFoundException {

@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Evaluate the exact position of the first tone
  */
 public class TriggerAnalyzer {
-    public static final double PERCENTILE_BACKGROUND = 0.05;
+    public static final double PERCENTILE_BACKGROUND = 0.5;
     private AtomicInteger processedWindowAlpha = new AtomicInteger(0);
     private AtomicInteger processedWindowBeta = new AtomicInteger(0);
     private final int windowOffset;
