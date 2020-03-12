@@ -47,6 +47,7 @@ public class QRTone {
     public static final long PERMUTATION_SEED = 3141592653589793238L;
     private enum STATE {WAITING_TRIGGER, PARSING_SYMBOLS};
     private static final double TUKEY_ALPHA  = 0.5;
+    private static final int CRC_BYTE_LENGTH = 2;
     private STATE qrToneState = STATE.WAITING_TRIGGER;
     private IterativeGeneralizedGoertzel[] frequencyAnalyzers;
     private long firstToneSampleIndex = -1;
@@ -117,8 +118,14 @@ public class QRTone {
 
     static byte[] payloadToSymbols(byte[] payload, int blockSymbolsSize, int blockECCSymbols, boolean addCRC) {
         if(addCRC) {
-            payload = Arrays.copyOf(payload, payload.length + 1);
-            payload[payload.length - 1] = crc8(payload, 0, payload.length - 1);
+            CRC16 crc16 = new CRC16();
+            for(byte b : payload) {
+                crc16.add(b);
+            }
+            payload = Arrays.copyOf(payload, payload.length + CRC_BYTE_LENGTH);
+            final int res = crc16.crc();
+            payload[payload.length - 2] = (byte)(res >>> 8);
+            payload[payload.length - 1] = (byte)(res & 0xFF);
         }
         Header header = new Header(payload.length, blockSymbolsSize, blockECCSymbols);
         final int payloadSymbolsSize = header.payloadSymbolsSize;
@@ -188,23 +195,29 @@ public class QRTone {
         unswapSymbols(symbols, index);
         int offset = 0;
         if(hasCRC) {
-            offset = -1;
+            offset = -2;
         }
         byte[] payload = new byte[payloadLength + offset];
         boolean attemptECC = true;
-        byte crcValue = 0;
+        int[] crcValue = new int[CRC_BYTE_LENGTH];
+        int crcIndex = 0;
         if(hasCRC) {
             // Check CRC on payload bytes
-            CRC8 crc8 = new CRC8();
+            CRC16 crc = new CRC16();
             for (int blockId = 0; blockId < numberOfBlocks; blockId++) {
-                int payloadBlockByteSize = Math.min(payloadByteSize, payloadLength - 1 - blockId * payloadByteSize);
+                int payloadBlockByteSize = Math.min(payloadByteSize, payloadLength - CRC_BYTE_LENGTH - blockId * payloadByteSize);
                 int payloadLocation = blockId * blockSymbolsSize;
                 for (int i = 0; i < payloadBlockByteSize; i++) {
-                    crc8.add((byte) ((symbols[payloadLocation + i * 2] << 4) | (symbols[payloadLocation + i * 2 + 1] & 0x0F)));
+                    crc.add((byte) ((symbols[payloadLocation + i * 2] << 4) | (symbols[payloadLocation + i * 2 + 1] & 0x0F)));
                 }
             }
-            int crcLocation = symbols.length - blockECCSymbols - 2;
-            attemptECC = crc8.crc() != (byte) ((symbols[crcLocation] << 4) | (symbols[crcLocation+1] & 0x0F));
+            int crcLocation = symbols.length - blockECCSymbols - (CRC_BYTE_LENGTH * 2);
+            int storedCRC = 0;
+            storedCRC = storedCRC | symbols[crcLocation] << 12;
+            storedCRC = storedCRC | symbols[crcLocation + 1] << 8;
+            storedCRC = storedCRC | symbols[crcLocation + 2] << 4;
+            storedCRC = storedCRC | symbols[crcLocation + 3];
+            attemptECC = crc.crc() != storedCRC;
         }
         for(int blockId = 0; blockId < numberOfBlocks; blockId++) {
             int[] blockSymbols = new int[blockSymbolsSize];
@@ -227,13 +240,16 @@ public class QRTone {
             for (int i = 0; i < payloadBlockByteSize; i++) {
                 payload[i + blockId * payloadByteSize] = (byte) ((blockSymbols[i * 2] << 4) | (blockSymbols[i * 2 + 1] & 0x0F));
             }
-            if(hasCRC && blockId == numberOfBlocks - 1) {
-                crcValue =  (byte) ((blockSymbols[payloadBlockByteSize * 2] << 4) | (blockSymbols[payloadBlockByteSize * 2 + 1] & 0x0F));
+            for (int i = Math.max(0, payloadBlockByteSize); i < Math.min(payloadByteSize, payloadLength - blockId * payloadByteSize); i++) {
+                crcValue[crcIndex++] = ((blockSymbols[i * 2] << 4) | (blockSymbols[i * 2 + 1] & 0x0F));
             }
         }
         if(attemptECC && hasCRC) {
+            int storedCRC = 0;
+            storedCRC = storedCRC | crcValue[0] << 8;
+            storedCRC = storedCRC | crcValue[1];
             // Check if fixed payload+CRC give a correct result
-            if(crc8(payload, 0, payload.length) != crcValue) {
+            if(crc16(payload, 0, payload.length) != storedCRC) {
                 throw new ReedSolomonException("CRC check failed");
             }
         }
@@ -282,7 +298,7 @@ public class QRTone {
      * @return Number of samples of the signal for {@link #getSamples(float[], int, double)}
      */
     public int setPayload(byte[] payload, Configuration.ECC_LEVEL eccLevel) {
-        byte[] header = encodeHeader(new Header(payload.length + 1, eccLevel));
+        byte[] header = encodeHeader(new Header(payload.length + CRC_BYTE_LENGTH, eccLevel));
         // Convert bytes to hexadecimal array
         byte[] headerSymbols = payloadToSymbols(header, HEADER_SYMBOLS, HEADER_ECC_SYMBOLS, false);
         byte[] payloadSymbols = payloadToSymbols(payload, eccLevel);
@@ -329,6 +345,20 @@ public class QRTone {
         CRC8 crc8 = new CRC8();
         crc8.add(payload, from, to);
         return crc8.crc();
+    }
+    /**
+     * Checksum of bytes (could be used only up to 64 bytes)
+     * @param payload payload to crc
+     * @param from payload index to begin crc
+     * @param to excluded index to end crc
+     * @return crc value
+     */
+    public static int crc16(byte[] payload, int from, int to) {
+        CRC16 crc = new CRC16();
+        for(int i = from; i < to; i++) {
+            crc.add(payload[i]);
+        }
+        return crc.crc();
     }
 
     /**
@@ -476,11 +506,11 @@ public class QRTone {
                 for(int symbolOffset = 0; symbolOffset < 2; symbolOffset++) {
                     int maxSymbolId = -1;
                     double maxSymbolGain = Double.NEGATIVE_INFINITY;
-                    for(int i = symbolOffset * FREQUENCY_ROOT; i < (symbolOffset + 1) * FREQUENCY_ROOT; i++) {
-                        double gain = spl[i];
+                    for(int idFreq = symbolOffset * FREQUENCY_ROOT; idFreq < (symbolOffset + 1) * FREQUENCY_ROOT; idFreq++) {
+                        double gain = spl[idFreq];
                         if(gain > maxSymbolGain) {
                             maxSymbolGain = gain;
-                            maxSymbolId = i;
+                            maxSymbolId = idFreq;
                         }
                     }
                     symbolsCache[this.symbolIndex * 2 + symbolOffset] = (byte)(maxSymbolId - symbolOffset * FREQUENCY_ROOT);

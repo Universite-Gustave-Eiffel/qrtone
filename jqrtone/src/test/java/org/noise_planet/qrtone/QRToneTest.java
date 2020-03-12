@@ -559,7 +559,7 @@ public class QRToneTest {
             csvWriter.open("target/spectrum.csv");
             qrTone.setTriggerCallback(csvWriter);
         }
-        final int dataSampleLength = qrTone.setPayload(IPFS_PAYLOAD, Configuration.ECC_LEVEL.ECC_Q);
+        final int dataSampleLength = qrTone.setPayload(IPFS_PAYLOAD);
         int numberOfSymbols = qrTone.symbolsToDeliver.length;
         float[] audio = new float[dataSampleLength];
         float[] samples;
