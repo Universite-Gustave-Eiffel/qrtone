@@ -158,9 +158,10 @@ public class QRTone {
             arraycopy(blockSymbols, payloadSymbolsSize, symbols, blockId * blockSymbolsSize + payloadSize * 2, blockECCSymbols);
         }
         // Permute symbols
-        int[] index = new int[symbols.length];
-        fisherYatesShuffleIndex(PERMUTATION_SEED, index);
-        swapSymbols(symbols, index);
+//        int[] index = new int[symbols.length];
+//        fisherYatesShuffleIndex(PERMUTATION_SEED, index);
+//        swapSymbols(symbols, index);
+        interleaveSymbols(symbols, blockSymbolsSize);
         return symbols;
     }
 
@@ -204,9 +205,7 @@ public class QRTone {
         final int numberOfBlocks = (int)Math.ceil(symbols.length / (double)blockSymbolsSize);
 
         // Cancel permutation of symbols
-        int[] index = new int[symbols.length];
-        fisherYatesShuffleIndex(PERMUTATION_SEED, index);
-        unswapSymbols(symbols, index);
+        deinterleaveSymbols(symbols, blockSymbolsSize);
         int offset = 0;
         if(hasCRC) {
             offset = -2;
@@ -352,28 +351,30 @@ public class QRTone {
         return crc.crc();
     }
 
-    /**
-     * randomly swap specified integer
-     * @param seed Seed number for pseudo random generation
-     * @param index Array of elements to permute
-     */
-    public static void fisherYatesShuffleIndex(long seed, int[] index) {
-        int i;
-        AtomicLong rndCache = new AtomicLong(seed);
-        for (i = index.length - 1; i > 0; i--) {
-            index[index.length - 1 - i] = warbleRand(rndCache) % (i + 1);
+    public static void interleaveSymbols(byte[] inputData, int blockSize) {
+        byte[] interleavedData = new byte[inputData.length];
+        int insertionCursor = 0;
+        for(int j = 0; j < blockSize; j++) {
+            int cursor = j;
+            while (cursor < inputData.length) {
+                interleavedData[insertionCursor++] = inputData[cursor];
+                cursor += blockSize;
+            }
         }
+        System.arraycopy(interleavedData, 0, inputData, 0, interleavedData.length);
     }
 
-    public static void swapSymbols(byte[] inputData, int[] index) {
-        int i;
-        for (i = inputData.length - 1; i > 0; i--)
-        {
-            final int v = index[inputData.length - 1 - i];
-            final byte tmp = inputData[i];
-            inputData[i] = inputData[v];
-            inputData[v] = tmp;
+    public static void deinterleaveSymbols(byte[] inputData, int blockSize) {
+        byte[] interleavedData = new byte[inputData.length];
+        int insertionCursor = 0;
+        for(int j = 0; j < blockSize; j++) {
+            int cursor = j;
+            while (cursor < inputData.length) {
+                interleavedData[cursor] = inputData[insertionCursor++];
+                cursor += blockSize;
+            }
         }
+        System.arraycopy(interleavedData, 0, inputData, 0, interleavedData.length);
     }
 
     public static void unswapSymbols(byte[] inputData, int[] index) {

@@ -356,28 +356,6 @@ public class QRToneTest {
     }
 
     @Test
-    public void testShuffle1() {
-        byte[] expectedPayload = new byte[]{18, 32, -117, -93, -50, 2, 52, 26, -117, 93};
-        byte[] swappedPayload = new byte[]{26, -50, -93, 18, -117, 93, 2, 32, -117, 52};
-        int[] index = new int[expectedPayload.length];
-        QRTone.fisherYatesShuffleIndex(QRTone.PERMUTATION_SEED, index);
-        byte[] symbols = Arrays.copyOf(expectedPayload, expectedPayload.length);
-        QRTone.swapSymbols(symbols, index);
-        assertArrayEquals(swappedPayload, symbols);
-    }
-
-    @Test
-    public void testShuffle() {
-        byte[] expectedPayload = new byte[] {18, 32, -117, -93, -50, 2, 52, 26, -117, 93};
-        int[] index = new int[expectedPayload.length];
-        QRTone.fisherYatesShuffleIndex(QRTone.PERMUTATION_SEED, index);
-        byte[] symbols = Arrays.copyOf(expectedPayload, expectedPayload.length);
-        QRTone.swapSymbols(symbols, index);
-        QRTone.unswapSymbols(symbols, index);
-        assertArrayEquals(expectedPayload, symbols);
-    }
-
-    @Test
     public void testEncodeDecodeHeader() {
         Header expectedHeader = new Header(QRTone.MAX_PAYLOAD_LENGTH, Configuration.ECC_LEVEL.ECC_H, true);
         QRTone qrTone = new QRTone(Configuration.getAudible(44100));
@@ -412,6 +390,22 @@ public class QRToneTest {
     public void testEncodeDecodeMessage() throws ReedSolomonException {
         QRTone qrTone = new QRTone(Configuration.getAudible(44100));
         qrTone.setPayload(IPFS_PAYLOAD);
+        byte[] symbols = qrTone.symbolsToDeliver;
+        byte[] headerData = QRTone.symbolsToPayload(Arrays.copyOfRange(symbols, 0, QRTone.HEADER_SYMBOLS));
+        Header header = Header.decodeHeader(headerData);
+        assertNotNull(header);
+        assertEquals(IPFS_PAYLOAD.length, header.length);
+        AtomicInteger err = new AtomicInteger();
+        byte[] payloadData = QRTone.symbolsToPayload(Arrays.copyOfRange(symbols, QRTone.HEADER_SYMBOLS, symbols.length), header.eccLevel, header.crc, err);
+        assertNotNull(payloadData);
+        assertArrayEquals(IPFS_PAYLOAD, payloadData);
+        assertEquals(0, err.get());
+    }
+
+    @Test
+    public void testEncodeDecodeMessageM() throws ReedSolomonException {
+        QRTone qrTone = new QRTone(Configuration.getAudible(44100));
+        qrTone.setPayload(IPFS_PAYLOAD, Configuration.ECC_LEVEL.ECC_L, false);
         byte[] symbols = qrTone.symbolsToDeliver;
         byte[] headerData = QRTone.symbolsToPayload(Arrays.copyOfRange(symbols, 0, QRTone.HEADER_SYMBOLS));
         Header header = Header.decodeHeader(headerData);
@@ -569,6 +563,16 @@ public class QRToneTest {
         assertArrayEquals(IPFS_PAYLOAD, qrTone.getPayload());
     }
 
+    @Test
+    public void testInterleave() {
+        byte[] data = new byte[] {'a', 'b', 'c', '1', '2', '3', 'd', 'e', 'f', '4', '5', '6', 'g', 'h'};
+        byte[] interleavedExpected = new byte[] {'a', '1', 'd', '4', 'g', 'b', '2', 'e', '5', 'h', 'c', '3', 'f', '6'};
+        byte[] interleaved = Arrays.copyOf(data, data.length);
+        QRTone.interleaveSymbols(interleaved, 3);
+        assertArrayEquals(interleavedExpected, interleaved);
+        QRTone.deinterleaveSymbols(interleaved, 3);
+        assertArrayEquals(data, interleaved);
+    }
 
 
     @Test
