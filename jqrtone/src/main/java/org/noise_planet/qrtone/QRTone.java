@@ -47,15 +47,14 @@ public class QRTone {
     public static final long PERMUTATION_SEED = 3141592653589793238L;
     private enum STATE {WAITING_TRIGGER, PARSING_SYMBOLS};
     private static final double TUKEY_ALPHA  = 0.5;
-    private static final int CRC_BYTE_LENGTH = 2;
+    public static final int CRC_BYTE_LENGTH = 2;
     private STATE qrToneState = STATE.WAITING_TRIGGER;
     private IterativeGeneralizedGoertzel[] frequencyAnalyzers;
     private long firstToneSampleIndex = -1;
     protected static final int MAX_PAYLOAD_LENGTH = 0xFF;
     // Header size in bytes
-    private final static int HEADER_SIZE = 2;
-    private final static int HEADER_ECC_SYMBOLS = 2;
-    private final static int HEADER_SYMBOLS = HEADER_SIZE*2+HEADER_ECC_SYMBOLS;
+    final static int HEADER_SIZE = 3;
+    final static int HEADER_SYMBOLS = HEADER_SIZE*2;
     final int wordLength;
     final int gateLength;
     final int wordSilenceLength;
@@ -107,16 +106,24 @@ public class QRTone {
     }
 
     public int setPayload(byte[] payload) {
-        return setPayload(payload, Configuration.DEFAULT_ECC_LEVEL);
+        return setPayload(payload, Configuration.DEFAULT_ECC_LEVEL, true);
     }
 
-    static byte[] payloadToSymbols(byte[] payload, Configuration.ECC_LEVEL eccLevel) {
+    static byte[] payloadToSymbols(byte[] payload) {
+        byte[] symbols = new byte[payload.length * 2];
+        for (int i = 0; i < payload.length; i++) {
+            // offset most significant bits to the right without keeping sign
+            symbols[i * 2] = (byte)((payload[i] >>> 4) & 0x0F);
+            // keep only least significant bits for the second hexadecimal symbol
+            symbols[i * 2 + 1] = (byte)(payload[i] & 0x0F);
+        }
+        return  symbols;
+    }
+
+    static byte[] payloadToSymbols(byte[] payload, Configuration.ECC_LEVEL eccLevel, boolean addCRC) {
         final int blockSymbolsSize = Configuration.getTotalSymbolsForEcc(eccLevel);
         final int blockECCSymbols = Configuration.getEccSymbolsForEcc(eccLevel);
-        return payloadToSymbols(payload, blockSymbolsSize, blockECCSymbols, true);
-    }
-
-    static byte[] payloadToSymbols(byte[] payload, int blockSymbolsSize, int blockECCSymbols, boolean addCRC) {
+        Header header = new Header(payload.length, eccLevel, addCRC);
         if(addCRC) {
             CRC16 crc16 = new CRC16();
             for(byte b : payload) {
@@ -127,7 +134,6 @@ public class QRTone {
             payload[payload.length - 2] = (byte)(res >>> 8);
             payload[payload.length - 1] = (byte)(res & 0xFF);
         }
-        Header header = new Header(payload.length, blockSymbolsSize, blockECCSymbols);
         final int payloadSymbolsSize = header.payloadSymbolsSize;
         final int payloadByteSize = header.payloadByteSize;
         final int numberOfBlocks = header.numberOfBlocks;
@@ -180,6 +186,14 @@ public class QRTone {
      * @return Parsed payload
      */
     public byte[] getPayload() {
+        return payload;
+    }
+
+    static byte[] symbolsToPayload(byte[] symbols) {
+        byte[] payload = new byte[symbols.length / 2];
+        for (int i = 0; i < payload.length; i++) {
+            payload[i] = (byte) ((symbols[i * 2] << 4) | (symbols[i * 2 + 1] & 0x0F));
+        }
         return payload;
     }
 
@@ -264,44 +278,21 @@ public class QRTone {
         return MAX_PAYLOAD_LENGTH;
     }
 
-    byte[] encodeHeader(Header qrToneHeader) {
-        if(qrToneHeader.length > MAX_PAYLOAD_LENGTH) {
-            throw new IllegalArgumentException(String.format("Payload length cannot be superior than %d bytes", MAX_PAYLOAD_LENGTH));
-        }
-        // Generate header
-        byte[] header = new byte[HEADER_SIZE];
-        // Payload length
-        header[0] = (byte)(qrToneHeader.length & 0xFF);
-        // ECC level
-        header[1] = (byte)(0x03 & qrToneHeader.eccLevel.ordinal());
-        byte crc = crc8(header, 0, header.length);
-        header[1] = (byte)((crc & 0xFC) | header[1] & 0x03);
-        return header;
-    }
 
-    Header decodeHeader(byte[] data) {
-        // Check
-        byte[] header = new byte[HEADER_SIZE];
-        header[0] = data[0];
-        header[1] = (byte)(data[1] & 0x03);
-        byte crc = crc8(header, 0, header.length);
-        if((crc & 0xFC) != (data[1] & 0xFC)) {
-            // CRC error
-            return null;
-        }
-        return new Header(data[0] & 0xFF, Configuration.ECC_LEVEL.values()[data[1] & 0x03]);
-    }
+
+
 
     /**
      * Set the payload to send
      * @param payload Payload content
      * @return Number of samples of the signal for {@link #getSamples(float[], int, double)}
      */
-    public int setPayload(byte[] payload, Configuration.ECC_LEVEL eccLevel) {
-        byte[] header = encodeHeader(new Header(payload.length + CRC_BYTE_LENGTH, eccLevel));
+    public int setPayload(byte[] payload, Configuration.ECC_LEVEL eccLevel, boolean addPayloadCRC) {
+        Header header = new Header(payload.length, eccLevel, addPayloadCRC);
+        byte[] headerb = header.encodeHeader();
         // Convert bytes to hexadecimal array
-        byte[] headerSymbols = payloadToSymbols(header, HEADER_SYMBOLS, HEADER_ECC_SYMBOLS, false);
-        byte[] payloadSymbols = payloadToSymbols(payload, eccLevel);
+        byte[] headerSymbols = payloadToSymbols(headerb);
+        byte[] payloadSymbols = payloadToSymbols(payload, eccLevel, addPayloadCRC);
         symbolsToDeliver = new byte[headerSymbols.length+payloadSymbols.length];
         System.arraycopy(headerSymbols, 0, symbolsToDeliver, 0, headerSymbols.length);
         System.arraycopy(payloadSymbols, 0, symbolsToDeliver, headerSymbols.length, payloadSymbols.length);
@@ -518,22 +509,16 @@ public class QRTone {
                 symbolIndex+=1;
                 if(symbolIndex * 2 == symbolsCache.length) {
                     if(headerCache == null) {
-                        try {
-                            byte[] payloads = symbolsToPayload(symbolsCache, HEADER_SYMBOLS, HEADER_ECC_SYMBOLS, false, fixedErrors);
-                            headerCache = decodeHeader(payloads);
-                            // CRC error
-                            if(headerCache == null) {
-                                reset();
-                                break;
-                            }
-                            symbolsCache = new byte[headerCache.numberOfSymbols];
-                            symbolIndex = 0;
-                            firstToneSampleIndex += (HEADER_SYMBOLS / 2) * (wordLength+wordSilenceLength);
-                        } catch (ReedSolomonException rs) {
-                            // Unable to fix errors
+                        byte[] payloads = symbolsToPayload(symbolsCache);
+                        headerCache = Header.decodeHeader(payloads);
+                        // CRC error
+                        if(headerCache == null) {
                             reset();
                             break;
                         }
+                        symbolsCache = new byte[headerCache.numberOfSymbols];
+                        symbolIndex = 0;
+                        firstToneSampleIndex += (HEADER_SYMBOLS / 2) * (wordLength+wordSilenceLength);
                     } else {
                         // Decoding complete
                         try {
@@ -594,29 +579,4 @@ public class QRTone {
         return (int)(bufferLength - (pushedSamples - getToneLocation()));
     }
 
-    protected static class Header {
-        public final int length;
-        private Configuration.ECC_LEVEL eccLevel = null;
-        public final int payloadSymbolsSize;
-        public final int payloadByteSize;
-        public final int numberOfBlocks;
-        public final int numberOfSymbols;
-
-        public Header(int length, Configuration.ECC_LEVEL eccLevel) {
-            this(length, Configuration.getTotalSymbolsForEcc(eccLevel), Configuration.getEccSymbolsForEcc(eccLevel));
-            this.eccLevel = eccLevel;
-        }
-
-        public Header(int length, int blockSymbolsSize, int blockECCSymbols) {
-            this.length = length;
-            payloadSymbolsSize = blockSymbolsSize - blockECCSymbols;
-            payloadByteSize = payloadSymbolsSize / 2;
-            numberOfBlocks = (int)Math.ceil((length * 2) / (double)payloadSymbolsSize);
-            numberOfSymbols = numberOfBlocks * blockECCSymbols + length * 2;
-        }
-
-        public Configuration.ECC_LEVEL getEccLevel() {
-            return eccLevel;
-        }
-    }
 }

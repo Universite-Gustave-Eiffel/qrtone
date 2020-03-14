@@ -379,32 +379,49 @@ public class QRToneTest {
 
     @Test
     public void testEncodeDecodeHeader() {
-        QRTone.Header expectedHeader = new QRTone.Header(QRTone.MAX_PAYLOAD_LENGTH, Configuration.ECC_LEVEL.ECC_H);
+        Header expectedHeader = new Header(QRTone.MAX_PAYLOAD_LENGTH, Configuration.ECC_LEVEL.ECC_H, true);
         QRTone qrTone = new QRTone(Configuration.getAudible(44100));
-        byte[] headerBytes = qrTone.encodeHeader(expectedHeader);
-        QRTone.Header decodedHeader = qrTone.decodeHeader(headerBytes);
+        byte[] headerBytes = expectedHeader.encodeHeader();
+        Header decodedHeader = Header.decodeHeader(headerBytes);
+        assertNotNull(decodedHeader);
         assertEquals(expectedHeader.length, decodedHeader.length);
         assertEquals(expectedHeader.getEccLevel(), decodedHeader.getEccLevel());
     }
 
     @Test
     public void testEncodeDecodeHeaderCRC() {
-        QRTone.Header expectedHeader = new QRTone.Header(QRTone.MAX_PAYLOAD_LENGTH, Configuration.ECC_LEVEL.ECC_H);
+        Header expectedHeader = new Header(QRTone.MAX_PAYLOAD_LENGTH, Configuration.ECC_LEVEL.ECC_L, true);
         QRTone qrTone = new QRTone(Configuration.getAudible(44100));
-        byte[] headerBytes = qrTone.encodeHeader(expectedHeader);
+        byte[] headerBytes = expectedHeader.encodeHeader();
         headerBytes[1] = (byte)(headerBytes[1] | 0x04);
-        QRTone.Header decodedHeader = qrTone.decodeHeader(headerBytes);
+        Header decodedHeader = Header.decodeHeader(headerBytes);
         assertNull(decodedHeader);
     }
 
     @Test
     public void testEncodeDecodeHeaderCRC2() {
-        QRTone.Header expectedHeader = new QRTone.Header(QRTone.MAX_PAYLOAD_LENGTH, Configuration.ECC_LEVEL.ECC_H);
+        Header expectedHeader = new Header(QRTone.MAX_PAYLOAD_LENGTH, Configuration.ECC_LEVEL.ECC_H, true);
         QRTone qrTone = new QRTone(Configuration.getAudible(44100));
-        byte[] headerBytes = qrTone.encodeHeader(expectedHeader);
+        byte[] headerBytes = expectedHeader.encodeHeader();
         headerBytes[0] = (byte)(0xFE);
-        QRTone.Header decodedHeader = qrTone.decodeHeader(headerBytes);
+        Header decodedHeader = Header.decodeHeader(headerBytes);
         assertNull(decodedHeader);
+    }
+
+    @Test
+    public void testEncodeDecodeMessage() throws ReedSolomonException {
+        QRTone qrTone = new QRTone(Configuration.getAudible(44100));
+        qrTone.setPayload(IPFS_PAYLOAD);
+        byte[] symbols = qrTone.symbolsToDeliver;
+        byte[] headerData = QRTone.symbolsToPayload(Arrays.copyOfRange(symbols, 0, QRTone.HEADER_SYMBOLS));
+        Header header = Header.decodeHeader(headerData);
+        assertNotNull(header);
+        assertEquals(IPFS_PAYLOAD.length, header.length);
+        AtomicInteger err = new AtomicInteger();
+        byte[] payloadData = QRTone.symbolsToPayload(Arrays.copyOfRange(symbols, QRTone.HEADER_SYMBOLS, symbols.length), header.eccLevel, header.crc, err);
+        assertNotNull(payloadData);
+        assertArrayEquals(IPFS_PAYLOAD, payloadData);
+        assertEquals(0, err.get());
     }
 
     @Test
@@ -412,7 +429,17 @@ public class QRToneTest {
         String payloadStr = "Hello world !";
         byte[] payloadBytes = payloadStr.getBytes();
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_L;
-        byte[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
+        byte[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel, false);
+        byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, false, null);
+        assertArrayEquals(payloadBytes, processedBytes);
+    }
+
+    @Test
+    public void testSymbolEncodingDecodingLCRC() throws ReedSolomonException {
+        String payloadStr = "Hello world !";
+        byte[] payloadBytes = payloadStr.getBytes();
+        Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_L;
+        byte[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel, true);
         byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, true, null);
         assertArrayEquals(payloadBytes, processedBytes);
     }
@@ -422,7 +449,7 @@ public class QRToneTest {
         String payloadStr = "Hello world !";
         byte[] payloadBytes = payloadStr.getBytes();
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_M;
-        byte[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
+        byte[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel, true);
         byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, true, null);
         assertArrayEquals(payloadBytes, processedBytes);
     }
@@ -432,7 +459,7 @@ public class QRToneTest {
         String payloadStr = "Hello world !";
         byte[] payloadBytes = payloadStr.getBytes();
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_Q;
-        byte[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
+        byte[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel, true);
         byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, true, null);
         assertArrayEquals(payloadBytes, processedBytes);
     }
@@ -442,7 +469,7 @@ public class QRToneTest {
         String payloadStr = "Hello world !";
         byte[] payloadBytes = payloadStr.getBytes();
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_H;
-        byte[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel);
+        byte[] symbols = QRTone.payloadToSymbols(payloadBytes, eccLevel, true);
         byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, true, null);
         assertArrayEquals(payloadBytes, processedBytes);
     }
@@ -450,7 +477,7 @@ public class QRToneTest {
     @Test
     public void testSymbolEncodingDecodingCRC1() throws ReedSolomonException {
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_Q;
-        byte[] symbols = QRTone.payloadToSymbols(IPFS_PAYLOAD, eccLevel);
+        byte[] symbols = QRTone.payloadToSymbols(IPFS_PAYLOAD, eccLevel, true);
         byte[] processedBytes = QRTone.symbolsToPayload(symbols, eccLevel, true, null);
         assertArrayEquals(IPFS_PAYLOAD, processedBytes);
     }
@@ -458,7 +485,7 @@ public class QRToneTest {
     @Test
     public void testSymbolEncodingDecodingCRC2() throws ReedSolomonException {
         Configuration.ECC_LEVEL eccLevel = Configuration.ECC_LEVEL.ECC_L;
-        byte[] symbols = QRTone.payloadToSymbols(IPFS_PAYLOAD, eccLevel);
+        byte[] symbols = QRTone.payloadToSymbols(IPFS_PAYLOAD, eccLevel, true);
         // Push error
         symbols[1] = 8;
         AtomicInteger fixedErros = new AtomicInteger(0);
