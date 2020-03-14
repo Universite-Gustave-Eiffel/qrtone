@@ -663,7 +663,7 @@ public class QRToneTest {
                 writer.write(String.format(Locale.ROOT, "%.3f", location / triggerAnalyzer.sampleRate));
                 for (int idFreq=0; idFreq<spl.length; idFreq++) {
                     writer.write(String.format(Locale.ROOT, ",%.2f", spl[idFreq]));
-                    writer.write(String.format(Locale.ROOT, ",%.2f", triggerAnalyzer.backgroundNoiseEvaluator[idFreq].result() + 15));
+                    writer.write(String.format(Locale.ROOT, ",%.2f", triggerAnalyzer.backgroundNoiseEvaluator.result() + 15));
                 }
                 writer.write("\n");
             } catch (IOException ex) {

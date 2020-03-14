@@ -253,10 +253,6 @@ public class QRTone {
         return MAX_PAYLOAD_LENGTH;
     }
 
-
-
-
-
     /**
      * Set the payload to send
      * @param payload Payload content
@@ -298,7 +294,6 @@ public class QRTone {
             cursor += wordLength;
         }
     }
-
 
     /**
      * Checksum of bytes (could be used only up to 64 bytes)
@@ -353,15 +348,6 @@ public class QRTone {
         System.arraycopy(interleavedData, 0, inputData, 0, interleavedData.length);
     }
 
-    public static void unswapSymbols(byte[] inputData, int[] index) {
-        int i;
-        for (i = 1; i < inputData.length; i++) {
-            final int v = index[inputData.length - 1 - i];
-            final byte tmp = inputData[i];
-            inputData[i] = inputData[v];
-            inputData[v] = tmp;
-        }
-    }
     /**
      * Pseudo random generator
      * @param next Seed

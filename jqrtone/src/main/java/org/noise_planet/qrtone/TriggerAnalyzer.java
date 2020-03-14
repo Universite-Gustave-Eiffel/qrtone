@@ -48,7 +48,7 @@ public class TriggerAnalyzer {
     private final int gateLength;
     private IterativeGeneralizedGoertzel[] frequencyAnalyzersAlpha;
     private IterativeGeneralizedGoertzel[] frequencyAnalyzersBeta;
-    final ApproximatePercentile[] backgroundNoiseEvaluator;
+    final ApproximatePercentile backgroundNoiseEvaluator;
     final CircularArray[] splHistory;
     final PeakFinder peakFinder;
     private final int windowAnalyze;
@@ -74,7 +74,7 @@ public class TriggerAnalyzer {
         windowOffset = windowAnalyze / 2;
         frequencyAnalyzersAlpha = new IterativeGeneralizedGoertzel[frequencies.length];
         frequencyAnalyzersBeta = new IterativeGeneralizedGoertzel[frequencies.length];
-        backgroundNoiseEvaluator = new ApproximatePercentile[frequencies.length];
+        backgroundNoiseEvaluator = new ApproximatePercentile(PERCENTILE_BACKGROUND);
         splHistory = new CircularArray[frequencies.length];
         peakFinder = new PeakFinder();
         peakFinder.setMinIncreaseCount(Math.max(1, gateLength / windowOffset / 2 - 1));
@@ -82,7 +82,6 @@ public class TriggerAnalyzer {
         for(int i=0; i<frequencies.length; i++) {
             frequencyAnalyzersAlpha[i] = new IterativeGeneralizedGoertzel(sampleRate, frequencies[i], windowAnalyze);
             frequencyAnalyzersBeta[i] = new IterativeGeneralizedGoertzel(sampleRate, frequencies[i], windowAnalyze);
-            backgroundNoiseEvaluator[i] = new ApproximatePercentile(PERCENTILE_BACKGROUND);
             splHistory[i] = new CircularArray((gateLength * 3) / windowOffset);
         }
     }
@@ -130,7 +129,9 @@ public class TriggerAnalyzer {
                     double splLevel = 20 * Math.log10(frequencyAnalyzers[idfreq].
                             computeRMS(false).rms);
                     splLevels[idfreq] = splLevel;
-                    backgroundNoiseEvaluator[idfreq].add(splLevel);
+                    if(idfreq == frequencies.length - 1) {
+                        backgroundNoiseEvaluator.add(splLevel);
+                    }
                     splHistory[idfreq].add((float)splLevel);
                 }
                 final long location = totalProcessed + processed - windowAnalyze;
@@ -138,19 +139,18 @@ public class TriggerAnalyzer {
                     // Find peak
                     PeakFinder.Element element = peakFinder.getLastPeak();
                     // Check if peak value is greater than specified Signal Noise ratio
-                    double backgroundNoiseSecondPeak = backgroundNoiseEvaluator[frequencies.length - 1].result();
+                    double backgroundNoiseSecondPeak = backgroundNoiseEvaluator.result();
                     if(element.value > backgroundNoiseSecondPeak + triggerSnr) {
                         // Check if the level on other triggering frequencies is below triggering level (at the same time)
                         int peakIndex = splHistory[frequencies.length - 1].size() - 1 -
                                 (int)(location / windowOffset - element.index / windowOffset);
-                        double backgroundNoiseFirstPeak = backgroundNoiseEvaluator[0].result();
                         if(peakIndex >= 0 && peakIndex < splHistory[0].size() &&
-                                splHistory[0].get(peakIndex) < backgroundNoiseFirstPeak + triggerSnr) {
+                                splHistory[0].get(peakIndex) < element.value - triggerSnr) {
                             int firstPeakIndex = peakIndex - (gateLength / windowOffset);
-                            // Check if for the first peak the level was
+                            // Check if for the first peak the level was inferior than trigger level
                             if(firstPeakIndex >= 0 && firstPeakIndex < splHistory[0].size()
-                                    && splHistory[0].get(firstPeakIndex) > backgroundNoiseFirstPeak + triggerSnr &&
-                                    splHistory[frequencies.length - 1].get(firstPeakIndex) < backgroundNoiseSecondPeak + triggerSnr) {
+                                    && splHistory[0].get(firstPeakIndex) > element.value - triggerSnr &&
+                                    splHistory[frequencies.length - 1].get(firstPeakIndex) < element.value - triggerSnr) {
                                 // All trigger conditions are met
                                 // Evaluate the exact position of the first tone
                                 long peakLocation = findPeakLocation(splHistory[frequencies.length - 1].get(peakIndex-1)
