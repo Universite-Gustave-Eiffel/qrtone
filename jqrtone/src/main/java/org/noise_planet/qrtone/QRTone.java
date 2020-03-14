@@ -158,9 +158,6 @@ public class QRTone {
             arraycopy(blockSymbols, payloadSymbolsSize, symbols, blockId * blockSymbolsSize + payloadSize * 2, blockECCSymbols);
         }
         // Permute symbols
-//        int[] index = new int[symbols.length];
-//        fisherYatesShuffleIndex(PERMUTATION_SEED, index);
-//        swapSymbols(symbols, index);
         interleaveSymbols(symbols, blockSymbolsSize);
         return symbols;
     }
@@ -211,27 +208,8 @@ public class QRTone {
             offset = -2;
         }
         byte[] payload = new byte[payloadLength + offset];
-        boolean attemptECC = true;
         int[] crcValue = new int[CRC_BYTE_LENGTH];
         int crcIndex = 0;
-        if(hasCRC) {
-            // Check CRC on payload bytes
-            CRC16 crc = new CRC16();
-            for (int blockId = 0; blockId < numberOfBlocks; blockId++) {
-                int payloadBlockByteSize = Math.min(payloadByteSize, payloadLength - CRC_BYTE_LENGTH - blockId * payloadByteSize);
-                int payloadLocation = blockId * blockSymbolsSize;
-                for (int i = 0; i < payloadBlockByteSize; i++) {
-                    crc.add((byte) ((symbols[payloadLocation + i * 2] << 4) | (symbols[payloadLocation + i * 2 + 1] & 0x0F)));
-                }
-            }
-            int crcLocation = symbols.length - blockECCSymbols - (CRC_BYTE_LENGTH * 2);
-            int storedCRC = 0;
-            storedCRC = storedCRC | symbols[crcLocation] << 12;
-            storedCRC = storedCRC | symbols[crcLocation + 1] << 8;
-            storedCRC = storedCRC | symbols[crcLocation + 2] << 4;
-            storedCRC = storedCRC | symbols[crcLocation + 3];
-            attemptECC = crc.crc() != storedCRC;
-        }
         for(int blockId = 0; blockId < numberOfBlocks; blockId++) {
             int[] blockSymbols = new int[blockSymbolsSize];
             int payloadSymbolsLength = Math.min(payloadSymbolsSize, symbols.length - blockECCSymbols - blockId * blockSymbolsSize);
@@ -239,15 +217,13 @@ public class QRTone {
             arraycopy(symbols, blockId * blockSymbolsSize, blockSymbols, 0, payloadSymbolsLength);
             // Copy parity sumbols
             arraycopy(symbols, blockId * blockSymbolsSize + payloadSymbolsLength, blockSymbols, payloadSymbolsSize, blockECCSymbols);
-            if(attemptECC) {
-                // Got CRC error or no CRC available, use Reed-Solomon in order to fix errors
-                // Fix symbols thanks to ECC parity symbols
-                GenericGF gallois = GenericGF.AZTEC_PARAM;
-                ReedSolomonDecoder decoder = new ReedSolomonDecoder(gallois);
-                int errors = decoder.decode(blockSymbols, blockECCSymbols);
-                if(fixedErrors != null) {
-                    fixedErrors.addAndGet(errors);
-                }
+            // Use Reed-Solomon in order to fix correctable errors
+            // Fix symbols thanks to ECC parity symbols
+            GenericGF gallois = GenericGF.AZTEC_PARAM;
+            ReedSolomonDecoder decoder = new ReedSolomonDecoder(gallois);
+            int errors = decoder.decode(blockSymbols, blockECCSymbols);
+            if(fixedErrors != null) {
+                fixedErrors.addAndGet(errors);
             }
             int payloadBlockByteSize = Math.min(payloadByteSize, payloadLength + offset - blockId * payloadByteSize);
             for (int i = 0; i < payloadBlockByteSize; i++) {
@@ -257,7 +233,7 @@ public class QRTone {
                 crcValue[crcIndex++] = ((blockSymbols[i * 2] << 4) | (blockSymbols[i * 2 + 1] & 0x0F));
             }
         }
-        if(attemptECC && hasCRC) {
+        if(hasCRC) {
             int storedCRC = 0;
             storedCRC = storedCRC | crcValue[0] << 8;
             storedCRC = storedCRC | crcValue[1];
