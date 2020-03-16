@@ -485,7 +485,7 @@ public class QRTone {
                     } else {
                         // Decoding complete
                         try {
-                            payload = symbolsToPayload(symbolsCache, headerCache.eccLevel, true, fixedErrors);
+                            payload = symbolsToPayload(symbolsCache, headerCache.eccLevel, headerCache.crc, fixedErrors);
                             reset();
                             return true;
                         } catch (ReedSolomonException ex) {
@@ -499,6 +499,19 @@ public class QRTone {
             cursor += windowLength;
         }
         return false;
+    }
+
+    /**
+     * Analyze samples
+     * @param samples Samples. Should not be greater than {@link #getMaximumWindowLength()} in order to not miss multiple messages
+     * @return True if a payload has been decoded and can be retrieved with {@link #getPayload()}
+     */
+    public boolean pushSamples(short[] samples) {
+        float[] fSamples = new float[samples.length];
+        for(int i = 0; i < samples.length; i++) {
+            fSamples[i] = samples[i] / (float) Short.MAX_VALUE;
+        }
+        return pushSamples(fSamples);
     }
 
     /**

@@ -47,9 +47,7 @@ import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
-import java.util.Arrays;
-import java.util.Locale;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -419,6 +417,23 @@ public class QRToneTest {
     }
 
     @Test
+    public void testEncodeDecodeMessageL() throws ReedSolomonException {
+        QRTone qrTone = new QRTone(Configuration.getAudible(44100));
+        byte[] payload = new byte[] {5,6};
+        qrTone.setPayload(payload, Configuration.ECC_LEVEL.ECC_L, false);
+        byte[] symbols = qrTone.symbolsToDeliver;
+        byte[] headerData = QRTone.symbolsToPayload(Arrays.copyOfRange(symbols, 0, QRTone.HEADER_SYMBOLS));
+        Header header = Header.decodeHeader(headerData);
+        assertNotNull(header);
+        assertEquals(payload.length, header.length);
+        AtomicInteger err = new AtomicInteger();
+        byte[] payloadData = QRTone.symbolsToPayload(Arrays.copyOfRange(symbols, QRTone.HEADER_SYMBOLS, symbols.length), header.eccLevel, header.crc, err);
+        assertNotNull(payloadData);
+        assertArrayEquals(payload, payloadData);
+        assertEquals(0, err.get());
+    }
+
+    @Test
     public void testSymbolEncodingDecodingL() throws ReedSolomonException {
         String payloadStr = "Hello world !";
         byte[] payloadBytes = payloadStr.getBytes();
@@ -563,6 +578,41 @@ public class QRToneTest {
         assertArrayEquals(IPFS_PAYLOAD, qrTone.getPayload());
     }
 
+    @Test
+    public void testShortToneDetection() throws IOException {
+        double sampleRate = 44100;
+        double timeBlankBefore = 1.1333;
+        double timeBlankAfter = 2;
+        double powerRMS = Math.pow(10, -26.0 / 20.0); // -26 dBFS
+        double powerPeak = powerRMS * Math.sqrt(2);
+        double noisePeak = Math.pow(10, -50.0 / 20.0); // -26 dBFS
+        int samplesBefore = (int)(timeBlankBefore * sampleRate);
+        int samplesAfter = (int)(timeBlankAfter * sampleRate);
+        Configuration configuration = Configuration.getAudible(sampleRate);
+        QRTone qrTone = new QRTone(configuration);
+        byte[] payload = new byte[] {0x41, 0x33};
+        final int dataSampleLength = qrTone.setPayload(payload, Configuration.ECC_LEVEL.ECC_L, false);
+        float[] audio = new float[dataSampleLength];
+        float[] samples = new float[samplesBefore + dataSampleLength + samplesAfter];
+        qrTone.getSamples(audio, 0, powerPeak);
+        System.arraycopy(audio, 0, samples, samplesBefore, dataSampleLength);
+        Random random = new Random(1337);
+        for (int s = 0; s < samples.length; s++) {
+            samples[s] += (float)(random.nextGaussian() * noisePeak);
+        }
+        int cursor = 0;
+        List<byte[]> payloads = new ArrayList<>();
+        while (cursor < samples.length) {
+            int windowSize = Math.min(qrTone.getMaximumWindowLength() ,Math.min(random.nextInt(115) + 20, samples.length - cursor));
+            float[] window = new float[windowSize];
+            System.arraycopy(samples, cursor, window, 0, window.length);
+            if(qrTone.pushSamples(window)) {
+                payloads.add(qrTone.getPayload());
+            }
+            cursor += windowSize;
+        }
+        assertArrayEquals(payload, payloads.get(0));
+    }
     @Test
     public void testInterleave() {
         byte[] data = new byte[] {'a', 'b', 'c', '1', '2', '3', 'd', 'e', 'f', '4', '5', '6', 'g', 'h'};
