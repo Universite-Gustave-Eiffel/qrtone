@@ -54,7 +54,8 @@ public class QRTone {
     protected static final int MAX_PAYLOAD_LENGTH = 0xFF;
     // Header size in bytes
     final static int HEADER_SIZE = 3;
-    final static int HEADER_SYMBOLS = HEADER_SIZE*2;
+    final static int HEADER_ECC_SYMBOLS = 2;
+    final static int HEADER_SYMBOLS = HEADER_SIZE*2 + HEADER_ECC_SYMBOLS;
     final int wordLength;
     final int gateLength;
     final int wordSilenceLength;
@@ -123,7 +124,10 @@ public class QRTone {
     static byte[] payloadToSymbols(byte[] payload, Configuration.ECC_LEVEL eccLevel, boolean addCRC) {
         final int blockSymbolsSize = Configuration.getTotalSymbolsForEcc(eccLevel);
         final int blockECCSymbols = Configuration.getEccSymbolsForEcc(eccLevel);
-        Header header = new Header(payload.length, eccLevel, addCRC);
+        return payloadToSymbols(payload, blockSymbolsSize, blockECCSymbols, addCRC);
+    }
+    static byte[] payloadToSymbols(byte[] payload, final int blockSymbolsSize,final int blockECCSymbols, boolean addCRC) {
+        Header header = new Header(payload.length, blockSymbolsSize, blockECCSymbols, addCRC);
         if(addCRC) {
             CRC16 crc16 = new CRC16();
             for(byte b : payload) {
@@ -262,7 +266,7 @@ public class QRTone {
         Header header = new Header(payload.length, eccLevel, addPayloadCRC);
         byte[] headerb = header.encodeHeader();
         // Convert bytes to hexadecimal array
-        byte[] headerSymbols = payloadToSymbols(headerb);
+        byte[] headerSymbols = payloadToSymbols(headerb, HEADER_SYMBOLS, HEADER_ECC_SYMBOLS, false);
         byte[] payloadSymbols = payloadToSymbols(payload, eccLevel, addPayloadCRC);
         symbolsToDeliver = new byte[headerSymbols.length+payloadSymbols.length];
         System.arraycopy(headerSymbols, 0, symbolsToDeliver, 0, headerSymbols.length);

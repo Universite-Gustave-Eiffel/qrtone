@@ -10,17 +10,20 @@ public class Header {
     public final int numberOfSymbols;
 
     public Header(int length, Configuration.ECC_LEVEL eccLevel, boolean crc) {
+        this(length, Configuration.getTotalSymbolsForEcc(eccLevel), Configuration.getEccSymbolsForEcc(eccLevel), crc);
+        this.eccLevel = eccLevel;
+    }
+    public Header(int length, final int blockSymbolsSize, final int blockECCSymbols, boolean crc) {
         this.length = length;
         int crcLength = 0;
         if(crc) {
             crcLength = QRTone.CRC_BYTE_LENGTH;
         }
-        payloadSymbolsSize = Configuration.getTotalSymbolsForEcc(eccLevel) - Configuration.getEccSymbolsForEcc(eccLevel);
+        payloadSymbolsSize = blockSymbolsSize - blockECCSymbols;
         payloadByteSize = payloadSymbolsSize / 2;
         numberOfBlocks = (int)Math.ceil(((length + crcLength) * 2) / (double)payloadSymbolsSize);
-        numberOfSymbols = numberOfBlocks * Configuration.getEccSymbolsForEcc(eccLevel) + ( length + crcLength) * 2;
+        numberOfSymbols = numberOfBlocks * blockECCSymbols + ( length + crcLength) * 2;
         this.crc = crc;
-        this.eccLevel = eccLevel;
     }
 
     public byte[] encodeHeader() {
