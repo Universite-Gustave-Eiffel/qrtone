@@ -389,15 +389,16 @@ public class QRToneTest {
         QRTone qrTone = new QRTone(Configuration.getAudible(44100));
         qrTone.setPayload(IPFS_PAYLOAD);
         byte[] symbols = qrTone.symbolsToDeliver;
-        byte[] headerData = QRTone.symbolsToPayload(Arrays.copyOfRange(symbols, 0, QRTone.HEADER_SYMBOLS));
-        Header header = Header.decodeHeader(headerData);
-        assertNotNull(header);
-        assertEquals(IPFS_PAYLOAD.length, header.length);
-        AtomicInteger err = new AtomicInteger();
-        byte[] payloadData = QRTone.symbolsToPayload(Arrays.copyOfRange(symbols, QRTone.HEADER_SYMBOLS, symbols.length), header.eccLevel, header.crc, err);
+        qrTone.symbolsCache = Arrays.copyOfRange(symbols, 0, QRTone.HEADER_SYMBOLS);
+        qrTone.cachedSymbolsToHeader();
+        assertNotNull(qrTone.headerCache);
+        assertEquals(IPFS_PAYLOAD.length, qrTone.headerCache.length);
+        qrTone.symbolsCache = Arrays.copyOfRange(symbols, QRTone.HEADER_SYMBOLS, symbols.length);
+        qrTone.cachedSymbolsToPayload();
+        byte[] payloadData = qrTone.getPayload();
         assertNotNull(payloadData);
         assertArrayEquals(IPFS_PAYLOAD, payloadData);
-        assertEquals(0, err.get());
+        assertEquals(0, qrTone.getFixedErrors());
     }
 
     @Test
@@ -405,15 +406,16 @@ public class QRToneTest {
         QRTone qrTone = new QRTone(Configuration.getAudible(44100));
         qrTone.setPayload(IPFS_PAYLOAD, Configuration.ECC_LEVEL.ECC_L, false);
         byte[] symbols = qrTone.symbolsToDeliver;
-        byte[] headerData = QRTone.symbolsToPayload(Arrays.copyOfRange(symbols, 0, QRTone.HEADER_SYMBOLS));
-        Header header = Header.decodeHeader(headerData);
-        assertNotNull(header);
-        assertEquals(IPFS_PAYLOAD.length, header.length);
-        AtomicInteger err = new AtomicInteger();
-        byte[] payloadData = QRTone.symbolsToPayload(Arrays.copyOfRange(symbols, QRTone.HEADER_SYMBOLS, symbols.length), header.eccLevel, header.crc, err);
+        qrTone.symbolsCache = Arrays.copyOfRange(symbols, 0, QRTone.HEADER_SYMBOLS);
+        qrTone.cachedSymbolsToHeader();
+        assertNotNull(qrTone.headerCache);
+        assertEquals(IPFS_PAYLOAD.length, qrTone.headerCache.length);
+        qrTone.symbolsCache = Arrays.copyOfRange(symbols, QRTone.HEADER_SYMBOLS, symbols.length);
+        qrTone.cachedSymbolsToPayload();
+        byte[] payloadData = qrTone.getPayload();
         assertNotNull(payloadData);
         assertArrayEquals(IPFS_PAYLOAD, payloadData);
-        assertEquals(0, err.get());
+        assertEquals(0, qrTone.getFixedErrors());
     }
 
     @Test
@@ -422,15 +424,34 @@ public class QRToneTest {
         byte[] payload = new byte[] {5,6};
         qrTone.setPayload(payload, Configuration.ECC_LEVEL.ECC_L, false);
         byte[] symbols = qrTone.symbolsToDeliver;
-        byte[] headerData = QRTone.symbolsToPayload(Arrays.copyOfRange(symbols, 0, QRTone.HEADER_SYMBOLS));
-        Header header = Header.decodeHeader(headerData);
-        assertNotNull(header);
-        assertEquals(payload.length, header.length);
-        AtomicInteger err = new AtomicInteger();
-        byte[] payloadData = QRTone.symbolsToPayload(Arrays.copyOfRange(symbols, QRTone.HEADER_SYMBOLS, symbols.length), header.eccLevel, header.crc, err);
+        qrTone.symbolsCache = Arrays.copyOfRange(symbols, 0, QRTone.HEADER_SYMBOLS);
+        qrTone.cachedSymbolsToHeader();
+        assertNotNull(qrTone.headerCache);
+        assertEquals(payload.length, qrTone.headerCache.length);
+        qrTone.symbolsCache = Arrays.copyOfRange(symbols, QRTone.HEADER_SYMBOLS, symbols.length);
+        qrTone.cachedSymbolsToPayload();
+        byte[] payloadData = qrTone.getPayload();
         assertNotNull(payloadData);
         assertArrayEquals(payload, payloadData);
-        assertEquals(0, err.get());
+        assertEquals(0, qrTone.getFixedErrors());
+    }
+
+    @Test
+    public void testEncodeDecodeMessageErrorInHeader() throws ReedSolomonException {
+        QRTone qrTone = new QRTone(Configuration.getAudible(44100));
+        qrTone.setPayload(IPFS_PAYLOAD);
+        byte[] symbols = qrTone.symbolsToDeliver;
+        qrTone.symbolsCache = Arrays.copyOfRange(symbols, 0, QRTone.HEADER_SYMBOLS);
+        qrTone.symbolsCache[1] = 0xC;
+        qrTone.cachedSymbolsToHeader();
+        assertNotNull(qrTone.headerCache);
+        assertEquals(IPFS_PAYLOAD.length, qrTone.headerCache.length);
+        qrTone.symbolsCache = Arrays.copyOfRange(symbols, QRTone.HEADER_SYMBOLS, symbols.length);
+        qrTone.cachedSymbolsToPayload();
+        byte[] payloadData = qrTone.getPayload();
+        assertNotNull(payloadData);
+        assertArrayEquals(IPFS_PAYLOAD, payloadData);
+        assertEquals(1, qrTone.getFixedErrors());
     }
 
     @Test
