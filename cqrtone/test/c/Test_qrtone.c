@@ -74,9 +74,33 @@ MU_TEST(testPolynomial) {
 		qrtone_generic_gf_free(&field);
 }
 
+MU_TEST(testZero) {
+
+	generic_gf_t field;
+	qrtone_generic_gf_init(&field, 0x011D, 256, 0);
+
+	generic_gf_poly_t poly;
+	mu_assert_int_eq(QRTONE_NO_ERRORS, qrtone_generic_gf_build_monomial(&field, &poly, 1, 0));
+	mu_assert_int_eq(field.zero.coefficients_length, poly.coefficients_length);
+	mu_assert_int_eq(field.zero.coefficients[0], poly.coefficients[0]);
+	qrtone_generic_gf_poly_free(&poly);
+
+	mu_assert_int_eq(QRTONE_NO_ERRORS, qrtone_generic_gf_build_monomial(&field, &poly, 1, 2));
+	generic_gf_poly_t res;
+	qrtone_generic_gf_poly_multiply(&poly,&field, 0, &res);
+	mu_assert_int_eq(field.zero.coefficients_length, res.coefficients_length);
+	mu_assert_int_eq(field.zero.coefficients[0], res.coefficients[0]);
+	qrtone_generic_gf_poly_free(&poly);
+	qrtone_generic_gf_poly_free(&res);
+
+
+	qrtone_generic_gf_free(&field);
+}
+
 MU_TEST_SUITE(test_suite) {
 
 	MU_RUN_TEST(testPolynomial);
+	MU_RUN_TEST(testZero);
 }
 
 int main(int argc, char** argv) {

@@ -31,7 +31,7 @@
  *
  */
  
- #include "qrtone.h"
+#include "qrtone.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -65,6 +65,11 @@
         this->coefficients_length = 1;
         this->coefficients[0] = coefficients[0];
     }	 
+ }
+
+ void qrtone_generic_gf_poly_copy(generic_gf_poly_t* this, generic_gf_poly_t* other) {
+     this->coefficients = malloc(sizeof(int32_t) * other->coefficients_length);
+     this->coefficients_length = other->coefficients_length;
  }
 
  void qrtone_generic_gf_poly_free(generic_gf_poly_t* this) {
@@ -110,14 +115,41 @@
          return QRTONE_ILLEGAL_ARGUMENT;
      }
      if (coefficient == 0) {
-         int zero[1] = { 0 };
+         int32_t zero[1] = { 0 };
          qrtone_generic_gf_poly_init(poly, zero, 1);
          return QRTONE_NO_ERRORS;
      }
-     int* coefficients = malloc(sizeof(int32_t) * ((size_t)degree + 1));
+     int32_t* coefficients = malloc(sizeof(int32_t) * ((size_t)degree + 1));
      memset(coefficients, 0, sizeof(int32_t) * ((size_t)degree + 1));
      coefficients[0] = coefficient;
      qrtone_generic_gf_poly_init(poly, coefficients, degree + 1);
      free(coefficients);
      return QRTONE_NO_ERRORS;
+ }
+
+
+ void qrtone_generic_gf_poly_multiply(generic_gf_poly_t* this, generic_gf_t* field, int32_t scalar, generic_gf_poly_t* result) {
+     if (scalar == 0) {
+         int32_t zero[1] = { 0 };
+         qrtone_generic_gf_poly_init(result, zero, 1);
+         return;
+     }
+     if (scalar == 1) {
+         qrtone_generic_gf_poly_copy(result, this);
+         return;
+     }
+     int32_t i;
+     int32_t* product = malloc(sizeof(int32_t) * this->coefficients_length);
+     for (i = 0; i < this->coefficients_length; i++) {
+         product[i] = qrtone_generic_gf_multiply(field, this->coefficients[i], scalar);
+     }
+     qrtone_generic_gf_poly_init(result, product, this->coefficients_length);
+     free(product);
+ }
+
+ int qrtone_generic_gf_multiply(generic_gf_t* this, int32_t a, int32_t b) {
+     if (a == 0 || b == 0) {
+         return 0;
+     }
+     return this->exp_table[(this->log_table[a] + this->log_table[b]) % (this->size - 1)];
  }

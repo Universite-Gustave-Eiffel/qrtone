@@ -68,7 +68,12 @@ void qrtone_generic_gf_poly_free(generic_gf_poly_t* this);
 
 int qrtone_generic_gf_build_monomial(generic_gf_t* this, generic_gf_poly_t* poly, int32_t degree, int32_t coefficient);
 
+void qrtone_generic_gf_poly_multiply(generic_gf_poly_t* this, generic_gf_t* field, int32_t scalar, generic_gf_poly_t* result);
 
+/**
+ * @return product of a and b in GF(size)
+ */
+int32_t qrtone_generic_gf_multiply(generic_gf_t* this, int32_t a, int32_t b);
 
 
 
