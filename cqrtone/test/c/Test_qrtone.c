@@ -49,16 +49,10 @@
 #include "qrtone.h"
 #include "minunit.h"
 
-#define SAMPLES 4410
-
-#define MULT 1.0594630943591
-
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
 #define CHECK(a) if(!a) return -1
-
-#define DEFAULT_SNR 10
 
 MU_TEST(testPolynomial) {
 

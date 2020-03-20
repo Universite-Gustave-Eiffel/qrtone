@@ -162,6 +162,29 @@
      return a ^ b;
  }
 
+ int qrtone_generic_gf_poly_is_zero(generic_gf_poly_t* this) {
+     return this->coefficients[0] == 0;
+ }
+
+ void qrtone_generic_gf_poly_multiply(generic_gf_poly_t* this, generic_gf_t* field, generic_gf_poly_t* other, generic_gf_poly_t* result) {
+    if (qrtone_generic_gf_poly_is_zero(this) || qrtone_generic_gf_poly_is_zero(other)) {
+        int32_t zero[1] = { 0 };
+        qrtone_generic_gf_poly_init(result, zero, 1);
+        return;
+    }
+    int32_t product_length = this->coefficients_length + other->coefficients_length - 1;
+    int32_t* product = malloc(sizeof(int32_t) * product_length);
+    memset(product, 0, sizeof(int32_t) * product_length);
+    int32_t i;
+    int32_t j;
+    for (i = 0; i < this->coefficients_length; i++) {
+        for (j = 0; j < other->coefficients_length; j++) {
+            product[i + j] = qrtone_generic_gf_add_or_substract(product[i + j], qrtone_generic_gf_multiply(field, this->coefficients[i], other->coefficients[j]));
+        }
+    }
+    qrtone_generic_gf_poly_init(result, product, product_length);
+ }
+
  int32_t qrtone_generic_gf_poly_evaluate_at(generic_gf_poly_t* this, generic_gf_t* field, int32_t a) {
      if (a == 0) {
          // Just return the x^0 coefficient
@@ -183,6 +206,83 @@
      }
      return result;
  }
+
+ void qrtone_reed_solomon_encoder_add(reed_solomon_encoder_t* this, generic_gf_poly_t* el) {
+     reed_solomon_cached_generator_t* last = this->cached_generators;
+     this->cached_generators = malloc(sizeof(reed_solomon_cached_generator_t));
+     this->cached_generators->index = last->index + 1;
+     this->cached_generators->value = el;
+     this->cached_generators->previous = last;
+ }
+
+ void qrtone_reed_solomon_encoder_free(reed_solomon_encoder_t* this) {
+     qrtone_generic_gf_free(&(this->field));
+     reed_solomon_cached_generator_t* previous = this->cached_generators;
+     while (previous != NULL) {
+         qrtone_generic_gf_poly_free(previous->value);
+         free(previous->value);
+         reed_solomon_cached_generator_t* to_free = previous;
+         previous = previous->previous;
+         free(to_free);
+     }
+ }
+
+ generic_gf_poly_t* qrtone_reed_solomon_encoder_get(reed_solomon_encoder_t* this, int32_t index) {
+     reed_solomon_cached_generator_t* previous = this->cached_generators;
+     while (previous != NULL) {
+         if (previous->index == index) {
+             return previous->value;
+         } else {
+             previous = previous->previous;
+         }
+     }
+     return NULL;
+ }
+
+ void qrtone_reed_solomon_encoder_init(reed_solomon_encoder_t* this, int32_t primitive, int32_t size, int32_t b) {
+     qrtone_generic_gf_init(&(this->field), primitive, size, b);
+     this->cached_generators = malloc(sizeof(reed_solomon_cached_generator_t));
+     this->cached_generators->index = 0;
+     this->cached_generators->previous = NULL;
+     int one[1] = { 1 };
+     this->cached_generators->value = malloc(sizeof(generic_gf_poly_t));
+     qrtone_generic_gf_poly_init(this->cached_generators->value, one, 1);
+ }
+
+ generic_gf_poly_t* qrtone_reed_solomon_encoder_build_generator(reed_solomon_encoder_t* this, int32_t degree) {
+    if (degree >= this->cached_generators->index + 1) {
+        generic_gf_poly_t* last_generator = this->cached_generators->value;
+        int32_t d;
+        for (d = this->cached_generators->index + 1; d <= degree; d++) {
+            generic_gf_poly_t* next_generator = malloc(sizeof(generic_gf_poly_t));
+            generic_gf_poly_t gen;
+            int32_t data[2] = { 1, this->field.exp_table[d - 1 + this->field.generator_base]};
+            qrtone_generic_gf_poly_init(&gen, data, 2);
+            qrtone_generic_gf_poly_multiply(last_generator, &(this->field), &gen, next_generator);
+            qrtone_reed_solomon_encoder_add(this, next_generator);
+            last_generator = next_generator;
+        }
+    }
+    return qrtone_reed_solomon_encoder_get(this, degree);
+ }
+
+ void qrtone_reed_solomon_encoder_encode(reed_solomon_encoder_t* this, int32_t* to_encode, int32_t to_encode_length, int32_t ec_bytes) {
+     int32_t data_bytes = to_encode_length - ec_bytes;
+     generic_gf_poly_t* generator = qrtone_reed_solomon_encoder_build_generator(this, ec_bytes);
+     int32_t* info_coefficients = malloc(sizeof(int32_t) * data_bytes);
+     memcpy(info_coefficients, to_encode, data_bytes * sizeof(int32_t));
+     generic_gf_poly_t info;
+     qrtone_generic_gf_poly_init(&info, info_coefficients, data_bytes);
+     qrtone_generic_gf_poly_multiply_by_monomial(&info, ec_bytes, 1);
+ }
+
+
+
+
+
+
+
+
 
 
 

@@ -58,6 +58,17 @@ typedef struct _generic_gf_t {
 	generic_gf_poly_t one;
 } generic_gf_t;
 
+typedef struct _reed_solomon_cached_generator_t {
+    reed_solomon_cached_generator_t* previous;
+    int32_t index;
+    generic_gf_poly_t* value;
+} reed_solomon_cached_generator_t;
+
+typedef struct _reed_solomon_encoder_t {
+    generic_gf_t field;
+    reed_solomon_cached_generator_t* cached_generators;
+} reed_solomon_encoder_t;
+
 void qrtone_generic_gf_poly_init(generic_gf_poly_t* this, int* coefficients, int coefficients_length);
 
 void qrtone_generic_gf_init(generic_gf_t* this, int32_t primitive, int32_t size, int32_t b);
@@ -80,7 +91,7 @@ int32_t qrtone_generic_gf_multiply(generic_gf_t* this, int32_t a, int32_t b);
  */
 int32_t qrtone_generic_gf_poly_evaluate_at(generic_gf_poly_t* this, generic_gf_t* field, int32_t a);
 
-
+void qrtone_reed_solomon_encoder_free(reed_solomon_encoder_t* this);
 
 
 
