@@ -32,7 +32,9 @@
  */
  
  #include "qrtone.h"
- 
+#include <stdlib.h>
+#include <string.h>
+
 /**
  * GenericGFPoly constructor
  * @ref com.google.zxing.common.reedsolomon

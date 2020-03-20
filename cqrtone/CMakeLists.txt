@@ -38,8 +38,8 @@ target_link_libraries (qrtone ${LIBM})
 #------------#
 
 set(TEST_DATA_DIR "${PROJECT_BINARY_DIR}/TestAudio")
-file(COPY test/resources/c/audioTest_44100_16bitsPCM_0.0872s_1760.raw
-    DESTINATION ${TEST_DATA_DIR})
+#file(COPY test/resources/c/audioTest_44100_16bitsPCM_0.0872s_1760.raw
+#    DESTINATION ${TEST_DATA_DIR})
 
 # Test executable and folder
 set(QRTONE_TESTS

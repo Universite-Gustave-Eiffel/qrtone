@@ -50,9 +50,7 @@ typedef struct _generic_gf_poly_t {
 
 typedef struct _generic_gf_t {
 	int32_t* exp_table;
-	int32_t exp_table_length;
 	int32_t* log_table;
-	int32_t log_table_length;
 	int32_t size;
     int32_t primitive;
     int32_t generator_base;

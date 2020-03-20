@@ -70,7 +70,6 @@ MU_TEST(testPolynomial) {
 		mu_assert_int_eq(QRTONE_NO_ERRORS, qrtone_generic_gf_build_monomial(&field, &poly, 0, -1));
 		mu_assert_int_eq(-1, poly.coefficients[0]);
 
-		int pdata[5] = {3, 0, -2, 1, 1};
 		qrtone_generic_gf_poly_free(&poly);
 		qrtone_generic_gf_free(&field);
 }
