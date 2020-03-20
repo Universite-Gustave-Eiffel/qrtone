@@ -97,8 +97,24 @@ MU_TEST(testZero) {
 	qrtone_generic_gf_free(&field);
 }
 
-MU_TEST_SUITE(test_suite) {
 
+MU_TEST(testEvaluate) {
+
+	generic_gf_t field;
+	qrtone_generic_gf_init(&field, 0x011D, 256, 0);
+
+	generic_gf_poly_t poly;
+	mu_assert_int_eq(QRTONE_NO_ERRORS, qrtone_generic_gf_build_monomial(&field, &poly, 0, 3));
+
+	mu_assert_int_eq(3, qrtone_generic_gf_poly_evaluate_at(&poly, &field, 0));
+
+
+	qrtone_generic_gf_poly_free(&poly);
+	qrtone_generic_gf_free(&field);
+}
+
+MU_TEST_SUITE(test_suite) {
+	MU_RUN_TEST(testEvaluate);
 	MU_RUN_TEST(testPolynomial);
 	MU_RUN_TEST(testZero);
 }

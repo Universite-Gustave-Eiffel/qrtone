@@ -75,7 +75,10 @@ void qrtone_generic_gf_poly_multiply(generic_gf_poly_t* this, generic_gf_t* fiel
  */
 int32_t qrtone_generic_gf_multiply(generic_gf_t* this, int32_t a, int32_t b);
 
-
+/**
+ * @return evaluation of this polynomial at a given point
+ */
+int32_t qrtone_generic_gf_poly_evaluate_at(generic_gf_poly_t* this, generic_gf_t* field, int32_t a);
 
 
 

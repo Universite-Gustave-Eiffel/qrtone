@@ -153,3 +153,37 @@
      }
      return this->exp_table[(this->log_table[a] + this->log_table[b]) % (this->size - 1)];
  }
+
+ int32_t qrtone_generic_gf_poly_get_coefficient(generic_gf_poly_t* this, int32_t degree) {
+     return this->coefficients[this->coefficients_length - 1 - degree];
+ }
+
+ int32_t qrtone_generic_gf_add_or_substract(int32_t a, int32_t b) {
+     return a ^ b;
+ }
+
+ int32_t qrtone_generic_gf_poly_evaluate_at(generic_gf_poly_t* this, generic_gf_t* field, int32_t a) {
+     if (a == 0) {
+         // Just return the x^0 coefficient
+         return qrtone_generic_gf_poly_get_coefficient(this, 0);
+     }
+     if (a == 1) {
+         // Just the sum of the coefficients
+         int32_t result = 0;
+         int32_t i;
+         for (i = 0; i < this->coefficients_length; i++) {
+             result = qrtone_generic_gf_add_or_substract(result, this->coefficients[i]);
+         }
+         return result;
+     }
+     int32_t result = this->coefficients[0];
+     int32_t i;
+     for (i = 1; i < this->coefficients_length; i++) {
+         result = qrtone_generic_gf_add_or_substract(qrtone_generic_gf_multiply(field, a, result), this->coefficients[i]);
+     }
+     return result;
+ }
+
+
+
+
