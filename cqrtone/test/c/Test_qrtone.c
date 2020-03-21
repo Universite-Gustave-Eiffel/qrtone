@@ -553,6 +553,77 @@ MU_TEST(testAztec7) {
 	qrtone_reed_solomon_encoder_free(&encoder);
 }
 
+
+/**
+ * Compute all combinations of errors for n errors with n locations
+ * @param currentNumberOfErrors Cursor for current number of errors [0-tryTable.length[
+ * @param tryTable Give the locations of errors, it must be the size of maximum number of errors
+ * @param locations Maximum index of symbol
+ * @return New value of currentNumberOfErrors
+ */
+int next_error_state(int32_t current_number_of_errors, int32_t* try_table,int32_t try_table_length, int32_t locations) {
+	if (try_table[current_number_of_errors] == locations - 1) {
+		// All possibilities have been done for the last entry
+		int32_t increment_cursor = current_number_of_errors - 1;
+		while (increment_cursor >= 0) {
+			if (try_table[increment_cursor] < try_table[increment_cursor + 1] - 1) {
+				try_table[increment_cursor]++;
+				try_table[increment_cursor + 1] = try_table[increment_cursor] + 1;
+				break;
+			}
+			increment_cursor--;
+		}
+		if (increment_cursor < 0) {
+			current_number_of_errors++;
+			try_table[0] = 0;
+			int32_t c;
+			for (c = 1; c < try_table_length; c++) {
+				try_table[c] = try_table[c - 1] + 1;
+			}
+		}
+	} else {
+		try_table[current_number_of_errors] += 1;
+	}
+	return current_number_of_errors;
+}
+
+void testDecode(generic_gf_t* field, int32_t* message, int32_t message_length, int32_t ec_words_length) {
+	int32_t try_cursor = 0;
+	int32_t max_number_of_errors = MAX(1, ec_words_length / 2);
+	int32_t* try_table = malloc(sizeof(int32_t) * max_number_of_errors);
+	memset(try_table, 0, sizeof(int32_t) * max_number_of_errors);
+	// Corrupt all possible data locations
+	while (try_cursor < max_number_of_errors) {
+		int32_t* decoded = malloc(sizeof(int32_t) * message_length);
+		memcpy(decoded, message, sizeof(int32_t) * message_length);
+		int32_t c;
+		// Insert errors
+		for (c = 0; c < try_cursor + 1; c++) {
+			decoded[try_table[c]] = abs(~decoded[try_table[c]]) % field->size;
+			if (decoded[try_table[c]] == message[try_table[c]]) {
+				decoded[try_table[c]] = 0;
+			}
+		}
+		int32_t res = qrtone_reed_solomon_decoder_decode(field, decoded, message_length, ec_words_length);		
+		mu_assert_int_eq(QRTONE_NO_ERRORS, res);
+		mu_assert_int_array_eq(message, message_length, decoded, message_length);
+		free(decoded);
+		try_cursor = next_error_state(try_cursor, try_table, max_number_of_errors, message_length);
+	}
+}
+
+
+MU_TEST(testGF16) {
+	generic_gf_t field;
+	qrtone_generic_gf_init(&field, 0x13, 16, 1);
+
+	int32_t message1[] = { 3, 13, 14, 0, 4, 10, 0, 11, 13, 9, 14, 14, 0, 11 };
+	
+	testDecode(&field, message1, 14, 2);
+
+	qrtone_generic_gf_free(&field);
+}
+
 MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(testEvaluate);
 	MU_RUN_TEST(testPolynomial);
@@ -568,6 +639,7 @@ MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(testAztec5);
 	MU_RUN_TEST(testAztec6);
 	MU_RUN_TEST(testAztec7);
+	MU_RUN_TEST(testGF16);
 }
 
 int main(int argc, char** argv) {

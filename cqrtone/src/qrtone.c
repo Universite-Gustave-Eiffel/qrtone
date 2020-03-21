@@ -532,7 +532,7 @@
      }
  }
 
- int qrtone_reed_solomon_decoder_decode(generic_gf_t* field, int32_t* to_decode, int32_t to_decode_length, int32_t ec_bytes) {
+ int32_t qrtone_reed_solomon_decoder_decode(generic_gf_t* field, int32_t* to_decode, int32_t to_decode_length, int32_t ec_bytes) {
      int32_t ret = QRTONE_NO_ERRORS;
      generic_gf_poly_t poly;
      qrtone_generic_gf_poly_init(&poly, to_decode, to_decode_length);
@@ -562,7 +562,7 @@
              int32_t* error_magnitude = malloc(sizeof(int32_t) * number_of_errors);
              ret = qrtone_reed_solomon_decoder_find_error_locations(&sigma, field, error_locations);
              if (ret == QRTONE_NO_ERRORS) {
-                 qrtone_reed_solomon_decoder_find_error_magnitudes(&omega, field, error_locations, number_of_errors, &error_magnitude);
+                 qrtone_reed_solomon_decoder_find_error_magnitudes(&omega, field, error_locations, number_of_errors, error_magnitude);
                  for (i = 0; i < number_of_errors && ret == QRTONE_NO_ERRORS; i++) {
                      int32_t position = to_decode_length - 1 - field->log_table[error_locations[i]];
                      if (position < 0) {

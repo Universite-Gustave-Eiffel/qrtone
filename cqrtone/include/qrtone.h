@@ -112,7 +112,10 @@ void qrtone_reed_solomon_encoder_init(reed_solomon_encoder_t* this, int32_t prim
 
 void qrtone_reed_solomon_encoder_encode(reed_solomon_encoder_t* this, int32_t* to_encode, int32_t to_encode_length, int32_t ec_bytes);
 
-
+/**
+ * @return QRTONE_ERROR_CODES
+ */
+int32_t qrtone_reed_solomon_decoder_decode(generic_gf_t* field, int32_t* to_decode, int32_t to_decode_length, int32_t ec_bytes);
 
 
 
