@@ -158,7 +158,7 @@ static void (*minunit_teardown)(void) = NULL;
 	minunit_assert++;\
     mu_assert_int_eq(expected_length, result_length);\
 	int i;\
-	for(i = 0; i < expected_length; i++) {\
+	for(i = 0; i < expected_length && minunit_status == 0; i++) {\
 		int minunit_tmp_e;\
 		int minunit_tmp_r;\
 		minunit_tmp_e = (expected[i]);\

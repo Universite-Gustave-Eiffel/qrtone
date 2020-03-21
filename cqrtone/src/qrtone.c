@@ -417,7 +417,7 @@
      qrtone_generic_gf_poly_copy(&t, &(field->one));
 
      // Run Euclidean algorithm until r's degree is less than R/2
-     while (ret == QRTONE_NO_ERRORS && qrtone_generic_gf_poly_get_degree(&r) > r_degree / 2) {
+     while (ret == QRTONE_NO_ERRORS && qrtone_generic_gf_poly_get_degree(&r) >= r_degree / 2) {
          generic_gf_poly_t r_last_last;
          qrtone_generic_gf_poly_copy(&r_last_last, &r_last);
          generic_gf_poly_t t_last_last;
@@ -538,6 +538,7 @@
      qrtone_generic_gf_poly_init(&poly, to_decode, to_decode_length);
      int32_t syndrome_coefficients_length = ec_bytes;
      int32_t* syndrome_coefficients = malloc(sizeof(int32_t) * syndrome_coefficients_length);
+     memset(syndrome_coefficients, 0, sizeof(int32_t) * syndrome_coefficients_length);
      int32_t no_error = 1;
      int32_t i;
      int32_t number_of_errors = 0;
@@ -556,13 +557,16 @@
          generic_gf_poly_t mono;
          qrtone_generic_gf_build_monomial(&mono, ec_bytes, 1);
          ret = qrtone_reed_solomon_decoder_run_euclidean_algorithm(field, &mono, &syndrome, ec_bytes, &sigma, &omega);
+         qrtone_generic_gf_poly_free(&mono);
          if (ret == QRTONE_NO_ERRORS) {
              number_of_errors = qrtone_generic_gf_poly_get_degree(&sigma);
              int32_t* error_locations = malloc(sizeof(int32_t) * number_of_errors);
              int32_t* error_magnitude = malloc(sizeof(int32_t) * number_of_errors);
              ret = qrtone_reed_solomon_decoder_find_error_locations(&sigma, field, error_locations);
+             qrtone_generic_gf_poly_free(&sigma);
              if (ret == QRTONE_NO_ERRORS) {
                  qrtone_reed_solomon_decoder_find_error_magnitudes(&omega, field, error_locations, number_of_errors, error_magnitude);
+                 qrtone_generic_gf_poly_free(&omega);
                  for (i = 0; i < number_of_errors && ret == QRTONE_NO_ERRORS; i++) {
                      int32_t position = to_decode_length - 1 - field->log_table[error_locations[i]];
                      if (position < 0) {
@@ -571,6 +575,8 @@
                      to_decode[position] = qrtone_generic_gf_add_or_substract(to_decode[position], error_magnitude[i]);
                  }
              }
+             free(error_locations);
+             free(error_magnitude);
          }
          qrtone_generic_gf_poly_free(&syndrome);
      }

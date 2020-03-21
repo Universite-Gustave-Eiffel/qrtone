@@ -618,8 +618,12 @@ MU_TEST(testGF16) {
 	qrtone_generic_gf_init(&field, 0x13, 16, 1);
 
 	int32_t message1[] = { 3, 13, 14, 0, 4, 10, 0, 11, 13, 9, 14, 14, 0, 11 };
-	
-	testDecode(&field, message1, 14, 2);
+	int32_t message2[] = { 1, 13, 14, 0, 4, 10, 0, 11, 13, 9, 14, 14, 0, 11 };
+
+	int32_t res = qrtone_reed_solomon_decoder_decode(&field, message2, 14, 2);
+
+	mu_assert_int_array_eq(message1, 14, message2, 14);
+	//testDecode(&field, message1, 14, 2);
 
 	qrtone_generic_gf_free(&field);
 }
