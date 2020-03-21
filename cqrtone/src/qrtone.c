@@ -159,7 +159,7 @@
      qrtone_generic_gf_poly_free(&(this->one));
  }
 
- int qrtone_generic_gf_build_monomial(generic_gf_t* this, generic_gf_poly_t* poly, int32_t degree, int32_t coefficient) {
+ int qrtone_generic_gf_build_monomial(generic_gf_poly_t* poly, int32_t degree, int32_t coefficient) {
      if (degree < 0) {
          return QRTONE_ILLEGAL_ARGUMENT;
      }
@@ -175,7 +175,6 @@
      free(coefficients);
      return QRTONE_NO_ERRORS;
  }
-
 
  void qrtone_generic_gf_poly_multiply(generic_gf_poly_t* this, generic_gf_t* field, int32_t scalar, generic_gf_poly_t* result) {
      if (scalar == 0) {
@@ -252,7 +251,7 @@
      return this->coefficients[0] == 0;
  }
 
- void qrtone_generic_gf_poly_multiply(generic_gf_poly_t* this, generic_gf_t* field, generic_gf_poly_t* other, generic_gf_poly_t* result) {
+ void qrtone_generic_gf_poly_multiply_other(generic_gf_poly_t* this, generic_gf_t* field, generic_gf_poly_t* other, generic_gf_poly_t* result) {
     if (qrtone_generic_gf_poly_is_zero(this) || qrtone_generic_gf_poly_is_zero(other)) {
         int32_t zero[1] = { 0 };
         qrtone_generic_gf_poly_init(result, zero, 1);
@@ -348,7 +347,7 @@
             generic_gf_poly_t gen;
             int32_t data[2] = { 1, this->field.exp_table[d - 1 + this->field.generator_base]};
             qrtone_generic_gf_poly_init(&gen, data, 2);
-            qrtone_generic_gf_poly_multiply(last_generator, &(this->field), &gen, next_generator);
+            qrtone_generic_gf_poly_multiply_other(last_generator, &(this->field), &gen, next_generator);
             qrtone_reed_solomon_encoder_add(this, next_generator);
             last_generator = next_generator;
         }

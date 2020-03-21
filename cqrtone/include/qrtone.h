@@ -59,7 +59,7 @@ typedef struct _generic_gf_t {
 } generic_gf_t;
 
 typedef struct _reed_solomon_cached_generator_t {
-    reed_solomon_cached_generator_t* previous;
+    struct _reed_solomon_cached_generator_t* previous;
     int32_t index;
     generic_gf_poly_t* value;
 } reed_solomon_cached_generator_t;
@@ -77,9 +77,24 @@ void qrtone_generic_gf_free(generic_gf_t* this);
 
 void qrtone_generic_gf_poly_free(generic_gf_poly_t* this);
 
-int qrtone_generic_gf_build_monomial(generic_gf_t* this, generic_gf_poly_t* poly, int32_t degree, int32_t coefficient);
+int qrtone_generic_gf_build_monomial(generic_gf_poly_t* poly, int32_t degree, int32_t coefficient);
 
 void qrtone_generic_gf_poly_multiply(generic_gf_poly_t* this, generic_gf_t* field, int32_t scalar, generic_gf_poly_t* result);
+
+void qrtone_generic_gf_poly_copy(generic_gf_poly_t* this, generic_gf_poly_t* other);
+
+int qrtone_generic_gf_poly_is_zero(generic_gf_poly_t* this);
+
+int32_t qrtone_generic_gf_poly_get_coefficient(generic_gf_poly_t* this, int32_t degree);
+
+int32_t qrtone_generic_gf_inverse(generic_gf_t* this, int32_t a);
+
+void qrtone_generic_gf_poly_add_or_substract(generic_gf_poly_t* this, generic_gf_poly_t* other, generic_gf_poly_t* result);
+
+int32_t qrtone_generic_gf_poly_get_degree(generic_gf_poly_t* this);
+
+void qrtone_generic_gf_poly_multiply_other(generic_gf_poly_t* this, generic_gf_t* field, generic_gf_poly_t* other, generic_gf_poly_t* result);
+
 
 /**
  * @return product of a and b in GF(size)
@@ -93,7 +108,7 @@ int32_t qrtone_generic_gf_poly_evaluate_at(generic_gf_poly_t* this, generic_gf_t
 
 void qrtone_reed_solomon_encoder_free(reed_solomon_encoder_t* this);
 
-
+void qrtone_reed_solomon_encoder_init(reed_solomon_encoder_t* this, int32_t primitive, int32_t size, int32_t b);
 
 
 
