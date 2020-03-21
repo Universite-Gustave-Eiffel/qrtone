@@ -109,11 +109,11 @@
 
     while (qrtone_generic_gf_poly_get_degree(&remainder) >= qrtone_generic_gf_poly_get_degree(other) &&
         !qrtone_generic_gf_poly_is_zero(&remainder)) {
-        int32_t degreeDifference = qrtone_generic_gf_poly_get_degree(&remainder) - qrtone_generic_gf_poly_get_degree(other);
+        int32_t degree_difference = qrtone_generic_gf_poly_get_degree(&remainder) - qrtone_generic_gf_poly_get_degree(other);
         int32_t scale = qrtone_generic_gf_multiply(field, qrtone_generic_gf_poly_get_coefficient(&remainder, 
             qrtone_generic_gf_poly_get_degree(&remainder)), inverseDenominatorLeadingTerm);
         generic_gf_poly_t term;
-        qrtone_generic_gf_poly_multiply_by_monomial(other, field, degreeDifference, scale, &term);
+        qrtone_generic_gf_poly_multiply_by_monomial(other, field, degree_difference, scale, &term);
         qrtone_generic_gf_poly_add_or_substract(&remainder, &term, &new_remainder);
         qrtone_generic_gf_poly_free(&term);
         qrtone_generic_gf_poly_free(&remainder);
@@ -358,8 +358,11 @@
         for (d = this->cached_generators->index + 1; d <= degree; d++) {
             generic_gf_poly_t* next_generator = malloc(sizeof(generic_gf_poly_t));
             generic_gf_poly_t gen;
-            int32_t data[2] = { 1, this->field.exp_table[d - 1 + this->field.generator_base]};
+            int32_t* data = malloc(sizeof(int32_t) * 2);
+            data[0] = 1;
+            data[1] = this->field.exp_table[d - 1 + this->field.generator_base];
             qrtone_generic_gf_poly_init(&gen, data, 2);
+            free(data);
             qrtone_generic_gf_poly_multiply_other(last_generator, &(this->field), &gen, next_generator);
             qrtone_generic_gf_poly_free(&gen);
             qrtone_reed_solomon_encoder_add(this, next_generator);
@@ -394,11 +397,187 @@
 
 
 
+ int qrtone_reed_solomon_decoder_run_euclidean_algorithm(generic_gf_t* field, generic_gf_poly_t* a, generic_gf_poly_t* b, int32_t r_degree,
+     generic_gf_poly_t* sigma, generic_gf_poly_t* omega) {
+     int32_t ret = QRTONE_NO_ERRORS;
+     // Assume a's degree is >= b's
+     if (qrtone_generic_gf_poly_get_degree(a) < qrtone_generic_gf_poly_get_degree(b)) {
+         generic_gf_poly_t* temp = a;
+         a = b;
+         b = temp;
+     }
 
+     generic_gf_poly_t r_last;
+     qrtone_generic_gf_poly_copy(&r_last, a);
+     generic_gf_poly_t r;
+     qrtone_generic_gf_poly_copy(&r, b);
+     generic_gf_poly_t t_last;
+     qrtone_generic_gf_poly_copy(&t_last, &(field->zero));
+     generic_gf_poly_t t;
+     qrtone_generic_gf_poly_copy(&t, &(field->one));
 
+     // Run Euclidean algorithm until r's degree is less than R/2
+     while (ret == QRTONE_NO_ERRORS && qrtone_generic_gf_poly_get_degree(&r) > r_degree / 2) {
+         generic_gf_poly_t r_last_last;
+         qrtone_generic_gf_poly_copy(&r_last_last, &r_last);
+         generic_gf_poly_t t_last_last;
+         qrtone_generic_gf_poly_copy(&t_last_last, &t_last);
 
+         qrtone_generic_gf_poly_free(&r_last);
+         qrtone_generic_gf_poly_copy(&r_last, &r);
+         qrtone_generic_gf_poly_free(&t_last);
+         qrtone_generic_gf_poly_copy(&t_last, &t);
 
+         if (qrtone_generic_gf_poly_is_zero(&r_last)) {
+             // Oops, Euclidean algorithm already terminated?
+             ret = QRTONE_REED_SOLOMON_ERROR;
+         }
+         else {
+             qrtone_generic_gf_poly_free(&r);
+             qrtone_generic_gf_poly_copy(&r, &r_last_last);
+             generic_gf_poly_t q;
+             qrtone_generic_gf_poly_copy(&q, &(field->zero));
 
+             int32_t denominator_leading_term = qrtone_generic_gf_poly_get_coefficient(&r_last, qrtone_generic_gf_poly_get_degree(&r_last));
+             int32_t dlt_inverse = qrtone_generic_gf_inverse(field, denominator_leading_term);
+             while (qrtone_generic_gf_poly_get_degree(&r) >= qrtone_generic_gf_poly_get_degree(&r_last) && !qrtone_generic_gf_poly_is_zero(&r)) {
+                 int32_t degree_diff = qrtone_generic_gf_poly_get_degree(&r) - qrtone_generic_gf_poly_get_degree(&r_last);
+                 int32_t scale = qrtone_generic_gf_multiply(field, qrtone_generic_gf_poly_get_coefficient(&r, qrtone_generic_gf_poly_get_degree(&r)), dlt_inverse);
+                 generic_gf_poly_t other;
+                 qrtone_generic_gf_build_monomial(&other, degree_diff, scale);
+                 generic_gf_poly_t new_value;
+                 qrtone_generic_gf_poly_add_or_substract(&q, &other, &new_value);
+                 qrtone_generic_gf_poly_free(&other);
+                 qrtone_generic_gf_poly_free(&q);
+                 qrtone_generic_gf_poly_copy(&q, &new_value);
+                 qrtone_generic_gf_poly_free(&new_value);
+                 qrtone_generic_gf_poly_multiply_by_monomial(&r_last, field, degree_diff, scale, &other);
+                 qrtone_generic_gf_poly_add_or_substract(&r, &other, &new_value);
+                 qrtone_generic_gf_poly_copy(&r, &new_value);
+                 qrtone_generic_gf_poly_free(&new_value);
+             }
+             generic_gf_poly_t result;
+             qrtone_generic_gf_poly_multiply_other(&q, field, &t_last, &result);
+             qrtone_generic_gf_poly_free(&t);
+             qrtone_generic_gf_poly_add_or_substract(&result, &t_last_last, &t);
+             qrtone_generic_gf_poly_free(&result);
+
+             if (qrtone_generic_gf_poly_get_degree(&r) >= qrtone_generic_gf_poly_get_degree(&r_last)) {
+                 ret = QRTONE_ILLEGAL_STATE_EXCEPTION;
+                 // Division algorithm failed to reduce polynomial?
+             }
+             qrtone_generic_gf_poly_free(&q);
+         }
+         qrtone_generic_gf_poly_free(&t_last_last);
+         qrtone_generic_gf_poly_free(&r_last_last);
+     }
+
+     if (ret == QRTONE_NO_ERRORS) {
+         int32_t sigma_tilde_at_zero = qrtone_generic_gf_poly_get_coefficient(&t, 0);
+         if (sigma_tilde_at_zero == 0) {
+             ret = QRTONE_REED_SOLOMON_ERROR;
+         }
+         int32_t inverse = qrtone_generic_gf_inverse(field, sigma_tilde_at_zero);
+         qrtone_generic_gf_poly_multiply(&t, field, inverse, sigma);
+         qrtone_generic_gf_poly_multiply(&r, field, inverse, omega);
+     }
+
+     qrtone_generic_gf_poly_free(&t);
+     qrtone_generic_gf_poly_free(&t_last);
+     qrtone_generic_gf_poly_free(&r);
+     qrtone_generic_gf_poly_free(&r_last);
+     return ret;
+ }
+
+ int qrtone_reed_solomon_decoder_find_error_locations(generic_gf_poly_t* error_locator, generic_gf_t* field, int32_t* result) {
+     int32_t ret = QRTONE_NO_ERRORS;
+     int num_errors = qrtone_generic_gf_poly_get_degree(error_locator);
+     if (num_errors == 1) { //Shortcut
+         result[0] = qrtone_generic_gf_poly_get_coefficient(error_locator, 1);
+         ret = QRTONE_NO_ERRORS;
+     }
+     else {
+         int32_t e = 0;
+         int32_t i;
+         for (i = 0; i < field->size && e < num_errors; i++) {
+             if (qrtone_generic_gf_poly_evaluate_at(error_locator,field, i) == 0) {
+                 result[e] = qrtone_generic_gf_inverse(field, i);
+                 e++;
+             }
+         }
+         if (e != num_errors) {
+             ret = QRTONE_REED_SOLOMON_ERROR;
+         }
+     }
+     return ret;
+ }
+
+ void qrtone_reed_solomon_decoder_find_error_magnitudes(generic_gf_poly_t* error_locator, generic_gf_t* field, int32_t* error_locations, int32_t error_locations_length, int32_t* result) {
+     int32_t s = error_locations_length;
+     int32_t i;
+     for (i = 0; i < s; i++) {
+         int32_t xi_inverse = qrtone_generic_gf_inverse(field, error_locations[i]);
+         int32_t denominator = 1;
+         int32_t j;
+         for (j = 0; j < s; j++) {
+             if (i != j) {
+                 denominator = qrtone_generic_gf_multiply(field, denominator,
+                     qrtone_generic_gf_add_or_substract(1, qrtone_generic_gf_multiply(field, error_locations[j], xi_inverse)));
+             }
+         }
+         result[i] = qrtone_generic_gf_multiply(field, qrtone_generic_gf_poly_evaluate_at(error_locator, field, xi_inverse), qrtone_generic_gf_inverse(field, denominator));
+         if (field->generator_base != 0) {
+             result[i] = qrtone_generic_gf_multiply(field, result[i], xi_inverse);
+         }
+     }
+ }
+
+ int qrtone_reed_solomon_decoder_decode(generic_gf_t* field, int32_t* to_decode, int32_t to_decode_length, int32_t ec_bytes) {
+     int32_t ret = QRTONE_NO_ERRORS;
+     generic_gf_poly_t poly;
+     qrtone_generic_gf_poly_init(&poly, to_decode, to_decode_length);
+     int32_t syndrome_coefficients_length = ec_bytes;
+     int32_t* syndrome_coefficients = malloc(sizeof(int32_t) * syndrome_coefficients_length);
+     int32_t no_error = 1;
+     int32_t i;
+     int32_t number_of_errors = 0;
+     for (i = 0; i < ec_bytes; i++) {
+         int32_t eval = qrtone_generic_gf_poly_evaluate_at(&poly, field, field->exp_table[i + field->generator_base]);
+         syndrome_coefficients[syndrome_coefficients_length - 1 - i] = eval;
+         if (eval != 0) {
+             no_error = 0;
+         }
+     }
+     if (no_error == 0) {
+         generic_gf_poly_t syndrome;
+         qrtone_generic_gf_poly_init(&syndrome, syndrome_coefficients, syndrome_coefficients_length);
+         generic_gf_poly_t sigma;
+         generic_gf_poly_t omega;
+         generic_gf_poly_t mono;
+         qrtone_generic_gf_build_monomial(&mono, ec_bytes, 1);
+         ret = qrtone_reed_solomon_decoder_run_euclidean_algorithm(field, &mono, &syndrome, ec_bytes, &sigma, &omega);
+         if (ret == QRTONE_NO_ERRORS) {
+             number_of_errors = qrtone_generic_gf_poly_get_degree(&sigma);
+             int32_t* error_locations = malloc(sizeof(int32_t) * number_of_errors);
+             int32_t* error_magnitude = malloc(sizeof(int32_t) * number_of_errors);
+             ret = qrtone_reed_solomon_decoder_find_error_locations(&sigma, field, error_locations);
+             if (ret == QRTONE_NO_ERRORS) {
+                 qrtone_reed_solomon_decoder_find_error_magnitudes(&omega, field, error_locations, number_of_errors, &error_magnitude);
+                 for (i = 0; i < number_of_errors && ret == QRTONE_NO_ERRORS; i++) {
+                     int32_t position = to_decode_length - 1 - field->log_table[error_locations[i]];
+                     if (position < 0) {
+                         ret = QRTONE_REED_SOLOMON_ERROR; // Bad error location
+                     }
+                     to_decode[position] = qrtone_generic_gf_add_or_substract(to_decode[position], error_magnitude[i]);
+                 }
+             }
+         }
+         qrtone_generic_gf_poly_free(&syndrome);
+     }
+     free(syndrome_coefficients);
+     qrtone_generic_gf_poly_free(&poly);
+     return ret;
+ }
 
 
 
