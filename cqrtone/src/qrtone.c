@@ -67,6 +67,55 @@
     }	 
  }
 
+ int qrtone_generic_gf_poly_multiply_by_monomial(generic_gf_poly_t* this, generic_gf_t* field, int32_t degree, int32_t coefficient, generic_gf_poly_t* result) {
+     if (degree < 0) {
+         return QRTONE_ILLEGAL_ARGUMENT;
+     }
+     if (coefficient == 0) {
+         int32_t zero[1] = { 0 };
+         qrtone_generic_gf_poly_init(result, zero, 1);
+         return QRTONE_NO_ERRORS;
+     }
+     int32_t product_length = this->coefficients_length + degree;
+     int32_t* product = malloc(sizeof(int32_t) * product_length);
+     int32_t i;
+     for (i = 0; i < this->coefficients_length; i++) {
+         product[i] = qrtone_generic_gf_multiply(field, this->coefficients[i], coefficient);
+     }
+     qrtone_generic_gf_poly_init(result, product, product_length);
+     return QRTONE_NO_ERRORS;
+ }
+
+ int qrtone_generic_gf_poly_divide(generic_gf_poly_t* this, generic_gf_t* field, generic_gf_poly_t* other, generic_gf_poly_t* result) {
+    if (qrtone_generic_gf_poly_is_zero(other)) {
+         return QRTONE_DIVIDE_BY_ZERO;
+    }
+    generic_gf_poly_t remainder;
+    qrtone_generic_gf_poly_copy(&remainder, this);
+    
+    int32_t denominatorLeadingTerm = qrtone_generic_gf_poly_get_coefficient(other, qrtone_generic_gf_poly_get_degree(other));
+    int32_t inverseDenominatorLeadingTerm = qrtone_generic_gf_inverse(field, denominatorLeadingTerm);
+
+    generic_gf_poly_t new_remainder;
+
+    while (qrtone_generic_gf_poly_get_degree(&remainder) >= qrtone_generic_gf_poly_get_degree(other) &&
+        !qrtone_generic_gf_poly_is_zero(&remainder)) {
+        int32_t degreeDifference = qrtone_generic_gf_poly_get_degree(&remainder) - qrtone_generic_gf_poly_get_degree(other);
+        int32_t scale = qrtone_generic_gf_multiply(field, qrtone_generic_gf_poly_get_coefficient(&remainder, 
+            qrtone_generic_gf_poly_get_degree(&remainder)), inverseDenominatorLeadingTerm);
+        generic_gf_poly_t term;
+        qrtone_generic_gf_poly_multiply_by_monomial(other, field, degreeDifference, scale, &term);
+        qrtone_generic_gf_poly_add_or_substract(&remainder, &term, &new_remainder);
+        qrtone_generic_gf_poly_free(&term);
+        qrtone_generic_gf_poly_free(&remainder);
+        qrtone_generic_gf_poly_copy(&remainder, &new_remainder);
+        qrtone_generic_gf_poly_free(&new_remainder);
+    }
+    qrtone_generic_gf_poly_copy(result, &remainder);
+    qrtone_generic_gf_poly_free(&remainder);
+    return QRTONE_NO_ERRORS;
+ }
+
  void qrtone_generic_gf_poly_copy(generic_gf_poly_t* this, generic_gf_poly_t* other) {
      this->coefficients = malloc(sizeof(int32_t) * other->coefficients_length);
      this->coefficients_length = other->coefficients_length;
@@ -158,8 +207,45 @@
      return this->coefficients[this->coefficients_length - 1 - degree];
  }
 
+ int32_t qrtone_generic_gf_poly_get_degree(generic_gf_poly_t* this) {
+     return this->coefficients_length - 1;
+ }
+
  int32_t qrtone_generic_gf_add_or_substract(int32_t a, int32_t b) {
      return a ^ b;
+ }
+
+ void qrtone_generic_gf_poly_add_or_substract(generic_gf_poly_t* this, generic_gf_poly_t* other, generic_gf_poly_t* result) {
+     if (qrtone_generic_gf_poly_is_zero(this)) {
+         qrtone_generic_gf_poly_copy(result, other);
+     }
+     if (qrtone_generic_gf_poly_is_zero(other)) {
+         qrtone_generic_gf_poly_copy(result, this);
+     }
+
+     int32_t* smaller_coefficients = this->coefficients;
+     int32_t smaller_coefficients_length = this->coefficients_length;
+     int32_t* larger_coefficients = other->coefficients;
+     int32_t larger_coefficients_length = other->coefficients_length;
+     if (this->coefficients_length > other->coefficients_length) {
+         smaller_coefficients = other->coefficients;
+         larger_coefficients = this->coefficients;
+         smaller_coefficients_length = other->coefficients_length;
+         larger_coefficients_length = this->coefficients_length;
+     }
+
+     int32_t* sum_diff = malloc(sizeof(int32_t) * larger_coefficients_length);
+     int32_t length_diff = larger_coefficients_length - smaller_coefficients_length;
+
+     // Copy high-order terms only found in higher-degree polynomial's coefficients
+     memcpy(sum_diff, larger_coefficients, length_diff * sizeof(int32_t));
+
+     int32_t i;
+     for (i = length_diff; i < larger_coefficients_length; i++) {
+         sum_diff[i] = qrtone_generic_gf_add_or_substract(smaller_coefficients[i - length_diff], larger_coefficients[i]);
+     }
+
+     qrtone_generic_gf_poly_init(result, sum_diff, larger_coefficients_length);
  }
 
  int qrtone_generic_gf_poly_is_zero(generic_gf_poly_t* this) {
@@ -183,6 +269,10 @@
         }
     }
     qrtone_generic_gf_poly_init(result, product, product_length);
+ }
+
+ int32_t qrtone_generic_gf_inverse(generic_gf_t* this, int32_t a) {
+     return this->exp_table[this->size - this->log_table[a] - 1];
  }
 
  int32_t qrtone_generic_gf_poly_evaluate_at(generic_gf_poly_t* this, generic_gf_t* field, int32_t a) {
@@ -273,7 +363,16 @@
      memcpy(info_coefficients, to_encode, data_bytes * sizeof(int32_t));
      generic_gf_poly_t info;
      qrtone_generic_gf_poly_init(&info, info_coefficients, data_bytes);
-     qrtone_generic_gf_poly_multiply_by_monomial(&info, ec_bytes, 1);
+     generic_gf_poly_t monomial_result;
+     qrtone_generic_gf_poly_multiply_by_monomial(&info,&(this->field), ec_bytes, 1, &monomial_result);
+     generic_gf_poly_t remainder;
+     qrtone_generic_gf_poly_divide(&monomial_result, &(this->field), generator, &remainder);
+     int32_t num_zero_coefficients = ec_bytes - remainder.coefficients_length;
+     int32_t i;
+     for (i = 0; i < num_zero_coefficients; i++) {
+         to_encode[data_bytes + i] = 0;
+     }
+     memcpy(to_encode + data_bytes + num_zero_coefficients, remainder.coefficients, remainder.coefficients_length * sizeof(int32_t));
  }
 
 

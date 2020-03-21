@@ -41,7 +41,7 @@ extern "C" {
 
 #include <stdint.h>
 
-enum QRTONE_ERROR_CODES { QRTONE_NO_ERRORS = 0, QRTONE_ILLEGAL_ARGUMENT = 1};
+enum QRTONE_ERROR_CODES { QRTONE_NO_ERRORS = 0, QRTONE_ILLEGAL_ARGUMENT = 1, QRTONE_DIVIDE_BY_ZERO = 2};
 
 typedef struct _generic_gf_poly_t {
 	int32_t* coefficients;             /**< coefficients as ints representing elements of GF(size), arranged from most significant (highest-power term) coefficient to least significant */
