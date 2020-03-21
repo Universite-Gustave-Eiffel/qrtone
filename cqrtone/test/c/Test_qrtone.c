@@ -126,14 +126,64 @@ void testEncoder(reed_solomon_encoder_t* encoder, int32_t* data_words,int32_t da
 	free(message);
 }
 
-MU_TEST(testDataMatrix) {
+MU_TEST(testDataMatrix1) {
 
 	reed_solomon_encoder_t encoder;
 	qrtone_reed_solomon_encoder_init(&encoder, 0x012D, 256, 1);
-	int32_t data_words[3] = { 142, 164, 186 };
-	int32_t ec_words[5] = { 114, 25 , 5, 88, 102};
+	int32_t data_words[] = { 142, 164, 186 };
+	int32_t ec_words[] = { 114, 25 , 5, 88, 102};
 
-	testEncoder(&encoder, data_words, 3, ec_words, 5);
+	testEncoder(&encoder, data_words, sizeof(data_words) / sizeof(int32_t), ec_words, sizeof(ec_words) / sizeof(int32_t));
+
+	qrtone_reed_solomon_encoder_free(&encoder);
+}
+
+MU_TEST(testDataMatrix2) {
+
+	reed_solomon_encoder_t encoder;
+	qrtone_reed_solomon_encoder_init(&encoder, 0x012D, 256, 1);
+	int32_t data_words[] = { 0x69, 0x75, 0x75, 0x71, 0x3B, 0x30, 0x30, 0x64,
+		0x70, 0x65, 0x66, 0x2F, 0x68, 0x70, 0x70, 0x68,
+		0x6D, 0x66, 0x2F, 0x64, 0x70, 0x6E, 0x30, 0x71,
+		0x30, 0x7B, 0x79, 0x6A, 0x6F, 0x68, 0x30, 0x81,
+		0xF0, 0x88, 0x1F, 0xB5 };
+	int32_t ec_words[] = { 0x1C, 0x64, 0xEE, 0xEB, 0xD0, 0x1D, 0x00, 0x03,
+		0xF0, 0x1C, 0xF1, 0xD0, 0x6D, 0x00, 0x98, 0xDA,
+		0x80, 0x88, 0xBE, 0xFF, 0xB7, 0xFA, 0xA9, 0x95 };
+
+	testEncoder(&encoder, data_words, sizeof(data_words) / sizeof(int32_t), ec_words, sizeof(ec_words) / sizeof(int32_t));
+
+	qrtone_reed_solomon_encoder_free(&encoder);
+}
+
+MU_TEST(testQRCode1) {
+
+	reed_solomon_encoder_t encoder;
+	qrtone_reed_solomon_encoder_init(&encoder, 0x011D, 256, 0);
+	int32_t data_words[] = { 0x10, 0x20, 0x0C, 0x56, 0x61, 0x80, 0xEC, 0x11,
+		0xEC, 0x11, 0xEC, 0x11, 0xEC, 0x11, 0xEC, 0x11 };
+	int32_t ec_words[] = { 0xA5, 0x24, 0xD4, 0xC1, 0xED, 0x36, 0xC7, 0x87,
+		0x2C, 0x55 };
+
+	testEncoder(&encoder, data_words, sizeof(data_words) / sizeof(int32_t), ec_words, sizeof(ec_words) / sizeof(int32_t));
+
+	qrtone_reed_solomon_encoder_free(&encoder);
+}
+
+
+MU_TEST(testQRCode2) {
+
+	reed_solomon_encoder_t encoder;
+	qrtone_reed_solomon_encoder_init(&encoder, 0x011D, 256, 0);
+	int32_t data_words[] = { 0x72, 0x67, 0x2F, 0x77, 0x69, 0x6B, 0x69, 0x2F,
+		0x4D, 0x61, 0x69, 0x6E, 0x5F, 0x50, 0x61, 0x67,
+		0x65, 0x3B, 0x3B, 0x00, 0xEC, 0x11, 0xEC, 0x11,
+		0xEC, 0x11, 0xEC, 0x11, 0xEC, 0x11, 0xEC, 0x11 };
+	int32_t ec_words[] = { 0xD8, 0xB8, 0xEF, 0x14, 0xEC, 0xD0, 0xCC, 0x85,
+		0x73, 0x40, 0x0B, 0xB5, 0x5A, 0xB8, 0x8B, 0x2E,
+		0x08, 0x62 };
+
+	testEncoder(&encoder, data_words, sizeof(data_words) / sizeof(int32_t), ec_words, sizeof(ec_words) / sizeof(int32_t));
 
 	qrtone_reed_solomon_encoder_free(&encoder);
 }
@@ -142,7 +192,10 @@ MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(testEvaluate);
 	MU_RUN_TEST(testPolynomial);
 	MU_RUN_TEST(testZero);
-	MU_RUN_TEST(testDataMatrix);
+	MU_RUN_TEST(testDataMatrix1);
+	MU_RUN_TEST(testDataMatrix2);
+	MU_RUN_TEST(testQRCode1);
+	MU_RUN_TEST(testQRCode2);
 }
 
 int main(int argc, char** argv) {
