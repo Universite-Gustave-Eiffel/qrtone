@@ -30,7 +30,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
- 
+
+#ifdef _DEBUG
+#define _CRTDBG_MAP_ALLOC
+#ifdef _WIN32
+#include <crtdbg.h>
+#endif
+#endif
+
 #include "qrtone.h"
 #include <stdlib.h>
 #include <string.h>
@@ -84,6 +91,7 @@
          product[i] = qrtone_generic_gf_multiply(field, this->coefficients[i], coefficient);
      }
      qrtone_generic_gf_poly_init(result, product, product_length);
+     free(product);
      return QRTONE_NO_ERRORS;
  }
 
@@ -248,6 +256,7 @@
      }
 
      qrtone_generic_gf_poly_init(result, sum_diff, larger_coefficients_length);
+     free(sum_diff);
  }
 
  int qrtone_generic_gf_poly_is_zero(generic_gf_poly_t* this) {
@@ -271,6 +280,7 @@
         }
     }
     qrtone_generic_gf_poly_init(result, product, product_length);
+    free(product);
  }
 
  int32_t qrtone_generic_gf_inverse(generic_gf_t* this, int32_t a) {
@@ -351,6 +361,7 @@
             int32_t data[2] = { 1, this->field.exp_table[d - 1 + this->field.generator_base]};
             qrtone_generic_gf_poly_init(&gen, data, 2);
             qrtone_generic_gf_poly_multiply_other(last_generator, &(this->field), &gen, next_generator);
+            qrtone_generic_gf_poly_free(&gen);
             qrtone_reed_solomon_encoder_add(this, next_generator);
             last_generator = next_generator;
         }
@@ -365,16 +376,20 @@
      memcpy(info_coefficients, to_encode, data_bytes * sizeof(int32_t));
      generic_gf_poly_t info;
      qrtone_generic_gf_poly_init(&info, info_coefficients, data_bytes);
+     free(info_coefficients);
      generic_gf_poly_t monomial_result;
      qrtone_generic_gf_poly_multiply_by_monomial(&info,&(this->field), ec_bytes, 1, &monomial_result);
+     qrtone_generic_gf_poly_free(&info);
      generic_gf_poly_t remainder;
      qrtone_generic_gf_poly_divide(&monomial_result, &(this->field), generator, &remainder);
+     qrtone_generic_gf_poly_free(&monomial_result);
      int32_t num_zero_coefficients = ec_bytes - remainder.coefficients_length;
      int32_t i;
      for (i = 0; i < num_zero_coefficients; i++) {
          to_encode[data_bytes + i] = 0;
      }
      memcpy(to_encode + data_bytes + num_zero_coefficients, remainder.coefficients, remainder.coefficients_length * sizeof(int32_t));
+     qrtone_generic_gf_poly_free(&remainder);
  }
 
 

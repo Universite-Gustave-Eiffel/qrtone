@@ -123,6 +123,7 @@ void testEncoder(reed_solomon_encoder_t* encoder, int32_t* data_words,int32_t da
 	mu_assert_int_array_eq(message_expected, message_expected_length, message, message_length);
 	
 	free(message_expected);
+	free(message);
 }
 
 MU_TEST(testDataMatrix) {
