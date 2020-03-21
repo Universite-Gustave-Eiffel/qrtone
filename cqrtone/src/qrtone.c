@@ -58,12 +58,12 @@
       } else {
         this->coefficients_length = coefficients_length - firstNonZero;
         this->coefficients = malloc(sizeof(int32_t) * this->coefficients_length);
-        memcpy(this->coefficients + firstNonZero, coefficients, sizeof(int32_t) * this->coefficients_length);
+        memcpy(this->coefficients, coefficients + firstNonZero, sizeof(int32_t) * this->coefficients_length);
       }
     } else {
-        this->coefficients = malloc(sizeof(int32_t) * 1);
-        this->coefficients_length = 1;
-        this->coefficients[0] = coefficients[0];
+        this->coefficients = malloc(sizeof(int32_t) * coefficients_length);
+        this->coefficients_length = coefficients_length;
+        memcpy(this->coefficients, coefficients, sizeof(int32_t) * coefficients_length);
     }	 
  }
 
@@ -78,6 +78,7 @@
      }
      int32_t product_length = this->coefficients_length + degree;
      int32_t* product = malloc(sizeof(int32_t) * product_length);
+     memset(product, 0, sizeof(int32_t) * product_length);
      int32_t i;
      for (i = 0; i < this->coefficients_length; i++) {
          product[i] = qrtone_generic_gf_multiply(field, this->coefficients[i], coefficient);
@@ -118,6 +119,7 @@
 
  void qrtone_generic_gf_poly_copy(generic_gf_poly_t* this, generic_gf_poly_t* other) {
      this->coefficients = malloc(sizeof(int32_t) * other->coefficients_length);
+     memcpy(this->coefficients, other->coefficients, other->coefficients_length * sizeof(int32_t));
      this->coefficients_length = other->coefficients_length;
  }
 
@@ -234,6 +236,7 @@
      }
 
      int32_t* sum_diff = malloc(sizeof(int32_t) * larger_coefficients_length);
+     memset(sum_diff, 0, sizeof(int32_t) * larger_coefficients_length);
      int32_t length_diff = larger_coefficients_length - smaller_coefficients_length;
 
      // Copy high-order terms only found in higher-degree polynomial's coefficients

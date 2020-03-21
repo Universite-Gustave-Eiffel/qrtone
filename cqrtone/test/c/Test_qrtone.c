@@ -107,11 +107,32 @@ MU_TEST(testEvaluate) {
 	qrtone_generic_gf_free(&field);
 }
 
+void testEncoder(reed_solomon_encoder_t* encoder, int32_t* data_words,int32_t data_words_length, int32_t* ec_words, int32_t ec_words_length) {
+	int32_t message_expected_length = data_words_length + ec_words_length;
+	int32_t* message_expected = malloc(sizeof(int32_t) * message_expected_length);
+
+	int32_t message_length = data_words_length + ec_words_length;
+	int32_t* message = malloc(sizeof(int32_t) * message_length);
+	memset(message, 0, sizeof(int32_t) * message_length);
+	memcpy(message_expected, data_words, sizeof(int32_t) * data_words_length);
+	memcpy(message_expected + data_words_length, ec_words, sizeof(int32_t) * ec_words_length);
+	memcpy(message, data_words, sizeof(int32_t) * data_words_length);
+
+	qrtone_reed_solomon_encoder_encode(encoder, message, message_length, ec_words_length);
+
+	mu_assert_int_array_eq(message_expected, message_expected_length, message, message_length);
+	
+	free(message_expected);
+}
 
 MU_TEST(testDataMatrix) {
 
 	reed_solomon_encoder_t encoder;
 	qrtone_reed_solomon_encoder_init(&encoder, 0x012D, 256, 1);
+	int32_t data_words[3] = { 142, 164, 186 };
+	int32_t ec_words[5] = { 114, 25 , 5, 88, 102};
+
+	testEncoder(&encoder, data_words, 3, ec_words, 5);
 
 	qrtone_reed_solomon_encoder_free(&encoder);
 }

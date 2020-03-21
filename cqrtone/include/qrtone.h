@@ -95,7 +95,6 @@ int32_t qrtone_generic_gf_poly_get_degree(generic_gf_poly_t* this);
 
 void qrtone_generic_gf_poly_multiply_other(generic_gf_poly_t* this, generic_gf_t* field, generic_gf_poly_t* other, generic_gf_poly_t* result);
 
-
 /**
  * @return product of a and b in GF(size)
  */
@@ -110,6 +109,7 @@ void qrtone_reed_solomon_encoder_free(reed_solomon_encoder_t* this);
 
 void qrtone_reed_solomon_encoder_init(reed_solomon_encoder_t* this, int32_t primitive, int32_t size, int32_t b);
 
+void qrtone_reed_solomon_encoder_encode(reed_solomon_encoder_t* this, int32_t* to_encode, int32_t to_encode_length, int32_t ec_bytes);
 
 
 
