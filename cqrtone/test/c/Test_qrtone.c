@@ -593,7 +593,7 @@ void testDecode(generic_gf_t* field, int32_t* message, int32_t message_length, i
 	int32_t* try_table = malloc(sizeof(int32_t) * max_number_of_errors);
 	memset(try_table, 0, sizeof(int32_t) * max_number_of_errors);
 	// Corrupt all possible data locations
-	while (try_cursor < max_number_of_errors) {
+	while (minunit_status == 0 && try_cursor < max_number_of_errors) {
 		int32_t* decoded = malloc(sizeof(int32_t) * message_length);
 		memcpy(decoded, message, sizeof(int32_t) * message_length);
 		int32_t c;
@@ -613,18 +613,26 @@ void testDecode(generic_gf_t* field, int32_t* message, int32_t message_length, i
 	free(try_table);
 }
 
-
+// Give message (payload+ecc), and test with multiple errors at all possible locations
 MU_TEST(testGF16) {
 	generic_gf_t field;
 	qrtone_generic_gf_init(&field, 0x13, 16, 1);
 
 	int32_t message1[] = { 3, 13, 14, 0, 4, 10, 0, 11, 13, 9, 14, 14, 0, 11 };
-	//int32_t message2[] = { 1, 13, 14, 0, 4, 10, 0, 11, 13, 9, 14, 14, 0, 11 };
 
-	//int32_t res = qrtone_reed_solomon_decoder_decode(&field, message2, 14, 2);
-
-	//mu_assert_int_array_eq(message1, 14, message2, 14);
 	testDecode(&field, message1, 14, 2);
+
+	int32_t message2[] = { 11, 2, 15, 6, 12, 15, 1, 12, 15, 15, 4, 3 };
+
+	testDecode(&field, message2, 12, 4);
+
+	int32_t message3[] = { 11, 3, 7, 4, 11, 10, 11, 15, 6, 12, 5, 10 };
+
+	testDecode(&field, message3, 12, 6);
+
+	int32_t message4[] = { 11, 5, 15, 0, 1, 6, 9, 8, 10, 10 };
+
+	testDecode(&field, message4, 10, 6);
 
 	qrtone_generic_gf_free(&field);
 }
