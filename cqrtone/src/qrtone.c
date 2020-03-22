@@ -63,10 +63,40 @@ void qrtone_crc8_add(qrtone_crc8_t* this, const int8_t data) {
     this->crc8 = crc;
 }
 
-int8_t qrtone_crc8_get(qrtone_crc8_t* this) {
+void qrtone_crc8_add_array(qrtone_crc8_t* this, const int8_t* data, const int32_t data_length) {
+    int32_t i;
+    for (i = 0; i < data_length; i++) {
+        qrtone_crc8_add(this, data[i]);
+    }
+}
+
+uint8_t qrtone_crc8_get(qrtone_crc8_t* this) {
     return this->crc8 & 0xFF;
 }
 
+void qrtone_crc16_init(qrtone_crc16_t* this) {
+    this->crc16 = 0;
+}
 
+void qrtone_crc16_add_array(qrtone_crc16_t* this, const int8_t* data, const int32_t data_length) {
+    int32_t i;
+    uint16_t crcXor;
+    uint16_t c;
+    uint8_t j;
+    for (i = 0; i < data_length; i++) {
+        c = (this->crc16 ^ data[i]) & 0x00FF;
+        crcXor = 0;
+        for (j = 0; j < 8; j++) {
+            if (((crcXor ^ c) & 0x0001) != 0) {
+                crcXor = (crcXor >> 1) ^ 0xA001;
+            }
+            else {
+                crcXor = crcXor >> 1;
+            }
+            c = c >> 1;
+        }
+        this->crc16 = this->crc16 >> 8 ^ crcXor;
+    }
+}
 
 

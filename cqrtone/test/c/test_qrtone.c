@@ -54,8 +54,34 @@
 
 #define CHECK(a) if(!a) return -1
 
-MU_TEST_SUITE(test_suite) {
 
+MU_TEST(testCRC8) {
+	int8_t data[] = { 0x0A, 0x0F, 0x08, 0x01, 0x05, 0x0B, 0x03 };
+
+	qrtone_crc8_t crc;
+
+	qrtone_crc8_init(&crc);
+
+	qrtone_crc8_add_array(&crc, data, sizeof(data));
+
+	mu_assert_int_eq(0xEA, qrtone_crc8_get(&crc));
+}
+
+MU_TEST(testCRC16) {
+	int8_t data[] = { 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J' };
+
+	qrtone_crc16_t crc;
+
+	qrtone_crc16_init(&crc);
+
+	qrtone_crc16_add_array(&crc, data, sizeof(data));
+
+	mu_assert_int_eq(0x0C9E, crc.crc16);
+}
+
+MU_TEST_SUITE(test_suite) {
+	MU_RUN_TEST(testCRC8);
+	MU_RUN_TEST(testCRC16);
 }
 
 int main(int argc, char** argv) {

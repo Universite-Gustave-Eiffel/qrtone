@@ -44,12 +44,21 @@ typedef struct _qrtone_crc8_t {
     int32_t crc8;
 } qrtone_crc8_t;
 
+typedef struct _qrtone_crc16_t {
+    int32_t crc16;
+} qrtone_crc16_t;
+
 void qrtone_crc8_init(qrtone_crc8_t* this);
 
 void qrtone_crc8_add(qrtone_crc8_t* this, const int8_t data);
 
-int8_t qrtone_crc8_get(qrtone_crc8_t* this);
+uint8_t qrtone_crc8_get(qrtone_crc8_t* this);
 
+void qrtone_crc8_add_array(qrtone_crc8_t* this, const int8_t* data, const int32_t data_length);
+
+void qrtone_crc16_init(qrtone_crc16_t* this);
+
+void qrtone_crc16_add_array(qrtone_crc16_t* this, const int8_t* data, const int32_t data_length);
 
 #ifdef __cplusplus
 }
