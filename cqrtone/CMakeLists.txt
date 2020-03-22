@@ -29,7 +29,7 @@ include_directories (include)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_USE_MATH_DEFINES")
 
-add_library(qrtone src/qrtone.c)
+add_library(qrtone src/reed_solomon.c)
 
 target_link_libraries (qrtone ${LIBM})
 
@@ -42,19 +42,19 @@ set(TEST_DATA_DIR "${PROJECT_BINARY_DIR}/TestAudio")
 #    DESTINATION ${TEST_DATA_DIR})
 
 # Test executable and folder
-set(QRTONE_TESTS
-    test/c/Test_qrtone.c)
+set(ECC_TESTS
+    test/c/Test_reed_solomon.c)
 
 
-add_executable(Test_QRTONE ${QRTONE_TESTS})
+add_executable(Test_REED_SOLOMON ${ECC_TESTS})
 
-target_link_libraries (Test_QRTONE
+target_link_libraries (Test_REED_SOLOMON
 qrtone )
 
-set_property(TARGET Test_QRTONE PROPERTY FOLDER "tests")
+set_property(TARGET Test_REED_SOLOMON PROPERTY FOLDER "tests")
 
 # Add to test suite
 enable_testing()
-add_test( NAME qrtone_test1
+add_test( NAME ecc_test1
     WORKING_DIRECTORY ${TEST_DATA_DIR}
-    COMMAND Test_QRTONE )
+    COMMAND Test_REED_SOLOMON )

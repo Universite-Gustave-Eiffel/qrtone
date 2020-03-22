@@ -46,7 +46,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-#include "qrtone.h"
+#include "reed_solomon.h"
 #include "minunit.h"
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
@@ -56,58 +56,58 @@
 
 MU_TEST(testPolynomial) {
 
-		generic_gf_t field;
-		qrtone_generic_gf_init(&field, 0x011D, 256, 0);
+		ecc_generic_gf_t field;
+		ecc_generic_gf_init(&field, 0x011D, 256, 0);
 		mu_assert_int_eq(0, field.zero.coefficients[0]);
 
-		generic_gf_poly_t poly;
-		mu_assert_int_eq(QRTONE_NO_ERRORS, qrtone_generic_gf_build_monomial(&poly, 0, -1));
+		ecc_generic_gf_poly_t poly;
+		mu_assert_int_eq(ECC_NO_ERRORS, ecc_generic_gf_build_monomial(&poly, 0, -1));
 		mu_assert_int_eq(-1, poly.coefficients[0]);
 
-		qrtone_generic_gf_poly_free(&poly);
-		qrtone_generic_gf_free(&field);
+		ecc_generic_gf_poly_free(&poly);
+		ecc_generic_gf_free(&field);
 }
 
 MU_TEST(testZero) {
 
-	generic_gf_t field;
-	qrtone_generic_gf_init(&field, 0x011D, 256, 0);
+	ecc_generic_gf_t field;
+	ecc_generic_gf_init(&field, 0x011D, 256, 0);
 
-	generic_gf_poly_t poly;
-	mu_assert_int_eq(QRTONE_NO_ERRORS, qrtone_generic_gf_build_monomial(&poly, 1, 0));
+	ecc_generic_gf_poly_t poly;
+	mu_assert_int_eq(ECC_NO_ERRORS, ecc_generic_gf_build_monomial(&poly, 1, 0));
 	mu_assert_int_eq(field.zero.coefficients_length, poly.coefficients_length);
 	mu_assert_int_eq(field.zero.coefficients[0], poly.coefficients[0]);
-	qrtone_generic_gf_poly_free(&poly);
+	ecc_generic_gf_poly_free(&poly);
 
-	mu_assert_int_eq(QRTONE_NO_ERRORS, qrtone_generic_gf_build_monomial(&poly, 1, 2));
-	generic_gf_poly_t res;
-	qrtone_generic_gf_poly_multiply(&poly,&field, 0, &res);
+	mu_assert_int_eq(ECC_NO_ERRORS, ecc_generic_gf_build_monomial(&poly, 1, 2));
+	ecc_generic_gf_poly_t res;
+	ecc_generic_gf_poly_multiply(&poly,&field, 0, &res);
 	mu_assert_int_eq(field.zero.coefficients_length, res.coefficients_length);
 	mu_assert_int_eq(field.zero.coefficients[0], res.coefficients[0]);
-	qrtone_generic_gf_poly_free(&poly);
-	qrtone_generic_gf_poly_free(&res);
+	ecc_generic_gf_poly_free(&poly);
+	ecc_generic_gf_poly_free(&res);
 
 
-	qrtone_generic_gf_free(&field);
+	ecc_generic_gf_free(&field);
 }
 
 
 MU_TEST(testEvaluate) {
 
-	generic_gf_t field;
-	qrtone_generic_gf_init(&field, 0x011D, 256, 0);
+	ecc_generic_gf_t field;
+	ecc_generic_gf_init(&field, 0x011D, 256, 0);
 
-	generic_gf_poly_t poly;
-	mu_assert_int_eq(QRTONE_NO_ERRORS, qrtone_generic_gf_build_monomial(&poly, 0, 3));
+	ecc_generic_gf_poly_t poly;
+	mu_assert_int_eq(ECC_NO_ERRORS, ecc_generic_gf_build_monomial(&poly, 0, 3));
 
-	mu_assert_int_eq(3, qrtone_generic_gf_poly_evaluate_at(&poly, &field, 0));
+	mu_assert_int_eq(3, ecc_generic_gf_poly_evaluate_at(&poly, &field, 0));
 
 
-	qrtone_generic_gf_poly_free(&poly);
-	qrtone_generic_gf_free(&field);
+	ecc_generic_gf_poly_free(&poly);
+	ecc_generic_gf_free(&field);
 }
 
-void testEncoder(reed_solomon_encoder_t* encoder, int32_t* data_words,int32_t data_words_length, int32_t* ec_words, int32_t ec_words_length) {
+void testEncoder(ecc_reed_solomon_encoder_t* encoder, int32_t* data_words,int32_t data_words_length, int32_t* ec_words, int32_t ec_words_length) {
 	int32_t message_expected_length = data_words_length + ec_words_length;
 	int32_t* message_expected = malloc(sizeof(int32_t) * message_expected_length);
 
@@ -118,7 +118,7 @@ void testEncoder(reed_solomon_encoder_t* encoder, int32_t* data_words,int32_t da
 	memcpy(message_expected + data_words_length, ec_words, sizeof(int32_t) * ec_words_length);
 	memcpy(message, data_words, sizeof(int32_t) * data_words_length);
 
-	qrtone_reed_solomon_encoder_encode(encoder, message, message_length, ec_words_length);
+	ecc_reed_solomon_encoder_encode(encoder, message, message_length, ec_words_length);
 
 	mu_assert_int_array_eq(message_expected, message_expected_length, message, message_length);
 	
@@ -128,20 +128,20 @@ void testEncoder(reed_solomon_encoder_t* encoder, int32_t* data_words,int32_t da
 
 MU_TEST(testDataMatrix1) {
 
-	reed_solomon_encoder_t encoder;
-	qrtone_reed_solomon_encoder_init(&encoder, 0x012D, 256, 1);
+	ecc_reed_solomon_encoder_t encoder;
+	ecc_reed_solomon_encoder_init(&encoder, 0x012D, 256, 1);
 	int32_t data_words[] = { 142, 164, 186 };
 	int32_t ec_words[] = { 114, 25 , 5, 88, 102};
 
 	testEncoder(&encoder, data_words, sizeof(data_words) / sizeof(int32_t), ec_words, sizeof(ec_words) / sizeof(int32_t));
 
-	qrtone_reed_solomon_encoder_free(&encoder);
+	ecc_reed_solomon_encoder_free(&encoder);
 }
 
 MU_TEST(testDataMatrix2) {
 
-	reed_solomon_encoder_t encoder;
-	qrtone_reed_solomon_encoder_init(&encoder, 0x012D, 256, 1);
+	ecc_reed_solomon_encoder_t encoder;
+	ecc_reed_solomon_encoder_init(&encoder, 0x012D, 256, 1);
 	int32_t data_words[] = { 0x69, 0x75, 0x75, 0x71, 0x3B, 0x30, 0x30, 0x64,
 		0x70, 0x65, 0x66, 0x2F, 0x68, 0x70, 0x70, 0x68,
 		0x6D, 0x66, 0x2F, 0x64, 0x70, 0x6E, 0x30, 0x71,
@@ -153,13 +153,13 @@ MU_TEST(testDataMatrix2) {
 
 	testEncoder(&encoder, data_words, sizeof(data_words) / sizeof(int32_t), ec_words, sizeof(ec_words) / sizeof(int32_t));
 
-	qrtone_reed_solomon_encoder_free(&encoder);
+	ecc_reed_solomon_encoder_free(&encoder);
 }
 
 MU_TEST(testQRCode1) {
 
-	reed_solomon_encoder_t encoder;
-	qrtone_reed_solomon_encoder_init(&encoder, 0x011D, 256, 0);
+	ecc_reed_solomon_encoder_t encoder;
+	ecc_reed_solomon_encoder_init(&encoder, 0x011D, 256, 0);
 	int32_t data_words[] = { 0x10, 0x20, 0x0C, 0x56, 0x61, 0x80, 0xEC, 0x11,
 		0xEC, 0x11, 0xEC, 0x11, 0xEC, 0x11, 0xEC, 0x11 };
 	int32_t ec_words[] = { 0xA5, 0x24, 0xD4, 0xC1, 0xED, 0x36, 0xC7, 0x87,
@@ -167,14 +167,14 @@ MU_TEST(testQRCode1) {
 
 	testEncoder(&encoder, data_words, sizeof(data_words) / sizeof(int32_t), ec_words, sizeof(ec_words) / sizeof(int32_t));
 
-	qrtone_reed_solomon_encoder_free(&encoder);
+	ecc_reed_solomon_encoder_free(&encoder);
 }
 
 
 MU_TEST(testQRCode2) {
 
-	reed_solomon_encoder_t encoder;
-	qrtone_reed_solomon_encoder_init(&encoder, 0x011D, 256, 0);
+	ecc_reed_solomon_encoder_t encoder;
+	ecc_reed_solomon_encoder_init(&encoder, 0x011D, 256, 0);
 	int32_t data_words[] = { 0x72, 0x67, 0x2F, 0x77, 0x69, 0x6B, 0x69, 0x2F,
 		0x4D, 0x61, 0x69, 0x6E, 0x5F, 0x50, 0x61, 0x67,
 		0x65, 0x3B, 0x3B, 0x00, 0xEC, 0x11, 0xEC, 0x11,
@@ -185,62 +185,62 @@ MU_TEST(testQRCode2) {
 
 	testEncoder(&encoder, data_words, sizeof(data_words) / sizeof(int32_t), ec_words, sizeof(ec_words) / sizeof(int32_t));
 
-	qrtone_reed_solomon_encoder_free(&encoder);
+	ecc_reed_solomon_encoder_free(&encoder);
 }
 
 MU_TEST(testAztec1) {
 
-	reed_solomon_encoder_t encoder;
-	qrtone_reed_solomon_encoder_init(&encoder, 0x13, 16, 1);
+	ecc_reed_solomon_encoder_t encoder;
+	ecc_reed_solomon_encoder_init(&encoder, 0x13, 16, 1);
 	int32_t data_words[] = { 0x5, 0x6 };
 	int32_t ec_words[] = { 0x3, 0x2, 0xB, 0xB, 0x7 };
 
 	testEncoder(&encoder, data_words, sizeof(data_words) / sizeof(int32_t), ec_words, sizeof(ec_words) / sizeof(int32_t));
 
-	qrtone_reed_solomon_encoder_free(&encoder);
+	ecc_reed_solomon_encoder_free(&encoder);
 }
 
 MU_TEST(testAztec2) {
 
-	reed_solomon_encoder_t encoder;
-	qrtone_reed_solomon_encoder_init(&encoder, 0x13, 16, 1);
+	ecc_reed_solomon_encoder_t encoder;
+	ecc_reed_solomon_encoder_init(&encoder, 0x13, 16, 1);
 	int32_t data_words[] = { 0x0, 0x0, 0x0, 0x9 };
 	int32_t ec_words[] = { 0xA, 0xD, 0x8, 0x6, 0x5, 0x6 };
 
 	testEncoder(&encoder, data_words, sizeof(data_words) / sizeof(int32_t), ec_words, sizeof(ec_words) / sizeof(int32_t));
 
-	qrtone_reed_solomon_encoder_free(&encoder);
+	ecc_reed_solomon_encoder_free(&encoder);
 }
 
 
 MU_TEST(testAztec3) {
 
-	reed_solomon_encoder_t encoder;
-	qrtone_reed_solomon_encoder_init(&encoder, 0x13, 16, 1);
+	ecc_reed_solomon_encoder_t encoder;
+	ecc_reed_solomon_encoder_init(&encoder, 0x13, 16, 1);
 	int32_t data_words[] = { 0x2, 0x8, 0x8, 0x7 };
 	int32_t ec_words[] = { 0xE, 0xC, 0xA, 0x9, 0x6, 0x8 };
 
 	testEncoder(&encoder, data_words, sizeof(data_words) / sizeof(int32_t), ec_words, sizeof(ec_words) / sizeof(int32_t));
 
-	qrtone_reed_solomon_encoder_free(&encoder);
+	ecc_reed_solomon_encoder_free(&encoder);
 }
 
 MU_TEST(testAztec4) {
 
-	reed_solomon_encoder_t encoder;
-	qrtone_reed_solomon_encoder_init(&encoder, 0x43, 64, 1);
+	ecc_reed_solomon_encoder_t encoder;
+	ecc_reed_solomon_encoder_init(&encoder, 0x43, 64, 1);
 	int32_t data_words[] = { 0x9, 0x32, 0x1, 0x29, 0x2F, 0x2, 0x27, 0x25, 0x1, 0x1B };
 	int32_t ec_words[] = { 0x2C, 0x2, 0xD, 0xD, 0xA, 0x16, 0x28, 0x9, 0x22, 0xA, 0x14 };
 
 	testEncoder(&encoder, data_words, sizeof(data_words) / sizeof(int32_t), ec_words, sizeof(ec_words) / sizeof(int32_t));
 
-	qrtone_reed_solomon_encoder_free(&encoder);
+	ecc_reed_solomon_encoder_free(&encoder);
 }
 
 MU_TEST(testAztec5) {
 
-	reed_solomon_encoder_t encoder;
-	qrtone_reed_solomon_encoder_init(&encoder, 0x012D, 256, 1);
+	ecc_reed_solomon_encoder_t encoder;
+	ecc_reed_solomon_encoder_init(&encoder, 0x012D, 256, 1);
 	int32_t data_words[] = { 0xE0, 0x86, 0x42, 0x98, 0xE8, 0x4A, 0x96, 0xC6,
 		0xB9, 0xF0, 0x8C, 0xA7, 0x4A, 0xDA, 0xF8, 0xCE,
 		0xB7, 0xDE, 0x88, 0x64, 0x29, 0x8E, 0x84, 0xA9,
@@ -260,14 +260,14 @@ MU_TEST(testAztec5) {
 
 	testEncoder(&encoder, data_words, sizeof(data_words) / sizeof(int32_t), ec_words, sizeof(ec_words) / sizeof(int32_t));
 
-	qrtone_reed_solomon_encoder_free(&encoder);
+	ecc_reed_solomon_encoder_free(&encoder);
 }
 
 
 MU_TEST(testAztec6) {
 
-	reed_solomon_encoder_t encoder;
-	qrtone_reed_solomon_encoder_init(&encoder, 0x409, 1024, 1);
+	ecc_reed_solomon_encoder_t encoder;
+	ecc_reed_solomon_encoder_init(&encoder, 0x409, 1024, 1);
 	int32_t data_words[] = { 0x15C, 0x1E1, 0x2D5, 0x02E, 0x048, 0x1E2, 0x037, 0x0CD,
 		0x02E, 0x056, 0x26A, 0x281, 0x1C2, 0x1A6, 0x296, 0x045,
 		0x041, 0x0AA, 0x095, 0x2CE, 0x003, 0x38F, 0x2CD, 0x1A2,
@@ -331,13 +331,13 @@ MU_TEST(testAztec6) {
 
 	testEncoder(&encoder, data_words, sizeof(data_words) / sizeof(int32_t), ec_words, sizeof(ec_words) / sizeof(int32_t));
 
-	qrtone_reed_solomon_encoder_free(&encoder);
+	ecc_reed_solomon_encoder_free(&encoder);
 }
 
 MU_TEST(testAztec7) {
 
-	reed_solomon_encoder_t encoder;
-	qrtone_reed_solomon_encoder_init(&encoder, 0x1069, 4096, 1);
+	ecc_reed_solomon_encoder_t encoder;
+	ecc_reed_solomon_encoder_init(&encoder, 0x1069, 4096, 1);
 	int32_t data_words[] = { 0x571, 0xE1B, 0x542, 0xE12, 0x1E2, 0x0DC, 0xCD0, 0xB85,
 		0x69A, 0xA81, 0x709, 0xA6A, 0x584, 0x510, 0x4AA, 0x256,
 		0xCE0, 0x0F8, 0xFB3, 0x5A2, 0x0D9, 0xAD1, 0x389, 0x09C,
@@ -550,7 +550,7 @@ MU_TEST(testAztec7) {
 
 	testEncoder(&encoder, data_words, sizeof(data_words) / sizeof(int32_t), ec_words, sizeof(ec_words) / sizeof(int32_t));
 
-	qrtone_reed_solomon_encoder_free(&encoder);
+	ecc_reed_solomon_encoder_free(&encoder);
 }
 
 
@@ -587,7 +587,7 @@ int next_error_state(int32_t current_number_of_errors, int32_t* try_table,int32_
 	return current_number_of_errors;
 }
 
-void testDecode(generic_gf_t* field, int32_t* message, int32_t message_length, int32_t ec_words_length) {
+void testDecode(ecc_generic_gf_t* field, int32_t* message, int32_t message_length, int32_t ec_words_length) {
 	int32_t try_cursor = 0;
 	int32_t max_number_of_errors = MAX(1, ec_words_length / 2);
 	int32_t* try_table = malloc(sizeof(int32_t) * max_number_of_errors);
@@ -604,8 +604,8 @@ void testDecode(generic_gf_t* field, int32_t* message, int32_t message_length, i
 				decoded[try_table[c]] = 0;
 			}
 		}
-		int32_t res = qrtone_reed_solomon_decoder_decode(field, decoded, message_length, ec_words_length);		
-		mu_assert_int_eq(QRTONE_NO_ERRORS, res);
+		int32_t res = ecc_reed_solomon_decoder_decode(field, decoded, message_length, ec_words_length);		
+		mu_assert_int_eq(ECC_NO_ERRORS, res);
 		mu_assert_int_array_eq(message, message_length, decoded, message_length);
 		free(decoded);
 		try_cursor = next_error_state(try_cursor, try_table, max_number_of_errors, message_length);
@@ -615,8 +615,8 @@ void testDecode(generic_gf_t* field, int32_t* message, int32_t message_length, i
 
 // Give message (payload+ecc), and test with multiple errors at all possible locations
 MU_TEST(testGF16) {
-	generic_gf_t field;
-	qrtone_generic_gf_init(&field, 0x13, 16, 1);
+	ecc_generic_gf_t field;
+	ecc_generic_gf_init(&field, 0x13, 16, 1);
 
 	int32_t message1[] = { 3, 13, 14, 0, 4, 10, 0, 11, 13, 9, 14, 14, 0, 11 };
 
@@ -634,7 +634,7 @@ MU_TEST(testGF16) {
 
 	testDecode(&field, message4, 10, 6);
 
-	qrtone_generic_gf_free(&field);
+	ecc_generic_gf_free(&field);
 }
 
 MU_TEST_SUITE(test_suite) {
