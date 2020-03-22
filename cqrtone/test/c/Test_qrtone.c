@@ -647,6 +647,7 @@ MU_TEST_SUITE(test_suite) {
 }
 
 int main(int argc, char** argv) {
+	//_crtBreakAlloc = 13205;
 	MU_RUN_SUITE(test_suite);
 	MU_REPORT();
 	#ifdef _WIN32

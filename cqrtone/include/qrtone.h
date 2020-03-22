@@ -82,8 +82,6 @@ int qrtone_generic_gf_build_monomial(generic_gf_poly_t* poly, int32_t degree, in
 
 void qrtone_generic_gf_poly_multiply(generic_gf_poly_t* this, generic_gf_t* field, int32_t scalar, generic_gf_poly_t* result);
 
-void qrtone_generic_gf_poly_copy(generic_gf_poly_t* this, generic_gf_poly_t* other);
-
 int qrtone_generic_gf_poly_is_zero(generic_gf_poly_t* this);
 
 int32_t qrtone_generic_gf_poly_get_coefficient(generic_gf_poly_t* this, int32_t degree);

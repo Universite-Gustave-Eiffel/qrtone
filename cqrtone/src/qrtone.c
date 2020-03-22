@@ -42,6 +42,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+
+void qrtone_generic_gf_poly_copy(generic_gf_poly_t* this, generic_gf_poly_t* other) {
+    this->coefficients = malloc(sizeof(int32_t) * other->coefficients_length);
+    memcpy(this->coefficients, other->coefficients, other->coefficients_length * sizeof(int32_t));
+    this->coefficients_length = other->coefficients_length;
+}
+
 /**
  * GenericGFPoly constructor
  * @ref com.google.zxing.common.reedsolomon
@@ -123,12 +130,6 @@
     qrtone_generic_gf_poly_copy(result, &remainder);
     qrtone_generic_gf_poly_free(&remainder);
     return QRTONE_NO_ERRORS;
- }
-
- void qrtone_generic_gf_poly_copy(generic_gf_poly_t* this, generic_gf_poly_t* other) {
-     this->coefficients = malloc(sizeof(int32_t) * other->coefficients_length);
-     memcpy(this->coefficients, other->coefficients, other->coefficients_length * sizeof(int32_t));
-     this->coefficients_length = other->coefficients_length;
  }
 
  void qrtone_generic_gf_poly_free(generic_gf_poly_t* this) {
@@ -227,9 +228,11 @@
  void qrtone_generic_gf_poly_add_or_substract(generic_gf_poly_t* this, generic_gf_poly_t* other, generic_gf_poly_t* result) {
      if (qrtone_generic_gf_poly_is_zero(this)) {
          qrtone_generic_gf_poly_copy(result, other);
+         return;
      }
      if (qrtone_generic_gf_poly_is_zero(other)) {
          qrtone_generic_gf_poly_copy(result, this);
+         return;
      }
 
      int32_t* smaller_coefficients = this->coefficients;
@@ -453,6 +456,8 @@
                  qrtone_generic_gf_poly_free(&new_value);
                  qrtone_generic_gf_poly_multiply_by_monomial(&r_last, field, degree_diff, scale, &other);
                  qrtone_generic_gf_poly_add_or_substract(&r, &other, &new_value);
+                 qrtone_generic_gf_poly_free(&other);
+                 qrtone_generic_gf_poly_free(&r);
                  qrtone_generic_gf_poly_copy(&r, &new_value);
                  qrtone_generic_gf_poly_free(&new_value);
              }
