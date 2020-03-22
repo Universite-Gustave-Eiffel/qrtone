@@ -42,6 +42,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+// @link https://github.com/zxing/zxing/tree/master/core/src/main/java/com/google/zxing/common/reedsolomon
+
 
 void ecc_generic_gf_poly_copy(ecc_generic_gf_poly_t* this, ecc_generic_gf_poly_t* other) {
     this->coefficients = malloc(sizeof(int32_t) * other->coefficients_length);
