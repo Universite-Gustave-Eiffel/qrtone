@@ -102,7 +102,7 @@ MU_TEST(test1khz) {
 
 	double signal_rms = qrtone_goertzel_compute_rms(&goertzel);
 
-	mu_assert_double_eq(powerRMS, signal_rms, 0.1);
+	mu_assert_double_eq(20 * log10(powerRMS), 20*log10(signal_rms), 0.01);
 }
 
 MU_TEST(test1khzIterative) {
@@ -132,7 +132,7 @@ MU_TEST(test1khzIterative) {
 
 	double signal_rms = qrtone_goertzel_compute_rms(&goertzel);
 
-	mu_assert_double_eq(powerRMS, signal_rms, 0.1);
+	mu_assert_double_eq(20 * log10(powerRMS), 20 * log10(signal_rms), 0.01);
 }
 
 MU_TEST_SUITE(test_suite) {
