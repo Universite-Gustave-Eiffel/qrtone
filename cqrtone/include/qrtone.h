@@ -1,7 +1,7 @@
 /*
  * BSD 3-Clause License
  *
- * Copyright (c) Unité Mixte de Recherche en Acoustique Environnementale (univ-gustave-eiffel)
+ * Copyright (c) Unitï¿½ Mixte de Recherche en Acoustique Environnementale (univ-gustave-eiffel)
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,6 +31,16 @@
  *
  */
 
+/**
+ * @file qrtone.h
+ * @author Nicolas Fortin @NicolasCumu
+ * @date 24/03/2020
+ * @brief Api of QRTone library
+ * Usage:
+ * 1. Declare struct instance of qrtone_t
+ * TODO
+ */
+
 #ifndef QRTONE_H
 #define QRTONE_H
 
@@ -48,6 +58,34 @@ typedef struct _qrtone_crc16_t {
     int32_t crc16;
 } qrtone_crc16_t;
 
+typedef struct _qrtone_goertzel_t {
+    double s0;
+    double s1;
+    double s2;
+    double cos_pik_term2;
+    double pik_term;
+    float last_sample;
+    double sample_rate;
+    int32_t window_size;
+    int32_t processed_samples;
+} qrtone_goertzel_t;
+
+typedef struct _qrtonecomplex
+{
+    double r;
+    double i;
+} qrtonecomplex;
+
+struct _qrtonecomplex NEW_CX(double r, double i);
+
+struct _qrtonecomplex CX_ADD(const qrtonecomplex c1, const qrtonecomplex c2);
+
+struct _qrtonecomplex CX_SUB(const qrtonecomplex c1, const qrtonecomplex c2);
+
+struct _qrtonecomplex CX_MUL(const qrtonecomplex c1, const qrtonecomplex c2);
+
+struct _qrtonecomplex CX_EXP(const qrtonecomplex c1);
+
 void qrtone_crc8_init(qrtone_crc8_t* this);
 
 void qrtone_crc8_add(qrtone_crc8_t* this, const int8_t data);
@@ -59,6 +97,16 @@ void qrtone_crc8_add_array(qrtone_crc8_t* this, const int8_t* data, const int32_
 void qrtone_crc16_init(qrtone_crc16_t* this);
 
 void qrtone_crc16_add_array(qrtone_crc16_t* this, const int8_t* data, const int32_t data_length);
+
+void qrtone_goertzel_reset(qrtone_goertzel_t* this);
+
+void qrtone_goertzel_init(qrtone_goertzel_t* this, double sample_rate, double frequency, int32_t window_size);
+
+void qrtone_goertzel_process_samples(qrtone_goertzel_t* this, float* samples, int32_t samples_len);
+
+double qrtone_goertzel_compute_rms(qrtone_goertzel_t* this);
+
+
 
 #ifdef __cplusplus
 }

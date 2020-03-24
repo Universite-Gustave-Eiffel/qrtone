@@ -45,6 +45,16 @@
 // @link https://github.com/zxing/zxing/tree/master/core/src/main/java/com/google/zxing/common/reedsolomon
 
 
+/**
+ * @file reed_solomon.c
+ * @author Nicolas Fortin @NicolasCumu
+ * @author Sean Owen (java version)
+ * @author David Olivier (java version)
+ * @date 24/03/2020
+ * @brief Implementation of Reed-Solomon ECC
+ * Reference algorithm is the ZXing QR-Code Apache License source code.
+ */
+
 void ecc_generic_gf_poly_copy(ecc_generic_gf_poly_t* this, ecc_generic_gf_poly_t* other) {
     this->coefficients = malloc(sizeof(int32_t) * other->coefficients_length);
     memcpy(this->coefficients, other->coefficients, other->coefficients_length * sizeof(int32_t));

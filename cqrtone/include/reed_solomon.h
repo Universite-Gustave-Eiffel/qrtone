@@ -31,7 +31,18 @@
  *
  */
  
- 
+
+/**
+ * @file reed_solomon.h
+ * @author Nicolas Fortin @NicolasCumu
+ * @author Sean Owen (java version)
+ * @author David Olivier (java version)
+ * @date 24/03/2020
+ * @brief Api for generic Reed-Solomon ECC
+ * Reference algorithm is the ZXing QR-Code Apache License source code.
+ * @link https://github.com/zxing/zxing/tree/master/core/src/main/java/com/google/zxing/common/reedsolomon
+ */
+
 #ifndef ECC_H
 #define ECC_H
 
