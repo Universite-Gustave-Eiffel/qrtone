@@ -91,7 +91,7 @@ MU_TEST(test1khz) {
 	int s;
 	for (s = 0; s < SAMPLES; s++) {
 		double t = s * (1 / (double)sample_rate);
-		audio[s] = sin(2 * M_PI * signal_frequency * t) * (powerPeak);
+		audio[s] = (float)(sin(2 * M_PI * signal_frequency * t) * (powerPeak));
 	}
 
 	qrtone_goertzel_t goertzel;
@@ -105,10 +105,41 @@ MU_TEST(test1khz) {
 	mu_assert_double_eq(powerRMS, signal_rms, 0.1);
 }
 
+MU_TEST(test1khzIterative) {
+	const double sample_rate = 44100;
+	double powerRMS = pow(10.0, -26.0 / 20.0); // -26 dBFS
+	float signal_frequency = 1000;
+	double powerPeak = powerRMS * sqrt(2);
+
+	float audio[SAMPLES];
+	int s;
+	for (s = 0; s < SAMPLES; s++) {
+		double t = s * (1 / (double)sample_rate);
+		audio[s] = (float)(sin(2 * M_PI * signal_frequency * t) * (powerPeak));
+	}
+
+	qrtone_goertzel_t goertzel;
+
+	qrtone_goertzel_init(&goertzel, sample_rate, signal_frequency, SAMPLES);
+
+	int32_t cursor = 0;
+
+	while (cursor < SAMPLES) {
+		int32_t window_size = min((rand() % 115) + 20, SAMPLES - cursor);
+		qrtone_goertzel_process_samples(&goertzel, audio + cursor, window_size);
+		cursor += window_size;
+	}
+
+	double signal_rms = qrtone_goertzel_compute_rms(&goertzel);
+
+	mu_assert_double_eq(powerRMS, signal_rms, 0.1);
+}
+
 MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(testCRC8);
 	MU_RUN_TEST(testCRC16);
 	MU_RUN_TEST(test1khz);
+	MU_RUN_TEST(test1khzIterative);
 }
 
 int main(int argc, char** argv) {
