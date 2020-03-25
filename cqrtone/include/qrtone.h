@@ -70,30 +70,14 @@ typedef struct _qrtone_goertzel_t {
     int32_t processed_samples;
 } qrtone_goertzel_t;
 
-typedef struct _qrtonecomplex
-{
-    double r;
-    double i;
-} qrtonecomplex;
-
-typedef struct _qrtone_percentile {
+typedef struct _qrtone_percentile_t {
     double* q;
     double* dn;
     double* np;
     int32_t* n;
     int32_t count;
     int32_t marker_count;
-} qrtone_percentile;
-
-struct _qrtonecomplex NEW_CX(double r, double i);
-
-struct _qrtonecomplex CX_ADD(const qrtonecomplex c1, const qrtonecomplex c2);
-
-struct _qrtonecomplex CX_SUB(const qrtonecomplex c1, const qrtonecomplex c2);
-
-struct _qrtonecomplex CX_MUL(const qrtonecomplex c1, const qrtonecomplex c2);
-
-struct _qrtonecomplex CX_EXP(const qrtonecomplex c1);
+} qrtone_percentile_t;
 
 void qrtone_crc8_init(qrtone_crc8_t* this);
 
