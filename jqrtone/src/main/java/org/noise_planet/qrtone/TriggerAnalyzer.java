@@ -150,7 +150,7 @@ public class TriggerAnalyzer {
                             // Check if for the first peak the level was inferior than trigger level
                             if(firstPeakIndex >= 0 && firstPeakIndex < splHistory[0].size()
                                     && splHistory[0].get(firstPeakIndex) > element.value - triggerSnr &&
-                                    splHistory[frequencies.length - 1].get(firstPeakIndex) < element.value - triggerSnr) {
+                                    splHistory[frequencies.length - 1].get(firstPeakIndex) < backgroundNoiseSecondPeak + triggerSnr) {
                                 // All trigger conditions are met
                                 // Evaluate the exact position of the first tone
                                 long peakLocation = findPeakLocation(splHistory[frequencies.length - 1].get(peakIndex-1)
