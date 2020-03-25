@@ -76,6 +76,15 @@ typedef struct _qrtonecomplex
     double i;
 } qrtonecomplex;
 
+typedef struct _qrtone_percentile {
+    double* q;
+    double* dn;
+    double* np;
+    int32_t* n;
+    int32_t count;
+    int32_t marker_count;
+} qrtone_percentile;
+
 struct _qrtonecomplex NEW_CX(double r, double i);
 
 struct _qrtonecomplex CX_ADD(const qrtonecomplex c1, const qrtonecomplex c2);
