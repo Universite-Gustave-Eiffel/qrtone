@@ -113,7 +113,7 @@ public class ApproximatePercentile {
     }
 
     private void updateMarkers() {
-        sort(dn);
+        sort(dn, marker_count);
 
         /* Then entirely reset np markers, since the marker count changed */
         for (int i = 0; i < marker_count; i++) {
@@ -124,10 +124,10 @@ public class ApproximatePercentile {
     /**
      * Simple bubblesort, because bubblesort is efficient for small count, and count is likely to be small
      */
-    private void sort(double[] q) {
+    private void sort(double[] q, int length) {
         double k;
         int i, j;
-        for (j = 1; j < q.length; j++) {
+        for (j = 1; j < length; j++) {
             k = q[j];
             i = j - 1;
 
@@ -201,7 +201,7 @@ public class ApproximatePercentile {
 
             if (count == marker_count) {
                 // We have enough to start the algorithm, initialize
-                sort(q);
+                sort(q, count);
 
                 for (i = 0; i < marker_count; i++) {
                     n[i] = i + 1;
@@ -220,7 +220,7 @@ public class ApproximatePercentile {
     public double result(double quantile) {
         if (count < marker_count) {
             int closest = 1;
-            sort(q);
+            sort(q, count);
             for (int i = 2; i < count; i++) {
                 if (Math.abs(((double) i) / count - quantile) < Math.abs(((double) closest) / marker_count - quantile)) {
                     closest = i;

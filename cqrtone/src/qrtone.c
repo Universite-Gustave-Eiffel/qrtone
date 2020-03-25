@@ -353,15 +353,24 @@ void qrtone_percentile_init_quantile(qrtone_percentile_t* this, double quant) {
     }
 }
 
+/**
+ * @author Aaron Small
+ */
 double qrtone_percentile_linear(qrtone_percentile_t* this, int32_t i, int32_t d) {
     return this->q[i] + d * (this->q[i + d] - this->q[i]) /((size_t)this->n[i + d] - this->n[i]);
 }
 
+/**
+ * @author Aaron Small
+ */
 double qrtone_percentile_parabolic(qrtone_percentile_t* this, int32_t i, int32_t d) {
     return this->q[i] + d / (double)((size_t)this->n[i + 1] - this->n[i - 1]) * (((size_t)this->n[i] - this->n[i - 1] + d) * (this->q[i + 1] - this->q[i]) /
         ((size_t)this->n[i + 1] - this->n[i]) + ((size_t)this->n[i + 1] - this->n[i] - d) * (this->q[i] - this->q[i - 1]) / ((size_t)this->n[i] - this->n[i - 1]));
 }
 
+/**
+ * @author Aaron Small
+ */
 void qrtone_percentile_add(qrtone_percentile_t* this, double data) {
     int32_t i;
     int32_t k = 0;
@@ -426,4 +435,31 @@ void qrtone_percentile_add(qrtone_percentile_t* this, double data) {
             }
         }
     }
+}
+
+double qrtone_percentile_result_quantile(qrtone_percentile_t* this, double quantile) {
+    int32_t i;
+    if (this->count < this->marker_count) {
+        int32_t closest = 1;
+        qrtone_percentile_sort(this->q, this->count);
+        for (i = 2; i < this->count; i++) {
+            if (fabs(((double)i) / this->count - quantile) < fabs(((double)closest) / this->marker_count - quantile)) {
+                closest = i;
+            }
+        }
+        return this->q[closest];
+    } else {
+        // Figure out which quantile is the one we're looking for by nearest dn
+        int32_t closest = 1;
+        for (i = 2; i < this->marker_count - 1; i++) {
+            if (fabs(this->dn[i] - quantile) < fabs(this->dn[closest] - quantile)) {
+                closest = i;
+            }
+        }
+        return this->q[closest];
+    }
+}
+
+double qrtone_percentile_result(qrtone_percentile_t* this) {
+    return qrtone_percentile_result_quantile(this, this->dn[(this->marker_count - 1) / 2]);
 }
