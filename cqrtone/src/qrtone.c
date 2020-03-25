@@ -255,7 +255,7 @@ void qrtone_percentile_update_markers(qrtone_percentile_t* this) {
     int32_t i;
     /* Then entirely reset np markers, since the marker count changed */
     for (i = 0; i < this->marker_count; i++) {
-        this->np[i] = ((size_t)this->marker_count - 1) * this->dn[i] + 1;
+        this->np[i] = ((int64_t)this->marker_count - 1) * this->dn[i] + 1;
     }
 }
 
@@ -292,10 +292,10 @@ void qrtone_percentile_init(qrtone_percentile_t* this) {
  * @author Aaron Small
  */
 int32_t qrtone_percentile_allocate_markers(qrtone_percentile_t* this, int32_t count) {
-    double* new_q = malloc(sizeof(double) * ((size_t)this->marker_count + (size_t)count));
-    double* new_dn = malloc(sizeof(double) * ((size_t)this->marker_count + (size_t)count));
-    double* new_np = malloc(sizeof(double) * ((size_t)this->marker_count + (size_t)count));
-    int32_t* new_n = malloc(sizeof(int32_t) * ((size_t)this->marker_count + (size_t)count));
+    double* new_q = malloc(sizeof(double) * ((int64_t)this->marker_count + (int64_t)count));
+    double* new_dn = malloc(sizeof(double) * ((int64_t)this->marker_count + (int64_t)count));
+    double* new_np = malloc(sizeof(double) * ((int64_t)this->marker_count + (int64_t)count));
+    int32_t* new_n = malloc(sizeof(int32_t) * ((int64_t)this->marker_count + (int64_t)count));
 
     memset(new_q + this->marker_count, 0, sizeof(double) * count);
     memset(new_dn + this->marker_count, 0, sizeof(double) * count);
@@ -356,15 +356,15 @@ void qrtone_percentile_init_quantile(qrtone_percentile_t* this, double quant) {
  * @author Aaron Small
  */
 double qrtone_percentile_linear(qrtone_percentile_t* this, int32_t i, int32_t d) {
-    return this->q[i] + d * (this->q[i + d] - this->q[i]) /((size_t)this->n[i + d] - this->n[i]);
+    return this->q[i] + d * (this->q[i + d] - this->q[i]) /((int64_t)this->n[i + d] - this->n[i]);
 }
 
 /**
  * @author Aaron Small
  */
 double qrtone_percentile_parabolic(qrtone_percentile_t* this, int32_t i, int32_t d) {
-    return this->q[i] + d / (double)((size_t)this->n[i + 1] - this->n[i - 1]) * (((size_t)this->n[i] - this->n[i - 1] + d) * (this->q[i + 1] - this->q[i]) /
-        ((size_t)this->n[i + 1] - this->n[i]) + ((size_t)this->n[i + 1] - this->n[i] - d) * (this->q[i] - this->q[i - 1]) / ((size_t)this->n[i] - this->n[i - 1]));
+    return this->q[i] + d / (double)((int64_t)this->n[i + 1] - this->n[i - 1]) * (((int64_t)this->n[i] - this->n[i - 1] + d) * (this->q[i + 1] - this->q[i]) /
+        ((int64_t)this->n[i + 1] - this->n[i]) + ((int64_t)this->n[i + 1] - this->n[i] - d) * (this->q[i] - this->q[i - 1]) / ((int64_t)this->n[i] - this->n[i - 1]));
 }
 
 /**
