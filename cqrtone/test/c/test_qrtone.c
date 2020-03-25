@@ -139,11 +139,27 @@ MU_TEST(test1khzIterative) {
 	mu_assert_double_eq(20 * log10(powerRMS), 20 * log10(signal_rms), 0.01);
 }
 
+
+MU_TEST(testPercentile) {
+	qrtone_percentile_t percentile;
+
+	qrtone_percentile_init_quantile(&percentile, 0.5);
+	int32_t i;
+	for (i = 0; i < sizeof(years) / sizeof(int32_t); i++) {
+		qrtone_percentile_add(&percentile, values[i]);
+	}
+
+	mu_assert_double_eq(41.360847658017306, qrtone_percentile_result(&percentile), 0.0000001);
+
+	qrtone_percentile_free(&percentile);
+}
+
 MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(testCRC8);
 	MU_RUN_TEST(testCRC16);
 	MU_RUN_TEST(test1khz);
 	MU_RUN_TEST(test1khzIterative);
+	MU_RUN_TEST(testPercentile);
 }
 
 int main(int argc, char** argv) {
@@ -157,3 +173,4 @@ int main(int argc, char** argv) {
 #endif
 	return minunit_status == 1 || minunit_fail > 0 ? -1 : 0;
 }
+

@@ -78,7 +78,6 @@ typedef struct _qrtonecomplex
     double i;
 } qrtonecomplex;
 
-
 struct _qrtonecomplex NEW_CX(double r, double i) {
     qrtonecomplex ret;
     ret.r = r;
@@ -462,4 +461,11 @@ double qrtone_percentile_result_quantile(qrtone_percentile_t* this, double quant
 
 double qrtone_percentile_result(qrtone_percentile_t* this) {
     return qrtone_percentile_result_quantile(this, this->dn[(this->marker_count - 1) / 2]);
+}
+
+void qrtone_percentile_free(qrtone_percentile_t* this) {
+    free(this->q);
+    free(this->dn);
+    free(this->np);
+    free(this->n);
 }

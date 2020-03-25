@@ -99,7 +99,13 @@ void qrtone_goertzel_process_samples(qrtone_goertzel_t* this, float* samples, in
 
 double qrtone_goertzel_compute_rms(qrtone_goertzel_t* this);
 
+void qrtone_percentile_free(qrtone_percentile_t* this);
 
+double qrtone_percentile_result(qrtone_percentile_t* this);
+
+void qrtone_percentile_add(qrtone_percentile_t* this, double data);
+
+void qrtone_percentile_init_quantile(qrtone_percentile_t* this, double quant);
 
 #ifdef __cplusplus
 }
