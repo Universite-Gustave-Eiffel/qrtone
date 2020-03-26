@@ -79,6 +79,13 @@ typedef struct _qrtone_percentile_t {
     int32_t marker_count;
 } qrtone_percentile_t;
 
+typedef struct _qrtone_array_t {
+    float* values;
+    int32_t values_length;
+    int32_t cursor;
+    int32_t inserted;
+} qrtone_array_t;
+
 void qrtone_crc8_init(qrtone_crc8_t* this);
 
 void qrtone_crc8_add(qrtone_crc8_t* this, const int8_t data);
@@ -106,6 +113,20 @@ double qrtone_percentile_result(qrtone_percentile_t* this);
 void qrtone_percentile_add(qrtone_percentile_t* this, double data);
 
 void qrtone_percentile_init_quantile(qrtone_percentile_t* this, double quant);
+
+float qrtone_array_last(qrtone_array_t* this);
+
+int32_t qrtone_array_size(qrtone_array_t* this);
+
+void qrtone_array_clear(qrtone_array_t* this);
+
+float qrtone_array_get(qrtone_array_t* this, int32_t index);
+
+void qrtone_array_init(qrtone_array_t* this, int32_t length);
+
+void qrtone_array_free(qrtone_array_t* this);
+
+void qrtone_array_add(qrtone_array_t* this, float value);
 
 #ifdef __cplusplus
 }

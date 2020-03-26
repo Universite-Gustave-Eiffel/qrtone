@@ -469,3 +469,46 @@ void qrtone_percentile_free(qrtone_percentile_t* this) {
     free(this->np);
     free(this->n);
 }
+
+void qrtone_array_init(qrtone_array_t* this, int32_t length) {
+    this->values = malloc(sizeof(float) * length);
+    memset(this->values, 0, sizeof(float) * length);
+    this->values_length = length;
+    this->cursor = 0;
+    this->inserted = 0;
+}
+
+float qrtone_array_get(qrtone_array_t* this, int32_t index) {
+    int32_t circular_index = this->cursor - this->inserted + index;
+    if (circular_index < 0) {
+        circular_index += this->values_length;
+    }
+    return this->values[circular_index];
+}
+
+void qrtone_array_clear(qrtone_array_t* this) {
+    this->cursor = 0;
+    this->inserted = 0;
+}
+
+int32_t qrtone_array_size(qrtone_array_t* this) {
+    return this->inserted;
+}
+
+float qrtone_array_last(qrtone_array_t* this) {
+    return qrtone_array_get(this, qrtone_array_size(this) - 1);
+}
+
+void qrtone_array_free(qrtone_array_t* this) {
+    free(this->values);
+}
+
+void qrtone_array_add(qrtone_array_t* this, float value) {
+    this->values[this->cursor] = value;
+    this->cursor += 1;
+    if (this->cursor == this->values_length) {
+        this->cursor = 0;
+    }
+    this->inserted = min(this->values_length, this->inserted + 1);
+}
+
