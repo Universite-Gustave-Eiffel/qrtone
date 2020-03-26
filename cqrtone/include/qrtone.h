@@ -86,6 +86,19 @@ typedef struct _qrtone_array_t {
     int32_t inserted;
 } qrtone_array_t;
 
+typedef struct _qrtone_peak_finder_t {
+    int8_t increase; // boolean increase state
+    double old_val;
+    int64_t old_index;
+    int8_t added;
+    double last_peak_value;
+    int64_t last_peak_index;
+    int32_t increase_count;
+    int32_t decrease_count;
+    int32_t min_increase_count;
+    int32_t min_decrease_count;
+} qrtone_peak_finder_t;
+
 void qrtone_crc8_init(qrtone_crc8_t* this);
 
 void qrtone_crc8_add(qrtone_crc8_t* this, const int8_t data);
@@ -127,6 +140,10 @@ void qrtone_array_init(qrtone_array_t* this, int32_t length);
 void qrtone_array_free(qrtone_array_t* this);
 
 void qrtone_array_add(qrtone_array_t* this, float value);
+
+void qrtone_peak_finder_init(qrtone_peak_finder_t* this);
+
+int8_t qrtone_peak_finder_add(qrtone_peak_finder_t* this, int64_t index, float value);
 
 #ifdef __cplusplus
 }

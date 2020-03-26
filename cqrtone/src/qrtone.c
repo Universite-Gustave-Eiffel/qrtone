@@ -512,3 +512,53 @@ void qrtone_array_add(qrtone_array_t* this, float value) {
     this->inserted = min(this->values_length, this->inserted + 1);
 }
 
+void qrtone_peak_finder_init(qrtone_peak_finder_t* this) {
+    this->increase = 1;
+    this->old_val = -99999999999999999.0;
+    this->old_index = 0;
+    this->added = 0;
+    this->last_peak_value = 0;
+    this->last_peak_index = 0;
+    this->increase_count = 0;
+    this->decrease_count = 0;
+    this->min_increase_count = -1;
+    this->min_decrease_count = -1;
+}
+
+int8_t qrtone_peak_finder_add(qrtone_peak_finder_t* this, int64_t index, float value) {
+    int8_t ret = 0;
+    double diff = value - this->old_val;
+    // Detect switch from increase to decrease/stall
+    if (diff <= 0 && this->increase) {
+        if (this->increase_count >= this->min_increase_count) {
+            this->last_peak_index = this->old_index;
+            this->last_peak_value = this->old_val;
+            this->added = 1;
+            if (this->min_decrease_count <= 1) {
+                ret = 1;
+            }
+        }
+    } else if (diff > 0 && !this->increase) {
+        // Detect switch from decreasing to increase
+        if (this->added && this->min_decrease_count != -1 && this->decrease_count < this->min_decrease_count) {
+            this->last_peak_index = 0;
+            this->added = 0;
+        }
+    }
+    this->increase = diff > 0;
+    if (this->increase) {
+        this->increase_count++;
+        this->decrease_count = 0;
+    } else {
+        this->decrease_count++;
+        if (this->decrease_count >= this->min_decrease_count && this->added) {
+            // condition for decrease fulfilled
+            this->added = 0;
+            ret = 1;
+        }
+        this->increase_count = 0;
+    }
+    this->old_val = value;
+    this->old_index = index;
+    return ret;
+}

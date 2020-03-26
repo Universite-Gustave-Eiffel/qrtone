@@ -194,6 +194,25 @@ MU_TEST(testCircularArray) {
 	qrtone_array_free(&a);
 }
 
+
+MU_TEST(testPeakFinder1) {
+	qrtone_peak_finder_t p;
+
+	int32_t i;
+
+	int32_t expected[] = { 5,  17,  27,  38,  50,  52,  61,  69,  78,  87, 102, 104, 116, 130, 137, 148, 160, 164, 170, 177, 183, 193, 198, 205, 207, 217, 228, 237, 247, 257, 268, 272, 279, 290, 299 };
+
+	int32_t cursor = 0;
+	for (i = 0; i < sizeof(years) / sizeof(int32_t); i++) {
+		if (qrtone_peak_finder_add(&p, (int64_t)i + 1, (float)values[i])) {
+			mu_assert_int_eq(expected[cursor++], (int32_t)p.last_peak_index);
+		}
+	}
+
+	mu_assert_int_eq(cursor, sizeof(expected) / sizeof(int32_t));
+}
+
+
 MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(testCRC8);
 	MU_RUN_TEST(testCRC16);
@@ -201,6 +220,7 @@ MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(test1khzIterative);
 	MU_RUN_TEST(testPercentile);
 	MU_RUN_TEST(testCircularArray);
+	MU_RUN_TEST(testPeakFinder1);
 }
 
 int main(int argc, char** argv) {

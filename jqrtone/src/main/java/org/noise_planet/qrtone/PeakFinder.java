@@ -46,7 +46,7 @@ import java.util.Objects;
  */
 public class PeakFinder {
     private boolean increase = true;
-    private double oldVal = Double.MIN_VALUE;
+    private double oldVal = Double.NEGATIVE_INFINITY;
     private long oldIndex = 0;
     boolean added = false;
     private Element lastPeak = null;
