@@ -72,6 +72,29 @@
 #define M_PI 3.1415926535897932385
 #endif
 
+#define CRC_BYTE_LENGTH 2
+
+#define HEADER_SIZE 3
+#define HEADER_ECC_SYMBOLS 2
+#define HEADER_SYMBOLS HEADER_SIZE * 2 + HEADER_ECC_SYMBOLS
+
+#ifdef TRUE
+#undef TRUE
+#endif
+
+#define TRUE 1
+
+
+#ifdef FALSE
+#undef FALSE
+#endif
+
+#define FALSE 0
+
+// Number of symbols and ecc symbols for each level of ecc
+// Low / Medium / Quality / High
+const int32_t ECC_SYMBOLS[][2] = { {14, 2}, {14, 4}, {12, 6}, {10, 6} };
+
 typedef struct _qrtonecomplex
 {
     double r;
@@ -513,10 +536,10 @@ void qrtone_array_add(qrtone_array_t* this, float value) {
 }
 
 void qrtone_peak_finder_init(qrtone_peak_finder_t* this) {
-    this->increase = 1;
+    this->increase = TRUE;
     this->old_val = -99999999999999999.0;
     this->old_index = 0;
-    this->added = 0;
+    this->added = FALSE;
     this->last_peak_value = 0;
     this->last_peak_index = 0;
     this->increase_count = 0;
@@ -526,23 +549,23 @@ void qrtone_peak_finder_init(qrtone_peak_finder_t* this) {
 }
 
 int8_t qrtone_peak_finder_add(qrtone_peak_finder_t* this, int64_t index, float value) {
-    int8_t ret = 0;
+    int8_t ret = FALSE;
     double diff = value - this->old_val;
     // Detect switch from increase to decrease/stall
     if (diff <= 0 && this->increase) {
         if (this->increase_count >= this->min_increase_count) {
             this->last_peak_index = this->old_index;
             this->last_peak_value = this->old_val;
-            this->added = 1;
+            this->added = TRUE;
             if (this->min_decrease_count <= 1) {
-                ret = 1;
+                ret = TRUE;
             }
         }
     } else if (diff > 0 && !this->increase) {
         // Detect switch from decreasing to increase
         if (this->added && this->min_decrease_count != -1 && this->decrease_count < this->min_decrease_count) {
             this->last_peak_index = 0;
-            this->added = 0;
+            this->added = FALSE;
         }
     }
     this->increase = diff > 0;
@@ -553,12 +576,58 @@ int8_t qrtone_peak_finder_add(qrtone_peak_finder_t* this, int64_t index, float v
         this->decrease_count++;
         if (this->decrease_count >= this->min_decrease_count && this->added) {
             // condition for decrease fulfilled
-            this->added = 0;
-            ret = 1;
+            this->added = FALSE;
+            ret = TRUE;
         }
         this->increase_count = 0;
     }
     this->old_val = value;
     this->old_index = index;
     return ret;
+}
+
+void qrtone_header_init(qrtone_header_t* this, uint8_t length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t crc) {
+    this->length = length;
+    int32_t crc_length = 0;
+    if (crc) {
+        crc_length = CRC_BYTE_LENGTH;
+    }
+    this->payload_symbols_size = block_symbols_size - block_ecc_symbols;
+    this->payload_byte_size = this->payload_symbols_size / 2;
+    this->number_of_blocks = (int32_t)ceilf((((int32_t)length + crc_length) * 2) / (float)this->payload_symbols_size);
+    this->number_of_symbols = this->number_of_blocks * block_ecc_symbols + (length + crc_length) * 2;
+    this->crc = crc;
+}
+
+void qrtone_header_encode(qrtone_header_t* this, int8_t* data) {
+    // Payload length
+    data[0] = this->length;
+    // ECC level
+    data[1] = this->ecc_level & 0x3;
+    if (this->crc) {
+        // has crc ? third bit from the right
+        data[1] |= 0x01 << 3;
+    }
+    qrtone_crc8_t crc8;
+    qrtone_crc8_init(&crc8);
+    qrtone_crc8_add(&crc8, data[0]);
+    qrtone_crc8_add(&crc8, data[1]);
+    data[2] = qrtone_crc8_get(&crc8);
+}
+
+
+int8_t qrtone_header_init_from_data(qrtone_header_t* this, int8_t* data) {
+    // Check CRC
+    qrtone_crc8_t crc8;
+    qrtone_crc8_init(&crc8);
+    qrtone_crc8_add(&crc8, data[0]);
+    qrtone_crc8_add(&crc8, data[1]);
+    int8_t expected_crc = qrtone_crc8_get(&crc8);
+    if (expected_crc != data[HEADER_SIZE - 1]) {
+        // CRC error
+        return FALSE;
+    }
+    this->ecc_level = data[1] & 0x3;
+
+    qrtone_header_init(this, data[0], ECC_SYMBOLS[this->ecc_level][0], ECC_SYMBOLS[this->ecc_level][1], (int8_t)(data[1] >> 3));
 }
