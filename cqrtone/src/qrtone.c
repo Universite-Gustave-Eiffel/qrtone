@@ -95,6 +95,14 @@
 // Low / Medium / Quality / High
 const int32_t ECC_SYMBOLS[][2] = { {14, 2}, {14, 4}, {12, 6}, {10, 6} };
 
+#define QRTONE_MULT_SEMITONE 1.0472941228206267
+#define QRTONE_WORD_TIME 0.06
+#define QRTONE_WORD_SILENCE_TIME 0.01
+#define QRTONE_GATE_TIME 0.12
+#define QRTONE_AUDIBLE_FIRST_FREQUENCY 1720
+#define QRTONE_DEFAULT_TRIGGER_SNR 15
+#define QRTONE_DEFAULT_ECC_LEVEL QRTONE_ECC_Q
+
 typedef struct _qrtonecomplex
 {
     double r;
@@ -630,4 +638,8 @@ int8_t qrtone_header_init_from_data(qrtone_header_t* this, int8_t* data) {
     this->ecc_level = data[1] & 0x3;
 
     qrtone_header_init(this, data[0], ECC_SYMBOLS[this->ecc_level][0], ECC_SYMBOLS[this->ecc_level][1], (int8_t)(data[1] >> 3));
+}
+
+void qrtone_compute_frequencies() {
+
 }

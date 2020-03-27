@@ -111,6 +111,25 @@ typedef struct _qrtone_header_t {
     int32_t number_of_symbols;
 } qrtone_header_t;
 
+typedef struct _qrtone_trigger_analyzer {
+    int32_t processed_window_alpha;
+    int32_t processed_window_beta;
+    int32_t windowOffset;
+    int32_t gateLength;
+    qrtone_goertzel_t frequency_analyzers_alpha[2];
+    qrtone_goertzel_t frequency_analyzers_beta[2];
+    qrtone_percentile_t background_noise_evaluator;
+    qrtone_array_t spl_history[2];
+    qrtone_peak_finder_t peak_finder;
+    int32_t window_analyze;
+    int64_t total_processed;
+    double frequencies[2];
+    double sample_rate;
+    double trigger_snr;
+    int64_t first_tone_location;
+} qrtone_trigger_analyzer;
+
+
 void qrtone_crc8_init(qrtone_crc8_t* this);
 
 void qrtone_crc8_add(qrtone_crc8_t* this, const int8_t data);
