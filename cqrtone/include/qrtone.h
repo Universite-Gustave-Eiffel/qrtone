@@ -50,6 +50,8 @@ extern "C" {
 
 #include <stdint.h>
 
+enum QRTONE_ECC_LEVEL { QRTONE_ECC_L = 0, QRTONE_ECC_M = 1, QRTONE_ECC_Q = 2, QRTONE_ECC_H = 3};
+
 typedef struct _qrtone_crc8_t {
     int32_t crc8;
 } qrtone_crc8_t;
@@ -98,6 +100,16 @@ typedef struct _qrtone_peak_finder_t {
     int32_t min_increase_count;
     int32_t min_decrease_count;
 } qrtone_peak_finder_t;
+
+typedef struct _qrtone_header_t {
+    uint8_t length; // payload length
+    int8_t crc;
+    int8_t ecc_level;
+    int32_t payload_symbols_size;
+    int32_t payload_byte_size;
+    int32_t number_of_blocks;
+    int32_t number_of_symbols;
+} qrtone_header_t;
 
 void qrtone_crc8_init(qrtone_crc8_t* this);
 
