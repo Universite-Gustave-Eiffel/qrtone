@@ -266,6 +266,27 @@ MU_TEST(findPeaksDecreaseCondition) {
 	mu_assert_int_eq(cursor, sizeof(expected) / sizeof(int32_t));
 }
 
+MU_TEST(testHannWindow) {
+	float ref[] = { 0.f,0.0039426493f,0.015708419f,0.035111757f,0.06184666f,0.095491503f,0.13551569f,0.18128801f,
+				0.2320866f,0.28711035f,0.3454915f,0.40630934f,0.46860474f,0.53139526f,0.59369066f,0.6545085f,
+				0.71288965f,0.7679134f,0.81871199f,0.86448431f,0.9045085f,0.93815334f,0.96488824f,0.98429158f,
+				0.99605735f,1.f,0.99605735f,0.98429158f,0.96488824f,0.93815334f,0.9045085f,0.86448431f,0.81871199f,
+				0.7679134f,0.71288965f,0.6545085f,0.59369066f,0.53139526f,0.46860474f,0.40630934f,0.3454915f,
+				0.28711035f,0.2320866f,0.18128801f,0.13551569f,0.095491503f,0.06184666f,0.035111757f,0.015708419f,
+				0.0039426493f,0.f };
+	int32_t window_length = sizeof(ref) / sizeof(float);
+	float* signal = malloc(sizeof(ref));
+	int32_t i;
+	for (i = 0; i < window_length; i++) {
+		signal[i] = 1.0f;
+	}
+	qrtone_hann_window(signal, window_length, window_length, 0);
+	for (i = 0; i < window_length; i++) {
+		mu_assert_double_eq(ref[i], signal[i], QRTONE_FLOAT_EPSILON);
+	}
+
+	free(signal);
+}
 
 MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(testCRC8);
@@ -277,6 +298,7 @@ MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(testPeakFinder1);
 	MU_RUN_TEST(findPeaksIncreaseCondition);
 	MU_RUN_TEST(findPeaksDecreaseCondition);
+	MU_RUN_TEST(testHannWindow);
 }
 
 int main(int argc, char** argv) {

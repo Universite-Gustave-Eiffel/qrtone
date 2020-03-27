@@ -179,6 +179,8 @@ void qrtone_peak_finder_init(qrtone_peak_finder_t* this);
 
 int8_t qrtone_peak_finder_add(qrtone_peak_finder_t* this, int64_t index, float value);
 
+void qrtone_hann_window(float* signal, int32_t signal_length, int32_t window_length, int32_t offset);
+
 #ifdef __cplusplus
 }
 #endif
