@@ -50,8 +50,10 @@
 #include "qrtone.h"
 #include "math.h"
 
-#define QRTONE_2PI 6.283185307179586
+#define QRTONE_2PI 6.283185307179586f
 
+// Column and rows of DTMF that make a char
+#define FREQUENCY_ROOT 16
 
 #ifdef max
 #undef max
@@ -102,6 +104,7 @@ const int32_t ECC_SYMBOLS[][2] = { {14, 2}, {14, 4}, {12, 6}, {10, 6} };
 #define QRTONE_AUDIBLE_FIRST_FREQUENCY 1720
 #define QRTONE_DEFAULT_TRIGGER_SNR 15
 #define QRTONE_DEFAULT_ECC_LEVEL QRTONE_ECC_Q
+#define QRTONE_PERCENTILE_BACKGROUND 0.5
 
 typedef struct _qrtonecomplex
 {
@@ -638,8 +641,72 @@ int8_t qrtone_header_init_from_data(qrtone_header_t* this, int8_t* data) {
     this->ecc_level = data[1] & 0x3;
 
     qrtone_header_init(this, data[0], ECC_SYMBOLS[this->ecc_level][0], ECC_SYMBOLS[this->ecc_level][1], (int8_t)(data[1] >> 3));
+    return TRUE;
 }
 
-void qrtone_compute_frequencies() {
+void qrtone_compute_frequencies(double* frequencies) {
+    // Precompute pitch frequencies
+    int32_t i;
+    for (i = 0; i < QRTONE_NUM_FREQUENCIES; i++) {
+        frequencies[i] = QRTONE_AUDIBLE_FIRST_FREQUENCY * pow(QRTONE_MULT_SEMITONE, i);
+    }
+}
 
+void qrtone_trigger_analyzer_init(qrtone_trigger_analyzer_t* this, double sample_rate, int32_t gate_length, double gate_frequencies[2], double trigger_snr) {
+    this->processed_window_alpha = 0;
+    this->processed_window_beta = 0;
+    this->total_processed = 0;
+    this->first_tone_location = -1;
+    this->window_analyze = gate_length / 2;
+    this->sample_rate = sample_rate;
+    this->trigger_snr = trigger_snr;
+    this->gateLength = gate_length;
+    // 50% overlap
+    this->windowOffset = this->window_analyze / 2;
+    qrtone_percentile_init_quantile(&(this->background_noise_evaluator), QRTONE_PERCENTILE_BACKGROUND);
+    int32_t i;
+    for (i = 0; i < 2; i++) {
+        this->frequencies[i] = gate_frequencies[i];
+        qrtone_goertzel_init(&(this->frequency_analyzers_alpha[i]), sample_rate, gate_frequencies[i], this->window_analyze);
+        qrtone_array_init(&(this->spl_history[i]), (gate_length * 3) / this->windowOffset);
+    }
+    qrtone_peak_finder_init(&(this->peak_finder));
+    this->peak_finder.min_increase_count = max(1, gate_length / this->windowOffset / 2 - 1);
+    this->peak_finder.min_increase_count = this->peak_finder.min_increase_count;
+}
+
+void qrtone_trigger_analyzer_free(qrtone_trigger_analyzer_t* this) {
+    qrtone_percentile_free(&(this->background_noise_evaluator));
+    int32_t i;
+    for (i = 0; i < 2; i++) {
+        qrtone_array_free(&(this->spl_history[i]));
+    }
+}
+
+void qrtone_trigger_analyzer_reset(qrtone_trigger_analyzer_t* this) {
+    this->first_tone_location = -1;
+    qrtone_peak_finder_init(&(this->peak_finder));
+    this->processed_window_alpha = 0;
+    this->processed_window_beta = 0;
+    this->total_processed = 0;
+    int32_t i;
+    for (i = 0; i < 2; i++) {
+        qrtone_goertzel_reset(&(this->frequency_analyzers_alpha[i]));
+        qrtone_goertzel_reset(&(this->frequency_analyzers_beta[i]));
+        qrtone_array_clear(&(this->spl_history[i]));
+    }
+}
+
+/**
+ * Apply hann window on provided signal
+ * @param signal Signal to update
+ * @param signal_length Signal length to update
+ * @param windowLength hann window length
+ * @param offset If the signal length is inferior than windowLength, give the offset of the hann window
+ */
+void qrtone_hann_window(float* signal, int32_t signal_length, int32_t window_length, int32_t offset) {
+    int32_t i;
+    for (i = 0; i < signal_length && offset + i < window_length; i++) {
+        signal[i] *= ((0.5f - 0.5f * cosf((QRTONE_2PI * (i + offset)) / (window_length - 1))));
+    }
 }

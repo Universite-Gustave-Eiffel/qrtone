@@ -355,8 +355,8 @@ public class QRTone {
     /**
      * Apply hann window on provided signal
      * @param signal Signal to update
-     * @param windowLength Hamming window length
-     * @param offset If the signal length is inferior than windowLength, give the offset of the hamming window
+     * @param windowLength hann window length
+     * @param offset If the signal length is inferior than windowLength, give the offset of the hann window
      */
     public static void applyHann(float[] signal, int from, int to, int windowLength, int offset) {
         for (int i = 0; i < to - from && offset + i < windowLength && i+from < signal.length; i++) {

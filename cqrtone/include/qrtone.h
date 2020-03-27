@@ -52,6 +52,9 @@ extern "C" {
 
 enum QRTONE_ECC_LEVEL { QRTONE_ECC_L = 0, QRTONE_ECC_M = 1, QRTONE_ECC_Q = 2, QRTONE_ECC_H = 3};
 
+// DTMF 16*16 frequencies
+#define QRTONE_NUM_FREQUENCIES 32
+
 typedef struct _qrtone_crc8_t {
     int32_t crc8;
 } qrtone_crc8_t;
@@ -111,7 +114,7 @@ typedef struct _qrtone_header_t {
     int32_t number_of_symbols;
 } qrtone_header_t;
 
-typedef struct _qrtone_trigger_analyzer {
+typedef struct _qrtone_trigger_analyzer_t {
     int32_t processed_window_alpha;
     int32_t processed_window_beta;
     int32_t windowOffset;
@@ -127,7 +130,7 @@ typedef struct _qrtone_trigger_analyzer {
     double sample_rate;
     double trigger_snr;
     int64_t first_tone_location;
-} qrtone_trigger_analyzer;
+} qrtone_trigger_analyzer_t;
 
 
 void qrtone_crc8_init(qrtone_crc8_t* this);
