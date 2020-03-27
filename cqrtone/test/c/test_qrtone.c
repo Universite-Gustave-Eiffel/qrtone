@@ -198,6 +198,8 @@ MU_TEST(testCircularArray) {
 MU_TEST(testPeakFinder1) {
 	qrtone_peak_finder_t p;
 
+	qrtone_peak_finder_init(&p);
+
 	int32_t i;
 
 	int32_t expected[] = { 5,  17,  27,  38,  50,  52,  61,  69,  78,  87, 102, 104, 116, 130, 137, 148, 160, 164, 170, 177, 183, 193, 198, 205, 207, 217, 228, 237, 247, 257, 268, 272, 279, 290, 299 };
@@ -205,6 +207,58 @@ MU_TEST(testPeakFinder1) {
 	int32_t cursor = 0;
 	for (i = 0; i < sizeof(years) / sizeof(int32_t); i++) {
 		if (qrtone_peak_finder_add(&p, (int64_t)i + 1, (float)values[i])) {
+			mu_assert_int_eq(expected[cursor++], (int32_t)p.last_peak_index);
+		}
+	}
+
+	mu_assert_int_eq(cursor, sizeof(expected) / sizeof(int32_t));
+}
+
+
+
+
+MU_TEST(findPeaksIncreaseCondition) {
+	qrtone_peak_finder_t p;
+
+	qrtone_peak_finder_init(&p);
+
+	p.min_increase_count = 3;
+
+	int32_t i;
+
+	int32_t expected[] = { 3, 12 };
+
+	double testVals[] = { 4, 5, 7, 13, 10, 9, 9, 10, 4, 6, 7, 8, 11 , 3, 2, 2 };
+
+	int32_t cursor = 0;
+	for (i = 0; i < sizeof(testVals) / sizeof(double); i++) {
+		if (qrtone_peak_finder_add(&p, i, (float)testVals[i])) {
+			mu_assert_int_eq(expected[cursor++], (int32_t)p.last_peak_index);
+		}
+	}
+
+	mu_assert_int_eq(cursor, sizeof(expected) / sizeof(int32_t));
+}
+
+
+
+
+MU_TEST(findPeaksDecreaseCondition) {
+	qrtone_peak_finder_t p;
+
+	qrtone_peak_finder_init(&p);
+
+	p.min_decrease_count = 2;
+
+	int32_t i;
+
+	int32_t expected[] = { 3, 12 };
+
+	double testVals[] = { 4, 5, 7, 13, 10, 9, 9, 10, 4, 6, 7, 8, 11 , 3, 2, 2 };
+
+	int32_t cursor = 0;
+	for (i = 0; i < sizeof(testVals) / sizeof(double); i++) {
+		if (qrtone_peak_finder_add(&p, i , (float)testVals[i])) {
 			mu_assert_int_eq(expected[cursor++], (int32_t)p.last_peak_index);
 		}
 	}
@@ -221,6 +275,8 @@ MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(testPercentile);
 	MU_RUN_TEST(testCircularArray);
 	MU_RUN_TEST(testPeakFinder1);
+	MU_RUN_TEST(findPeaksIncreaseCondition);
+	MU_RUN_TEST(findPeaksDecreaseCondition);
 }
 
 int main(int argc, char** argv) {
