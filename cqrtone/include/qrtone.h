@@ -181,6 +181,10 @@ int8_t qrtone_peak_finder_add(qrtone_peak_finder_t* this, int64_t index, float v
 
 void qrtone_hann_window(float* signal, int32_t signal_length, int32_t window_length, int32_t offset);
 
+int64_t qrtone_find_peak_location(double p0, double p1, double p2, int64_t p1_location, int32_t window_length);
+
+void qrtone_quadratic_interpolation(double p0, double p1, double p2, double* location, double* height, double* half_curvature);
+
 #ifdef __cplusplus
 }
 #endif

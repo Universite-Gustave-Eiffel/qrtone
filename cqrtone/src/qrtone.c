@@ -758,11 +758,11 @@ void qrtone_trigger_analyzer_process(qrtone_trigger_analyzer_t* this, float* sam
             for (id_freq = 0; id_freq < 2; id_freq++) {
                 double spl_level = 20 * log10(qrtone_goertzel_compute_rms(frequency_analyzers + id_freq));
                 spl_levels[id_freq] = spl_level;
-                qrtone_array_add(this->spl_history + id_freq, spl_level);
+                qrtone_array_add(this->spl_history + id_freq, (float)spl_level);
             }
             qrtone_percentile_add(&(this->background_noise_evaluator), spl_levels[1]);
             int64_t location = this->total_processed + processed - this->window_analyze;
-            if (qrtone_peak_finder_add(&(this->peak_finder), location, spl_levels[1])) {
+            if (qrtone_peak_finder_add(&(this->peak_finder), location, (float)spl_levels[1])) {
                 // We found a peak
                 int64_t element_index = this->peak_finder.last_peak_index;
                 double element_value = this->peak_finder.last_peak_value;
@@ -803,7 +803,7 @@ void qrtone_trigger_analyzer_process_samples(qrtone_trigger_analyzer_t* this, fl
         free(samples_beta);
     } else if (this->window_offset - this->total_processed < samples_length) {
         // Start to process on the part used by the offset window
-        int32_t from = this->window_offset - this->total_processed;
+        int32_t from = (int32_t)(this->window_offset - this->total_processed);
         int32_t length = samples_length - from;
         float* samples_beta = malloc(sizeof(float) * length);
         memcpy(samples_beta, samples + from, sizeof(float) * length);

@@ -295,6 +295,42 @@ MU_TEST(testHannWindow) {
 	free(signal);
 }
 
+#define GAUSSIAN_SAMPLES 521
+
+MU_TEST(testPeakFinding) {
+	float samples[GAUSSIAN_SAMPLES];
+	double sigma = 0.5;
+	// Create gaussian
+	float maxVal = 0;
+	int32_t max_index = 0;
+	int32_t i;
+	for (i = 0; i < GAUSSIAN_SAMPLES; i++) {
+		samples[i] = (float)exp(-1.0 / 2.0 * pow((i - GAUSSIAN_SAMPLES / 2.) / (sigma * GAUSSIAN_SAMPLES / 2.), 2));
+		if (maxVal < samples[i]) {
+			maxVal = samples[i];
+			max_index = i;
+		}
+	}
+	// emulate windowed evaluation
+	maxVal = 0;
+	int32_t window_index = 0;
+	int32_t window = 35;
+	for (i = window; i < GAUSSIAN_SAMPLES; i += window) {
+		if (maxVal < samples[i]) {
+			maxVal = samples[i];
+			window_index = i;
+		}
+	}
+	// Estimation of peak position
+	int64_t location_est = qrtone_find_peak_location(samples[window_index - window], samples[window_index], samples[window_index + window], window_index, window);
+	mu_assert_int_eq(max_index, (int32_t)location_est);
+
+	// Estimation of peak height, should be 1.0
+	double location, height, half_curvature;
+	qrtone_quadratic_interpolation(samples[window_index - 1], samples[window_index], samples[window_index + 1], &location, &height, &half_curvature);
+	mu_assert_double_eq(1.0, height, 0.001);
+}
+
 MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(testCRC8);
 	MU_RUN_TEST(testCRC16);
@@ -306,6 +342,7 @@ MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(findPeaksIncreaseCondition);
 	MU_RUN_TEST(findPeaksDecreaseCondition);
 	MU_RUN_TEST(testHannWindow);
+	MU_RUN_TEST(testPeakFinding);
 }
 
 int main(int argc, char** argv) {
