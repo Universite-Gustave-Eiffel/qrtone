@@ -812,3 +812,37 @@ void qrtone_trigger_analyzer_process_samples(qrtone_trigger_analyzer_t* this, fl
     }
     this->total_processed += samples_length;
 }
+
+void qrtone_interleave_symbols(int8_t* symbols, int32_t symbols_length, int32_t block_size) {
+    int8_t* symbols_output = malloc(symbols_length);
+    int32_t insertion_cursor = 0;
+    int32_t j;
+    for (j = 0; j < block_size; j++) {
+        int32_t cursor = j;
+        while (cursor < symbols_length) {
+            symbols_output[insertion_cursor++] = symbols[cursor];
+            cursor += block_size;
+        }
+    }
+    memcpy(symbols, symbols_output, symbols_length);
+    free(symbols_output);
+}
+
+void qrtone_deinterleave_symbols(int8_t* symbols, int32_t symbols_length, int32_t block_size) {
+    int8_t* symbols_output = malloc(symbols_length);
+    int32_t insertion_cursor = 0;
+    int32_t j;
+    for (j = 0; j < block_size; j++) {
+        int32_t cursor = j;
+        while (cursor < symbols_length) {
+            symbols_output[cursor] = symbols[insertion_cursor++];
+            cursor += block_size;
+        }
+    }
+    memcpy(symbols, symbols_output, symbols_length);
+    free(symbols_output);
+}
+
+
+
+

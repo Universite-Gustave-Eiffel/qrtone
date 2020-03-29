@@ -327,9 +327,22 @@ MU_TEST(testPeakFinding) {
 
 	// Estimation of peak height, should be 1.0
 	double location, height, half_curvature;
-	qrtone_quadratic_interpolation(samples[window_index - 1], samples[window_index], samples[window_index + 1], &location, &height, &half_curvature);
+	qrtone_quadratic_interpolation(samples[window_index - window], samples[window_index], samples[window_index + window], &location, &height, &half_curvature);
 	mu_assert_double_eq(1.0, height, 0.001);
 }
+
+MU_TEST(testSymbolsInterleaving) {
+	int8_t data[] = { 'a', 'b', 'c', '1', '2', '3', 'd', 'e', 'f', '4', '5', '6', 'g', 'h' };
+	int8_t data_expected[] = { 'a', '1', 'd', '4', 'g', 'b', '2', 'e', '5', 'h', 'c', '3', 'f', '6' };
+	int8_t* data_interleaved = malloc(sizeof(data));
+	memcpy(data_interleaved, data, sizeof(data));
+	qrtone_interleave_symbols(data_interleaved, sizeof(data), 3);
+	mu_assert_int_array_eq(data_expected, sizeof(data), data_interleaved, sizeof(data));
+	qrtone_deinterleave_symbols(data_interleaved, sizeof(data), 3);
+	mu_assert_int_array_eq(data, sizeof(data), data_interleaved, sizeof(data));
+	free(data_interleaved);
+}
+
 
 MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(testCRC8);
@@ -343,6 +356,7 @@ MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(findPeaksDecreaseCondition);
 	MU_RUN_TEST(testHannWindow);
 	MU_RUN_TEST(testPeakFinding);
+	MU_RUN_TEST(testSymbolsInterleaving);
 }
 
 int main(int argc, char** argv) {

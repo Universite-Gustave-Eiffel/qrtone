@@ -185,6 +185,10 @@ int64_t qrtone_find_peak_location(double p0, double p1, double p2, int64_t p1_lo
 
 void qrtone_quadratic_interpolation(double p0, double p1, double p2, double* location, double* height, double* half_curvature);
 
+void qrtone_interleave_symbols(int8_t* symbols, int32_t symbols_length, int32_t block_size);
+
+void qrtone_deinterleave_symbols(int8_t* symbols, int32_t symbols_length, int32_t block_size);
+
 #ifdef __cplusplus
 }
 #endif
