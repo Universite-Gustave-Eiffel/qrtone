@@ -660,18 +660,18 @@ void qrtone_trigger_analyzer_init(qrtone_trigger_analyzer_t* this, double sample
     this->window_analyze = gate_length / 2;
     this->sample_rate = sample_rate;
     this->trigger_snr = trigger_snr;
-    this->gateLength = gate_length;
+    this->gate_length = gate_length;
     // 50% overlap
-    this->windowOffset = this->window_analyze / 2;
+    this->window_offset = this->window_analyze / 2;
     qrtone_percentile_init_quantile(&(this->background_noise_evaluator), QRTONE_PERCENTILE_BACKGROUND);
     int32_t i;
     for (i = 0; i < 2; i++) {
         this->frequencies[i] = gate_frequencies[i];
         qrtone_goertzel_init(&(this->frequency_analyzers_alpha[i]), sample_rate, gate_frequencies[i], this->window_analyze);
-        qrtone_array_init(&(this->spl_history[i]), (gate_length * 3) / this->windowOffset);
+        qrtone_array_init(&(this->spl_history[i]), (gate_length * 3) / this->window_offset);
     }
     qrtone_peak_finder_init(&(this->peak_finder));
-    this->peak_finder.min_increase_count = max(1, gate_length / this->windowOffset / 2 - 1);
+    this->peak_finder.min_increase_count = max(1, gate_length / this->window_offset / 2 - 1);
     this->peak_finder.min_increase_count = this->peak_finder.min_increase_count;
 }
 
@@ -709,4 +709,106 @@ void qrtone_hann_window(float* signal, int32_t signal_length, int32_t window_len
     for (i = 0; i < signal_length && offset + i < window_length; i++) {
         signal[i] *= ((0.5f - 0.5f * cosf((QRTONE_2PI * (i + offset)) / (window_length - 1))));
     }
+}
+
+/**
+ * Quadratic interpolation of three adjacent samples
+ * @param p0 y value of left point
+ * @param p1 y value of center point (maximum height)
+ * @param p2 y value of right point
+ * @return location [-1; 1] relative to center point, height and half-curvature of a parabolic fit through
+ * @link https://www.dsprelated.com/freebooks/sasp/Sinusoidal_Peak_Interpolation.html
+ * three points
+ */
+void qrtone_quadratic_interpolation(double p0, double p1, double p2, double* location, double* height, double* half_curvature) {
+    *location = (p2 - p0) / (2.0 * (2.0 * p1 - p2 - p0));
+    *height = p1 - 0.25 * (p0 - p2) * *location;
+    *half_curvature = 0.5 * (p0 - 2.0 * p1 + p2);
+}
+
+/**
+ * Evaluate peak location of a gaussian
+ * @param p0 y value of left point
+ * @param p1 y value of center point (maximum height)
+ * @param p2 y value of right point
+ * @param p1Location x value of p1
+ * @param windowLength x delta between points
+ * @return Peak x value
+ */
+int64_t qrtone_find_peak_location(double p0, double p1, double p2, int64_t p1_location, int32_t window_length) {
+    double location, height, half_curvature;
+    qrtone_quadratic_interpolation(p0, p1, p2, &location, &height, &half_curvature);
+    return p1_location + (int64_t)(location * window_length);
+}
+
+void qrtone_trigger_analyzer_process(qrtone_trigger_analyzer_t* this, float* samples, int32_t samples_length, int* window_processed, qrtone_goertzel_t* frequency_analyzers) {
+    int32_t processed = 0;
+    while (processed < samples_length) {
+        int32_t to_process = min(samples_length - processed, this->window_analyze - *window_processed);
+        qrtone_hann_window(samples + processed, to_process, this->window_analyze, *window_processed);
+        int32_t id_freq;
+        for (id_freq = 0; id_freq < 2; id_freq++) {
+            qrtone_goertzel_process_samples(frequency_analyzers + id_freq, samples + processed, to_process);
+        }
+        processed += to_process;
+        *window_processed += to_process;
+        if (*window_processed == this->window_analyze) {
+            *window_processed = 0;
+            double spl_levels[2];
+            for (id_freq = 0; id_freq < 2; id_freq++) {
+                double spl_level = 20 * log10(qrtone_goertzel_compute_rms(frequency_analyzers + id_freq));
+                spl_levels[id_freq] = spl_level;
+                qrtone_array_add(this->spl_history + id_freq, spl_level);
+            }
+            qrtone_percentile_add(&(this->background_noise_evaluator), spl_levels[1]);
+            int64_t location = this->total_processed + processed - this->window_analyze;
+            if (qrtone_peak_finder_add(&(this->peak_finder), location, spl_levels[1])) {
+                // We found a peak
+                int64_t element_index = this->peak_finder.last_peak_index;
+                double element_value = this->peak_finder.last_peak_value;
+                double background_noise_second_peak = qrtone_percentile_result(&(this->background_noise_evaluator));
+                // Check if peak value is greater than specified Signal Noise ratio
+                if (element_value > background_noise_second_peak + this->trigger_snr) {
+                    // Check if the level on other triggering frequencies is below triggering level (at the same time)
+                    int32_t peak_index = qrtone_array_size(this->spl_history + 1) - 1 - (int32_t)(location / this->window_offset - element_index / this->window_offset);
+                    if (peak_index >= 0 && peak_index < qrtone_array_size(this->spl_history) && qrtone_array_get(this->spl_history, peak_index) < element_value - this->trigger_snr) {
+                        int32_t first_peak_index = peak_index - (this->gate_length / this->window_offset);
+                        // Check if for the first peak the level was inferior than trigger level
+                        if (first_peak_index >= 0 && first_peak_index < qrtone_array_size(this->spl_history) &&
+                            qrtone_array_get(this->spl_history, first_peak_index) > element_value - this->trigger_snr &&
+                            qrtone_array_get(this->spl_history + 1, first_peak_index) < background_noise_second_peak + this->trigger_snr) {
+                            // All trigger conditions are met
+                            // Evaluate the exact position of the first tone
+                            int64_t peak_location = qrtone_find_peak_location(qrtone_array_get(this->spl_history + 1, peak_index - 1),
+                                qrtone_array_get(this->spl_history + 1, peak_index), qrtone_array_get(this->spl_history + 1, peak_index + 1),
+                                element_index, this->window_offset);
+                            this->first_tone_location = peak_location + this->gate_length / 2 + this->window_offset;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void qrtone_trigger_analyzer_process_samples(qrtone_trigger_analyzer_t* this, float* samples, int32_t samples_length) {
+    float* samples_alpha = malloc(sizeof(float) * samples_length);
+    memcpy(samples_alpha, samples, sizeof(float) * samples_length);
+    qrtone_trigger_analyzer_process(this, samples_alpha, samples_length, &(this->processed_window_alpha) ,this->frequency_analyzers_alpha);
+    free(samples_alpha);
+    if (this->total_processed > this->window_offset) {
+        float* samples_beta = malloc(sizeof(float) * samples_length);
+        memcpy(samples_beta, samples, sizeof(float) * samples_length);
+        qrtone_trigger_analyzer_process(this, samples_beta, samples_length, &(this->processed_window_beta), this->frequency_analyzers_beta);
+        free(samples_beta);
+    } else if (this->window_offset - this->total_processed < samples_length) {
+        // Start to process on the part used by the offset window
+        int32_t from = this->window_offset - this->total_processed;
+        int32_t length = samples_length - from;
+        float* samples_beta = malloc(sizeof(float) * length);
+        memcpy(samples_beta, samples + from, sizeof(float) * length);
+        qrtone_trigger_analyzer_process(this, samples_beta, length, &(this->processed_window_beta), this->frequency_analyzers_beta);
+        free(samples_beta);
+    }
+    this->total_processed += samples_length;
 }

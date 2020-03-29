@@ -117,8 +117,8 @@ typedef struct _qrtone_header_t {
 typedef struct _qrtone_trigger_analyzer_t {
     int32_t processed_window_alpha;
     int32_t processed_window_beta;
-    int32_t windowOffset;
-    int32_t gateLength;
+    int32_t window_offset;
+    int32_t gate_length;
     qrtone_goertzel_t frequency_analyzers_alpha[2];
     qrtone_goertzel_t frequency_analyzers_beta[2];
     qrtone_percentile_t background_noise_evaluator;
