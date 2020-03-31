@@ -850,6 +850,10 @@ void qrtone_deinterleave_symbols(int8_t* symbols, int32_t symbols_length, int32_
 }
 
 void qrtone_init(qrtone_t* this, double sample_rate) {
+    this->symbols_cache = NULL;
+    this->symbols_cache_length = 0;
+    this->symbols_to_deliver = NULL;
+    this->symbols_to_deliver_length = 0;
     this->first_tone_sample_index = -1;
     this->pushed_samples = 0;
     this->symbol_index = 0;
@@ -895,18 +899,18 @@ void qrtone_arraycopy_to32bits(int8_t* src, int32_t src_pos, int32_t* dest, int3
     }
 }
 
-void qrtone_payload_to_symbols(qrtone_t* this, int8_t* payload, uint8_t payload_length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t crc, int8_t* symbols){
+void qrtone_payload_to_symbols(qrtone_t* this, int8_t* payload, uint8_t payload_length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t has_crc, int8_t* symbols){
     qrtone_header_t header;
-    qrtone_header_init(&header, payload_length, block_symbols_size, block_ecc_symbols, crc);
+    qrtone_header_init(&header, payload_length, block_symbols_size, block_ecc_symbols, has_crc);
     int8_t* payload_bytes;
-    if (crc) {
+    if (has_crc) {
         payload_bytes = malloc((size_t)payload_length + CRC_BYTE_LENGTH);
         memcpy(payload_bytes, payload, payload_length);
         qrtone_crc16_t crc;
         qrtone_crc16_init(&crc);
         qrtone_crc16_add_array(&crc, payload_bytes, payload_length);
-        payload_bytes[payload_length] = crc.crc16 >> 8;
-        payload_bytes[payload_length + 1] = crc.crc16 & 0xFF;
+        payload_bytes[payload_length] = (int8_t)(crc.crc16 >> 8);
+        payload_bytes[payload_length + 1] = (int8_t)(crc.crc16 & 0xFF);
         payload_length += CRC_BYTE_LENGTH;
     } else {
         payload_bytes = payload;
@@ -925,9 +929,9 @@ void qrtone_payload_to_symbols(qrtone_t* this, int8_t* payload, uint8_t payload_
         // Add ECC parity symbols
         ecc_reed_solomon_encoder_encode(&(this->encoder), block_symbols, block_symbols_size, block_ecc_symbols);
         // Copy data to main symbols
-        arraycopy_to8bits(block_symbols, 0, symbols, block_id * block_symbols_size, payload_size * 2);
+        qrtone_arraycopy_to8bits(block_symbols, 0, symbols, block_id * block_symbols_size, payload_size * 2);
         // Copy parity to main symbols
-        arraycopy_to8bits(block_symbols, header.payload_symbols_size, symbols, block_id * block_symbols_size + payload_size * 2, block_ecc_symbols);    
+        qrtone_arraycopy_to8bits(block_symbols, header.payload_symbols_size, symbols, block_id * block_symbols_size + payload_size * 2, block_ecc_symbols);
     }
     // Permute symbols
     qrtone_interleave_symbols(symbols, header.number_of_symbols, block_symbols_size);
@@ -943,9 +947,20 @@ int32_t qrtone_set_payload_ext(qrtone_t* this, int8_t* payload, uint8_t payload_
     }
     qrtone_header_t header;
     qrtone_header_init(&header, payload_length, ECC_SYMBOLS[ecc_level][0], ECC_SYMBOLS[ecc_level][1], add_crc);
-    malloc(this->symbols_to_deliver, header.number_of_symbols + HEADER_SYMBOLS);
+    header.ecc_level = ecc_level;
+    if (this->symbols_to_deliver != NULL) {
+        free(this->symbols_to_deliver);
+    }
+    this->symbols_to_deliver_length = header.number_of_symbols + HEADER_SYMBOLS;
+    this->symbols_to_deliver = malloc(this->symbols_to_deliver_length);
     int8_t header_data[HEADER_SIZE];
-    qrtone_header_encode(&header, &header_data);
+    qrtone_header_encode(&header, header_data);
+    // Encode header symbols
+    qrtone_payload_to_symbols(this, header_data, HEADER_SIZE, HEADER_SYMBOLS, HEADER_ECC_SYMBOLS, 0, this->symbols_to_deliver);
+    // Encode payload symbols
+    qrtone_payload_to_symbols(this, payload, payload_length, ECC_SYMBOLS[ecc_level][0], ECC_SYMBOLS[ecc_level][1], add_crc, this->symbols_to_deliver + HEADER_SYMBOLS);
+    // return number of samples
+    return 2 * this->gate_length + (this->symbols_to_deliver_length / 2) * (this->word_silence_length + this->word_length);
 }
 
 int32_t qrtone_set_payload(qrtone_t* this, int8_t* payload, uint8_t payload_length) {

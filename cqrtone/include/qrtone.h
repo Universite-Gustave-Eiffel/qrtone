@@ -146,7 +146,9 @@ typedef struct _qrtone_t {
     double frequencies[QRTONE_NUM_FREQUENCIES];
     qrtone_trigger_analyzer_t trigger_analyzer;
     int8_t* symbols_to_deliver;
+    int32_t symbols_to_deliver_length;
     int8_t* symbols_cache;
+    int32_t symbols_cache_length;
     qrtone_header_t header_cache;
     int64_t pushed_samples;
     int32_t symbol_index;
