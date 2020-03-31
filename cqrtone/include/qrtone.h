@@ -49,6 +49,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include "reed_solomon.h"
 
 enum QRTONE_ECC_LEVEL { QRTONE_ECC_L = 0, QRTONE_ECC_M = 1, QRTONE_ECC_Q = 2, QRTONE_ECC_H = 3};
 
@@ -132,6 +133,27 @@ typedef struct _qrtone_trigger_analyzer_t {
     int64_t first_tone_location;
 } qrtone_trigger_analyzer_t;
 
+typedef struct _qrtone_t {
+    int8_t qr_tone_state;
+    qrtone_goertzel_t frequency_analyzers[QRTONE_NUM_FREQUENCIES];
+    int64_t first_tone_sample_index;
+    int32_t word_length;
+    int32_t gate_length;
+    int32_t word_silence_length;
+    double gate1_frequency;
+    double gate2_frequency;
+    double sample_rate;
+    double frequencies[QRTONE_NUM_FREQUENCIES];
+    qrtone_trigger_analyzer_t trigger_analyzer;
+    int8_t* symbols_to_deliver;
+    int8_t* symbols_cache;
+    qrtone_header_t header_cache;
+    int64_t pushed_samples;
+    int32_t symbol_index;
+    int8_t* payload;
+    int8_t fixed_errors;
+    ecc_reed_solomon_encoder_t encoder;
+} qrtone_t;
 
 void qrtone_crc8_init(qrtone_crc8_t* this);
 
@@ -188,6 +210,8 @@ void qrtone_quadratic_interpolation(double p0, double p1, double p2, double* loc
 void qrtone_interleave_symbols(int8_t* symbols, int32_t symbols_length, int32_t block_size);
 
 void qrtone_deinterleave_symbols(int8_t* symbols, int32_t symbols_length, int32_t block_size);
+
+void qrtone_init(qrtone_t* this, double sample_rate);
 
 #ifdef __cplusplus
 }

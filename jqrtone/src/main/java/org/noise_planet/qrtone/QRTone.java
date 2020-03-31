@@ -49,6 +49,7 @@ public class QRTone {
     private static final double TUKEY_ALPHA  = 0.5;
     public static final int CRC_BYTE_LENGTH = 2;
     private STATE qrToneState = STATE.WAITING_TRIGGER;
+    // TODO RFFT should be more efficient
     private IterativeGeneralizedGoertzel[] frequencyAnalyzers;
     private long firstToneSampleIndex = -1;
     protected static final int MAX_PAYLOAD_LENGTH = 0xFF;
