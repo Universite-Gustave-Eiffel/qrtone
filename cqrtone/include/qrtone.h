@@ -215,6 +215,14 @@ void qrtone_deinterleave_symbols(int8_t* symbols, int32_t symbols_length, int32_
 
 void qrtone_init(qrtone_t* this, double sample_rate);
 
+int32_t qrtone_set_payload(qrtone_t* this, int8_t* payload, uint8_t payload_length);
+
+int32_t qrtone_set_payload_ext(qrtone_t* this, int8_t* payload, uint8_t payload_length, int8_t ecc_level, int8_t add_crc);
+
+void qrtone_get_samples(qrtone_t* this, float* samples, int32_t samples_length, int32_t offset, float power);
+
+void qrtone_free(qrtone_t* this);
+
 #ifdef __cplusplus
 }
 #endif

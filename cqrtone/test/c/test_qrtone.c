@@ -343,6 +343,14 @@ MU_TEST(testSymbolsInterleaving) {
 	free(data_interleaved);
 }
 
+MU_TEST(testGenerate) {
+	qrtone_t qrtone;
+	double sample_rate = 44100;
+	qrtone_init(&qrtone, sample_rate);
+
+
+	qrtone_free(&qrtone);
+}
 
 MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(testCRC8);
@@ -357,6 +365,7 @@ MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(testHannWindow);
 	MU_RUN_TEST(testPeakFinding);
 	MU_RUN_TEST(testSymbolsInterleaving);
+	MU_RUN_TEST(testGenerate);
 }
 
 int main(int argc, char** argv) {

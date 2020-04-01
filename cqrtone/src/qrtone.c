@@ -714,6 +714,36 @@ void qrtone_hann_window(float* signal, int32_t signal_length, int32_t window_len
 }
 
 /**
+ * Apply tukey window on specified array
+ * @param signal Audio samples
+ * @param signal_length Audio samples length
+ * @param alpha Tukay alpha (0-1)
+ * @param windowLength full length of tukey window
+ * @param offset Offset of the provided signal buffer (> 0)
+ */
+void qrtone_tukey_window(float* signal, double alpha, int32_t signal_length, int32_t window_length, int32_t offset) {
+    int index_begin_flat = (int)(floor(alpha * ((int64_t)window_length - 1) / 2.0));
+    int index_end_flat = window_length - index_begin_flat;
+    double window_value = 0;
+    int32_t i;
+
+    // begin hann part
+    for (i = offset; i < index_begin_flat + 1 && i - offset < signal_length; i++) {
+        window_value = 0.5 * (1 + cos(M_PI * (-1 + 2.0 * i / alpha / ((int64_t)window_length - 1))));
+        signal[i - offset] *= (float)window_value;
+    }
+
+    // end hann part
+    for (i = max(offset, index_end_flat - 1); i < window_length && i - offset < signal_length; i++) {
+        window_value = 0.5 * (1 + cos(M_PI * (-2.0 / alpha + 1 + 2.0 * i / alpha / ((int64_t)window_length - 1))));
+        signal[i - offset] *= (float)window_value;
+    }
+
+}
+
+
+
+/**
  * Quadratic interpolation of three adjacent samples
  * @param p0 y value of left point
  * @param p1 y value of center point (maximum height)
@@ -854,6 +884,7 @@ void qrtone_init(qrtone_t* this, double sample_rate) {
     this->symbols_cache_length = 0;
     this->symbols_to_deliver = NULL;
     this->symbols_to_deliver_length = 0;
+    this->payload = NULL;
     this->first_tone_sample_index = -1;
     this->pushed_samples = 0;
     this->symbol_index = 0;
@@ -967,4 +998,47 @@ int32_t qrtone_set_payload(qrtone_t* this, int8_t* payload, uint8_t payload_leng
     return qrtone_set_payload_ext(this, payload, payload_length, QRTONE_DEFAULT_ECC_LEVEL, 1);
 }
 
+void qrtone_generate_pitch(float* samples, int32_t samples_length, int32_t offset, double sample_rate, float frequency, float power_peak) {
+    const float t_step = 1 / (float)sample_rate;
+    int32_t i;
+    for (i = 0; i < samples_length; i++) {
+        samples[i] += sinf((i + offset) * t_step * QRTONE_2PI * frequency) * power_peak;
+    }
+}
 
+void qrtone_get_samples(qrtone_t* this, float* samples, int32_t samples_length, int32_t offset, float power) {
+    int32_t cursor = 0;
+    // First gate tone
+    qrtone_generate_pitch(samples + cursor, max(0, min(this->gate_length + cursor - offset, samples_length)), max(0, offset - cursor), (float)this->sample_rate, (float)this->gate1_frequency, power);
+    qrtone_hann_window(samples + cursor, max(0, min(this->gate_length + cursor - offset, samples_length)), this->gate_length, max(0, offset - cursor));
+    cursor += this->gate_length;
+    // Second gate tone
+    qrtone_generate_pitch(samples + cursor, max(0, min(this->gate_length + cursor - offset, samples_length)), max(0, offset - cursor), (float)this->sample_rate, (float)this->gate2_frequency, power);
+    qrtone_hann_window(samples + cursor, max(0, min(this->gate_length + cursor - offset, samples_length)), this->gate_length, max(0, offset - cursor));
+    cursor += this->gate_length;
+    // Symbols
+    int32_t i;
+    for (i = 0; i < this->symbols_to_deliver_length; i += 2) {
+        cursor += this->word_silence_length;
+        float f1 = (float)this->frequencies[this->symbols_to_deliver[i]];
+        float f2 = (float)this->frequencies[this->symbols_to_deliver[i + 1] + FREQUENCY_ROOT];
+        qrtone_generate_pitch(samples + cursor, max(0, min(this->word_length + cursor - offset, samples_length)), max(0, offset - cursor), (float)this->sample_rate, f1, power / 2);
+        qrtone_generate_pitch(samples + cursor, max(0, min(this->word_length + cursor - offset, samples_length)), max(0, offset - cursor), (float)this->sample_rate, f2, power / 2);
+        qrtone_hann_window(samples + cursor, max(0, min(this->word_length + cursor - offset, samples_length)), this->word_length, max(0, offset - cursor));
+        cursor += this->word_length;
+    }
+}
+
+void qrtone_free(qrtone_t* this) {
+    if (this->payload != NULL) {
+        free(this->payload);
+    }
+    if (this->symbols_to_deliver != NULL) {
+        free(this->symbols_to_deliver);
+    }
+    if (this->symbols_cache != NULL) {
+        free(this->symbols_cache);
+    }
+    ecc_reed_solomon_encoder_free(&(this->encoder));
+    qrtone_trigger_analyzer_free(&(this->trigger_analyzer));
+}
