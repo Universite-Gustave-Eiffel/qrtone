@@ -1009,23 +1009,38 @@ void qrtone_generate_pitch(float* samples, int32_t samples_length, int32_t offse
 void qrtone_get_samples(qrtone_t* this, float* samples, int32_t samples_length, int32_t offset, float power) {
     int32_t cursor = 0;
     // First gate tone
-    qrtone_generate_pitch(samples + cursor, max(0, min(this->gate_length + cursor - offset, samples_length)), max(0, offset - cursor), (float)this->sample_rate, (float)this->gate1_frequency, power);
-    qrtone_hann_window(samples + cursor, max(0, min(this->gate_length + cursor - offset, samples_length)), this->gate_length, max(0, offset - cursor));
+    if (cursor + this->gate_length - offset >= 0) {
+        qrtone_generate_pitch(samples + max(0, cursor - offset), max(0, min(this->gate_length + cursor - offset, samples_length - max(0, cursor - offset))), max(0, offset - cursor), (float)this->sample_rate, (float)this->gate1_frequency, power);
+        qrtone_hann_window(samples + max(0, cursor - offset), max(0, min(this->gate_length + cursor - offset, samples_length - max(0, cursor - offset))), this->gate_length, max(0, offset - cursor));
+    }
     cursor += this->gate_length;
+    if (cursor > offset + samples_length) {
+        return;
+    }
     // Second gate tone
-    qrtone_generate_pitch(samples + cursor, max(0, min(this->gate_length + cursor - offset, samples_length)), max(0, offset - cursor), (float)this->sample_rate, (float)this->gate2_frequency, power);
-    qrtone_hann_window(samples + cursor, max(0, min(this->gate_length + cursor - offset, samples_length)), this->gate_length, max(0, offset - cursor));
+    if (cursor + this->gate_length - offset >= 0) {
+        qrtone_generate_pitch(samples + max(0, cursor - offset), max(0, min(this->gate_length + cursor - offset, samples_length - max(0, cursor - offset))), max(0, offset - cursor), (float)this->sample_rate, (float)this->gate2_frequency, power);
+        qrtone_hann_window(samples + max(0, cursor - offset), max(0, min(this->gate_length + cursor - offset, samples_length - max(0, cursor - offset))), this->gate_length, max(0, offset - cursor));
+    }
     cursor += this->gate_length;
+    if (cursor > offset + samples_length) {
+        return;
+    }
     // Symbols
     int32_t i;
     for (i = 0; i < this->symbols_to_deliver_length; i += 2) {
         cursor += this->word_silence_length;
-        float f1 = (float)this->frequencies[this->symbols_to_deliver[i]];
-        float f2 = (float)this->frequencies[this->symbols_to_deliver[i + 1] + FREQUENCY_ROOT];
-        qrtone_generate_pitch(samples + cursor, max(0, min(this->word_length + cursor - offset, samples_length)), max(0, offset - cursor), (float)this->sample_rate, f1, power / 2);
-        qrtone_generate_pitch(samples + cursor, max(0, min(this->word_length + cursor - offset, samples_length)), max(0, offset - cursor), (float)this->sample_rate, f2, power / 2);
-        qrtone_hann_window(samples + cursor, max(0, min(this->word_length + cursor - offset, samples_length)), this->word_length, max(0, offset - cursor));
+        if (cursor + this->word_length - offset >= 0) {
+            float f1 = (float)this->frequencies[this->symbols_to_deliver[i]];
+            float f2 = (float)this->frequencies[this->symbols_to_deliver[i + 1] + FREQUENCY_ROOT];
+            qrtone_generate_pitch(samples + max(0, cursor - offset), max(0, min(this->word_length + cursor - offset, samples_length - max(0, cursor - offset))), max(0, offset - cursor), (float)this->sample_rate, f1, power / 2);
+            qrtone_generate_pitch(samples + max(0, cursor - offset), max(0, min(this->word_length + cursor - offset, samples_length - max(0, cursor - offset))), max(0, offset - cursor), (float)this->sample_rate, f2, power / 2);
+            qrtone_hann_window(samples + max(0, cursor - offset), max(0, min(this->word_length + cursor - offset, samples_length - max(0, cursor - offset))), this->word_length, max(0, offset - cursor));
+        }
         cursor += this->word_length;
+        if (cursor > offset + samples_length) {
+            return;
+        }
     }
 }
 
@@ -1042,3 +1057,4 @@ void qrtone_free(qrtone_t* this) {
     ecc_reed_solomon_encoder_free(&(this->encoder));
     qrtone_trigger_analyzer_free(&(this->trigger_analyzer));
 }
+

@@ -348,6 +348,13 @@ MU_TEST(testGenerate) {
 	double sample_rate = 44100;
 	qrtone_init(&qrtone, sample_rate);
 
+	int32_t samples_length = qrtone_set_payload(&qrtone, IPFS_PAYLOAD, sizeof(IPFS_PAYLOAD));
+
+	float samples[512];
+
+	memset(samples, 0, sizeof(float) * 512);
+
+	qrtone_get_samples(&qrtone, samples, 512, qrtone.gate_length * 2 + 1, powf(10.0f, -16.0f / 20.0f));
 
 	qrtone_free(&qrtone);
 }
