@@ -1010,8 +1010,8 @@ void qrtone_get_samples(qrtone_t* this, float* samples, int32_t samples_length, 
     int32_t cursor = 0;
     // First gate tone
     if (cursor + this->gate_length - offset >= 0) {
-        qrtone_generate_pitch(samples + max(0, cursor - offset), max(0, min(this->gate_length + cursor - offset, samples_length - max(0, cursor - offset))), max(0, offset - cursor), (float)this->sample_rate, (float)this->gate1_frequency, power);
-        qrtone_hann_window(samples + max(0, cursor - offset), max(0, min(this->gate_length + cursor - offset, samples_length - max(0, cursor - offset))), this->gate_length, max(0, offset - cursor));
+        qrtone_generate_pitch(samples + max(0, cursor - offset), max(0, min(this->gate_length - max(0, offset - cursor), samples_length - max(0, cursor - offset))), max(0, offset - cursor), (float)this->sample_rate, (float)this->gate1_frequency, power);
+        qrtone_hann_window(samples + max(0, cursor - offset), max(0, min(this->gate_length - max(0, offset - cursor), samples_length - max(0, cursor - offset))), this->gate_length, max(0, offset - cursor));
     }
     cursor += this->gate_length;
     if (cursor > offset + samples_length) {
@@ -1019,8 +1019,8 @@ void qrtone_get_samples(qrtone_t* this, float* samples, int32_t samples_length, 
     }
     // Second gate tone
     if (cursor + this->gate_length - offset >= 0) {
-        qrtone_generate_pitch(samples + max(0, cursor - offset), max(0, min(this->gate_length + cursor - offset, samples_length - max(0, cursor - offset))), max(0, offset - cursor), (float)this->sample_rate, (float)this->gate2_frequency, power);
-        qrtone_hann_window(samples + max(0, cursor - offset), max(0, min(this->gate_length + cursor - offset, samples_length - max(0, cursor - offset))), this->gate_length, max(0, offset - cursor));
+        qrtone_generate_pitch(samples + max(0, cursor - offset), max(0, min(this->gate_length - max(0, offset - cursor), samples_length - max(0, cursor - offset))), max(0, offset - cursor), (float)this->sample_rate, (float)this->gate2_frequency, power);
+        qrtone_hann_window(samples + max(0, cursor - offset), max(0, min(this->gate_length - max(0, offset - cursor), samples_length - max(0, cursor - offset))), this->gate_length, max(0, offset - cursor));
     }
     cursor += this->gate_length;
     if (cursor > offset + samples_length) {
@@ -1033,9 +1033,9 @@ void qrtone_get_samples(qrtone_t* this, float* samples, int32_t samples_length, 
         if (cursor + this->word_length - offset >= 0) {
             float f1 = (float)this->frequencies[this->symbols_to_deliver[i]];
             float f2 = (float)this->frequencies[this->symbols_to_deliver[i + 1] + FREQUENCY_ROOT];
-            qrtone_generate_pitch(samples + max(0, cursor - offset), max(0, min(this->word_length + cursor - offset, samples_length - max(0, cursor - offset))), max(0, offset - cursor), (float)this->sample_rate, f1, power / 2);
-            qrtone_generate_pitch(samples + max(0, cursor - offset), max(0, min(this->word_length + cursor - offset, samples_length - max(0, cursor - offset))), max(0, offset - cursor), (float)this->sample_rate, f2, power / 2);
-            qrtone_hann_window(samples + max(0, cursor - offset), max(0, min(this->word_length + cursor - offset, samples_length - max(0, cursor - offset))), this->word_length, max(0, offset - cursor));
+            qrtone_generate_pitch(samples + max(0, cursor - offset), max(0, min(this->word_length - max(0, offset - cursor), samples_length - max(0, cursor - offset))), max(0, offset - cursor), (float)this->sample_rate, f1, power / 2);
+            qrtone_generate_pitch(samples + max(0, cursor - offset), max(0, min(this->word_length - max(0, offset - cursor), samples_length - max(0, cursor - offset))), max(0, offset - cursor), (float)this->sample_rate, f2, power / 2);
+            qrtone_hann_window(samples + max(0, cursor - offset), max(0, min(this->word_length - max(0, offset - cursor), samples_length - max(0, cursor - offset))), this->word_length, max(0, offset - cursor));
         }
         cursor += this->word_length;
         if (cursor > offset + samples_length) {

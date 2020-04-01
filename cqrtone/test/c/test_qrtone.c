@@ -350,14 +350,58 @@ MU_TEST(testGenerate) {
 
 	int32_t samples_length = qrtone_set_payload(&qrtone, IPFS_PAYLOAD, sizeof(IPFS_PAYLOAD));
 
-	float samples[512];
+	float* samples = malloc(sizeof(float) * samples_length);
 
-	memset(samples, 0, sizeof(float) * 512);
+	memset(samples, 0, sizeof(float) * samples_length);
 
-	qrtone_get_samples(&qrtone, samples, 512, qrtone.gate_length * 2 + 1, powf(10.0f, -16.0f / 20.0f));
+	qrtone_get_samples(&qrtone, samples, qrtone.gate_length * 3, qrtone.gate_length - 256, powf(10.0f, -16.0f / 20.0f));
 
 	qrtone_free(&qrtone);
+	free(samples);
 }
+
+
+MU_TEST(testWriteSignal) {
+	FILE* f = fopen("audioTest_44100_16bitsPCM.raw", "wb");
+	if (f == NULL)
+	{
+		printf("Error opening file!\n");
+		exit(1);
+	}
+
+	qrtone_t qrtone;
+	double sample_rate = 44100;
+	qrtone_init(&qrtone, sample_rate);
+
+	float power_peak = powf(10.0f, -16.0f / 20.0f);
+
+	int blankBefore = (int)(sample_rate * 0.55);
+	int blankAfter = (int)(sample_rate * 0.6);
+
+	int32_t samples_length = blankBefore + blankAfter + qrtone_set_payload(&qrtone, IPFS_PAYLOAD, sizeof(IPFS_PAYLOAD));
+
+	float* samples = malloc(sizeof(float) * samples_length);
+
+	memset(samples, 0, sizeof(float) * samples_length);
+
+	qrtone_get_samples(&qrtone, samples + blankBefore, samples_length, 0, power_peak);
+
+
+	// Write signal
+	int s;
+	float factor = 32767. / (power_peak * 4);
+	for (s = 0; s < samples_length; s++) {
+		int16_t sample = (int16_t)(samples[s] * factor);
+		fwrite(&sample, sizeof(int16_t), 1, f);
+	}
+
+	qrtone_free(&qrtone);
+	free(samples);
+
+	fclose(f);
+}
+
+
 
 MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(testCRC8);
@@ -373,6 +417,7 @@ MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(testPeakFinding);
 	MU_RUN_TEST(testSymbolsInterleaving);
 	MU_RUN_TEST(testGenerate);
+	//MU_RUN_TEST(testWriteSignal);
 }
 
 int main(int argc, char** argv) {
