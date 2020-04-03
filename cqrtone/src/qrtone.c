@@ -906,6 +906,7 @@ void qrtone_init(qrtone_t* this, double sample_rate) {
         qrtone_goertzel_init(&(this->frequency_analyzers[idfreq]), sample_rate, this->frequencies[idfreq], this->word_length);
     }
     ecc_reed_solomon_encoder_init(&(this->encoder), 0x13, 16, 1);
+    this->header_cache = NULL;
 }
 
 int32_t qrtone_get_maximum_length(qrtone_t* this) {
@@ -1054,6 +1055,9 @@ void qrtone_free(qrtone_t* this) {
     if (this->symbols_cache != NULL) {
         free(this->symbols_cache);
     }
+    if(this->header_cache != NULL) {
+        free(this->header_cache);
+    }
     ecc_reed_solomon_encoder_free(&(this->encoder));
     qrtone_trigger_analyzer_free(&(this->trigger_analyzer));
 }
@@ -1122,4 +1126,101 @@ int8_t* qrtone_symbols_to_payload(qrtone_t* this, int8_t* symbols, int32_t symbo
 }
 
 
+void qrtone_feed_trigger_analyzer(qrtone_t* this, float* samples, int32_t samples_length) {
+    qrtone_trigger_analyzer_process_samples(&(this->trigger_analyzer), samples, samples_length);
+    if(this->trigger_analyzer.first_tone_location != -1) {
+        this->qr_tone_state == QRTONE_PARSING_SYMBOLS;
+        this->first_tone_sample_index = this->pushed_samples - (this->trigger_analyzer.total_processed - this->trigger_analyzer.first_tone_location);
+        int32_t idfreq;
+        for (idfreq = 0; idfreq < QRTONE_NUM_FREQUENCIES; idfreq++) {
+            qrtone_goertzel_reset(&(this->frequency_analyzers[idfreq]));
+        }
+        if(this->symbols_cache != NULL) {
+            free(this->symbols_cache);
+        }
+        this->symbols_cache = malloc(HEADER_SYMBOLS);
+        qrtone_trigger_analyzer_reset(&(this->trigger_analyzer));
+        this->fixed_errors = 0;
+    }
+}
+
+int64_t get_tone_location(qrtone_t* this) {
+    return this->first_tone_sample_index + (int64_t)this->symbol_index * ((int64_t)this->word_length + this->word_silence_length) + this->word_silence_length;
+}
+
+int32_t qrtone_get_tone_index(qrtone_t* this, int32_t samples_length) {
+    return (int32_t)(samples_length - (this->pushed_samples - qrtone_get_tone_location(this)));
+}
+
+int8_t qrtone_analyze_tones(qrtone_t* this, float* samples, int32_t samples_length) {
+    int32_t cursor = max(0, qrtone_get_tone_index(this, samples_length));
+    while(cursor < samples_length) {
+        int32_t window_length = min(samples_length - cursor, this->word_length - this->frequency_analyzers[0].processed_samples);
+        if(window_length == 0) {
+            break;
+        }
+        float* window = malloc(sizeof(float) * window_length);
+        memcpy(window, samples + cursor, window_length * sizeof(float));
+
+        qrtone_hann_window(window, window_length, this->word_length, this->frequency_analyzers[0].processed_samples);
+        int32_t idfreq;
+        for (idfreq = 0; idfreq < QRTONE_NUM_FREQUENCIES; idfreq++) {
+            qrtone_goertzel_process_samples((&this->frequency_analyzers[idfreq]), window, window_length);
+        }
+        free(window);
+        if (this->frequency_analyzers[0].processed_samples == this->word_length) {
+            double spl[QRTONE_NUM_FREQUENCIES];
+            for (idfreq = 0; idfreq < QRTONE_NUM_FREQUENCIES; idfreq++) {
+                double rmsValue = qrtone_goertzel_compute_rms(&(this->frequency_analyzers[idfreq]));
+                spl[idfreq] = 20 * log10(rmsValue);
+            }
+            int32_t symbol_offset;
+            for (symbol_offset = 0; symbol_offset < 2; symbol_offset++) {
+                int32_t max_symbol_id = -1;
+                double max_symbol_gain = -99999999999999.9;
+                for (idfreq = symbol_offset * FREQUENCY_ROOT; idfreq < (symbol_offset + 1) * FREQUENCY_ROOT; idfreq++) {
+                    double gain = spl[idfreq];
+                    if (gain > max_symbol_gain) {
+                        max_symbol_gain = gain;
+                        max_symbol_id = idfreq;
+                    }
+                }
+                this->symbols_cache[this->symbol_index * 2 + symbol_offset] = (int8_t)(max_symbol_id - symbol_offset * FREQUENCY_ROOT);
+            }
+            this->symbol_index += 1;
+            if (this->symbol_index * 2 == this->symbols_cache_length) {
+                if (this->header_cache == NULL) {
+                    // Decoding of HEADER complete
+                    qrtone_cached_symbols_to_header(this);
+                    // CRC error
+                    if (this->header_cache == NULL) {
+                        reset();
+                        break;
+                    }
+                    free(this->symbols_cache);
+                    this->symbols_cache = malloc(this->header_cache->number_of_symbols);
+                    this->symbol_index = 0;
+                    this->first_tone_sample_index += (HEADER_SYMBOLS / 2) * (this->word_length + this->word_silence_length);
+                } else {
+                    // Decoding complete
+                    qrtone_cached_symbols_to_payload(this);
+                    qrtone_reset(this);
+                    return 1;
+                }
+            }
+        }
+        cursor += window_length;
+    }
+}
+
+int8_t qrtone_push_samples(qrtone_t* this,float* samples, int32_t samples_length) {
+    this->pushed_samples += samples_length;
+    if(this->qr_tone_state == QRTONE_WAITING_TRIGGER) {
+        qrtone_feed_trigger_analyzer(this, samples, samples_length);
+    }
+    if(this->qr_tone_state == QRTONE_PARSING_SYMBOLS && this->first_tone_sample_index + this->word_silence_length < this->pushed_samples) {
+        return qrtone_analyze_tones(this, samples, samples_length);
+    }
+    return 0;
+}
 

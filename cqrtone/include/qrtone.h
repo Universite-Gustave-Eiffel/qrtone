@@ -149,7 +149,7 @@ typedef struct _qrtone_t {
     int32_t symbols_to_deliver_length;
     int8_t* symbols_cache;
     int32_t symbols_cache_length;
-    qrtone_header_t header_cache;
+    qrtone_header_t* header_cache;
     int64_t pushed_samples;
     int32_t symbol_index;
     int8_t* payload;
