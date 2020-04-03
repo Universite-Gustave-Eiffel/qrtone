@@ -124,7 +124,7 @@ void ecc_reed_solomon_encoder_encode(ecc_reed_solomon_encoder_t* this, int32_t* 
 /**
  * @return ecc_ERROR_CODES
  */
-int32_t ecc_reed_solomon_decoder_decode(ecc_generic_gf_t* field, int32_t* to_decode, int32_t to_decode_length, int32_t ec_bytes);
+int32_t ecc_reed_solomon_decoder_decode(ecc_generic_gf_t* field, int32_t* to_decode, int32_t to_decode_length, int32_t ec_bytes, int32_t* fixedErrors);
 
 
 

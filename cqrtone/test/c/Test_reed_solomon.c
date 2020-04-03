@@ -604,7 +604,7 @@ void testDecode(ecc_generic_gf_t* field, int32_t* message, int32_t message_lengt
 				decoded[try_table[c]] = 0;
 			}
 		}
-		int32_t res = ecc_reed_solomon_decoder_decode(field, decoded, message_length, ec_words_length);		
+		int32_t res = ecc_reed_solomon_decoder_decode(field, decoded, message_length, ec_words_length, NULL);		
 		mu_assert_int_eq(ECC_NO_ERRORS, res);
 		mu_assert_int_array_eq(message, message_length, decoded, message_length);
 		free(decoded);

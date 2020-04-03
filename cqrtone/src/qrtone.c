@@ -994,7 +994,7 @@ int32_t qrtone_set_payload_ext(qrtone_t* this, int8_t* payload, uint8_t payload_
     return 2 * this->gate_length + (this->symbols_to_deliver_length / 2) * (this->word_silence_length + this->word_length);
 }
 
-int32_t qrtone_set_payload(qrtone_t* this, const int8_t* payload, uint8_t payload_length) {
+int32_t qrtone_set_payload(qrtone_t* this, int8_t* payload, uint8_t payload_length) {
     return qrtone_set_payload_ext(this, payload, payload_length, QRTONE_DEFAULT_ECC_LEVEL, 1);
 }
 
@@ -1058,7 +1058,7 @@ void qrtone_free(qrtone_t* this) {
     qrtone_trigger_analyzer_free(&(this->trigger_analyzer));
 }
 
-int8_t* qrtone_symbols_to_payload(qrtone_t* this, int8_t* symbols, uint8_t symbols_length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t has_crc) {
+int8_t* qrtone_symbols_to_payload(qrtone_t* this, int8_t* symbols, int32_t symbols_length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t has_crc) {
     int32_t payload_symbols_size = block_symbols_size - block_ecc_symbols;
     int32_t payload_byte_size = payload_symbols_size / 2;
     int32_t payload_length = ((symbols_length / block_symbols_size) * payload_symbols_size + max(0, symbols_length % block_symbols_size - block_ecc_symbols)) / 2;
@@ -1070,8 +1070,9 @@ int8_t* qrtone_symbols_to_payload(qrtone_t* this, int8_t* symbols, uint8_t symbo
     if(has_crc) {
         offset = -CRC_BYTE_LENGTH;
     }
-    int8_t* payload = malloc(payload_length + offset);
+    int8_t* payload = malloc((size_t)payload_length + offset);
     int32_t crc_value[CRC_BYTE_LENGTH];
+    memset(crc_value, 0, sizeof(int32_t) * CRC_BYTE_LENGTH);
     int32_t crc_index = 0;
     int32_t block_id;
     int32_t* block_symbols = malloc(sizeof(int32_t) * block_symbols_size);

@@ -68,7 +68,7 @@ static const double values[] = { 11.0,16.0,23.0,36.0,58.0,29.0,20.0,10.0,8.0,3.0
 // import struct
 // s = struct.Struct('b').unpack
 // payload = map(lambda v : s(v)[0], base58.b58decode("QmXjkFQjnD8i8ntmwehoAHBfJEApETx8ebScyVzAHqgjpD"))
-const int8_t IPFS_PAYLOAD[] = { 18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114 };
+int8_t IPFS_PAYLOAD[] = { 18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114 };
 
 MU_TEST(testCRC8) {
 	int8_t data[] = { 0x0A, 0x0F, 0x08, 0x01, 0x05, 0x0B, 0x03 };
@@ -447,13 +447,54 @@ MU_TEST(testSymbolsEncodingDecoding) {
 
 	// revert back to payload
 
-	int32_t fixed_errors = 0;
-
-	int8_t* decoded_payload = qrtone_symbols_to_payload(&qrtone, symbols, header.number_of_symbols, block_symbols_size, block_ecc_symbols, header.crc, &fixed_errors);
+	int8_t* decoded_payload = qrtone_symbols_to_payload(&qrtone, symbols, header.number_of_symbols, block_symbols_size, block_ecc_symbols, header.crc);
 
 	mu_assert(decoded_payload != NULL, "CRC Failed");
 
-	mu_assert_int_eq(0, fixed_errors);
+	mu_assert_int_eq(0, qrtone.fixed_errors);
+
+	mu_assert_int_array_eq(payload, header.length, decoded_payload, header.length);
+
+	free(symbols);
+	free(decoded_payload);
+	qrtone_free(&qrtone);
+}
+
+
+MU_TEST(testSymbolsEncodingDecodingWithError) {
+	qrtone_t qrtone;
+	double sample_rate = 44100;
+	qrtone_init(&qrtone, sample_rate);
+
+	int8_t payload[] = { 0x00, 0x04, 'n', 'i' , 'c' , 'o', 0x01, 0x05, 'h', 'e', 'l', 'l', 'o' };
+	int8_t expected_symbols[] = { 0, 0, 6, 0, 1, 15, 0, 0, 8, 4, 5, 12, 6, 6, 13, 14, 8, 0, 6, 6, 6, 9, 5, 14, 6, 6, 3, 12, 6, 6, 15, 12, 2, 9, 6, 7 };;
+
+	int32_t block_symbols_size = 14;
+	int32_t block_ecc_symbols = 2;
+
+	qrtone_header_t header;
+	qrtone_header_init(&header, sizeof(payload), block_symbols_size, block_ecc_symbols, 1);
+	header.ecc_level = 0;
+
+	int8_t headerdata[3];
+	qrtone_header_encode(&header, headerdata);
+
+	int8_t* symbols = malloc(header.number_of_symbols);
+
+	qrtone_payload_to_symbols(&qrtone, payload, sizeof(payload), block_symbols_size, block_ecc_symbols, header.crc, symbols);
+
+	mu_assert_int_array_eq(expected_symbols, header.number_of_symbols, symbols, header.number_of_symbols);
+
+	// Insert error
+	symbols[5] = ~symbols[5];
+
+	// revert back to payload
+
+	int8_t* decoded_payload = qrtone_symbols_to_payload(&qrtone, symbols, header.number_of_symbols, block_symbols_size, block_ecc_symbols, header.crc);
+
+	mu_assert(decoded_payload != NULL, "CRC Failed");
+
+	mu_assert_int_eq(1, qrtone.fixed_errors);
 
 	mu_assert_int_array_eq(payload, header.length, decoded_payload, header.length);
 
@@ -479,6 +520,7 @@ MU_TEST_SUITE(test_suite) {
 	//MU_RUN_TEST(testWriteSignal);
 	MU_RUN_TEST(testHeaderEncodeDecode);
 	MU_RUN_TEST(testSymbolsEncodingDecoding);
+	MU_RUN_TEST(testSymbolsEncodingDecodingWithError);
 }
 
 int main(int argc, char** argv) {

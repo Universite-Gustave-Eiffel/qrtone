@@ -216,8 +216,10 @@ public class QRTone {
             for (int i = 0; i < payloadBlockByteSize; i++) {
                 payload[i + blockId * payloadByteSize] = (byte) ((blockSymbols[i * 2] << 4) | (blockSymbols[i * 2 + 1] & 0x0F));
             }
-            for (int i = Math.max(0, payloadBlockByteSize); i < Math.min(payloadByteSize, payloadLength - blockId * payloadByteSize); i++) {
-                crcValue[crcIndex++] = ((blockSymbols[i * 2] << 4) | (blockSymbols[i * 2 + 1] & 0x0F));
+            if(hasCRC) {
+                for (int i = Math.max(0, payloadBlockByteSize); i < Math.min(payloadByteSize, payloadLength - blockId * payloadByteSize); i++) {
+                    crcValue[crcIndex++] = ((blockSymbols[i * 2] << 4) | (blockSymbols[i * 2 + 1] & 0x0F));
+                }
             }
         }
         if(hasCRC) {
