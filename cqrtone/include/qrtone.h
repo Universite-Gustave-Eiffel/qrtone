@@ -153,7 +153,7 @@ typedef struct _qrtone_t {
     int64_t pushed_samples;
     int32_t symbol_index;
     int8_t* payload;
-    int8_t fixed_errors;
+    int32_t fixed_errors;
     ecc_reed_solomon_encoder_t encoder;
 } qrtone_t;
 
@@ -226,6 +226,8 @@ void qrtone_header_init(qrtone_header_t* this, uint8_t length, int32_t block_sym
 void qrtone_header_encode(qrtone_header_t* this, int8_t* data);
 
 int8_t qrtone_header_init_from_data(qrtone_header_t* this, int8_t* data);
+
+int8_t* qrtone_symbols_to_payload(qrtone_t* this, int8_t* symbols, uint8_t symbols_length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t has_crc, int32_t* fixedErrors);
 
 void qrtone_free(qrtone_t* this);
 

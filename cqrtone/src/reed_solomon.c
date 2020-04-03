@@ -549,7 +549,7 @@ void ecc_generic_gf_poly_copy(ecc_generic_gf_poly_t* this, ecc_generic_gf_poly_t
      }
  }
 
- int32_t ecc_reed_solomon_decoder_decode(ecc_generic_gf_t* field, int32_t* to_decode, int32_t to_decode_length, int32_t ec_bytes) {
+ int32_t ecc_reed_solomon_decoder_decode(ecc_generic_gf_t* field, int32_t* to_decode, int32_t to_decode_length, int32_t ec_bytes, int32_t* fixedErrors) {
      int32_t ret = ECC_NO_ERRORS;
      ecc_generic_gf_poly_t poly;
      ecc_generic_gf_poly_init(&poly, to_decode, to_decode_length);
@@ -599,6 +599,9 @@ void ecc_generic_gf_poly_copy(ecc_generic_gf_poly_t* this, ecc_generic_gf_poly_t
      }
      free(syndrome_coefficients);
      ecc_generic_gf_poly_free(&poly);
+     if(ret == ECC_NO_ERRORS && fixedErrors != NULL) {
+         *fixedErrors += number_of_errors;
+     }
      return ret;
  }
 

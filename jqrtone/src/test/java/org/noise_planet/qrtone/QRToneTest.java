@@ -779,4 +779,17 @@ public class QRToneTest {
         double[] vals = TriggerAnalyzer.quadraticInterpolation(samples[windowIndex-window], samples[windowIndex], samples[windowIndex+window]);
         assertEquals(1.0, vals[1], 1e-3);
     }
+
+    @Test
+    public void testSymbolsEncodeDecode() throws ReedSolomonException {
+        byte payload[] = {0x00, 0x04, 'n', 'i' , 'c' , 'o', 0x01, 0x05, 'h', 'e', 'l', 'l', 'o' };
+        byte[] expectedSymbols = {0, 0, 6, 0, 1, 15, 0, 0, 8, 4, 5, 12, 6, 6, 13, 14, 8, 0, 6, 6, 6, 9, 5, 14, 6, 6, 3, 12, 6, 6, 15, 12, 2, 9, 6, 7};
+        byte[] symbols = QRTone.payloadToSymbols(payload, Configuration.ECC_LEVEL.ECC_L, true);
+
+        assertArrayEquals(expectedSymbols, symbols);
+
+        byte[] decodedPayload = QRTone.symbolsToPayload(symbols, Configuration.ECC_LEVEL.ECC_L, true, null);
+
+        assertArrayEquals(payload, decodedPayload);
+    }
 }

@@ -182,14 +182,6 @@ public class QRTone {
         return payload;
     }
 
-    static byte[] symbolsToPayload(byte[] symbols) {
-        byte[] payload = new byte[symbols.length / 2];
-        for (int i = 0; i < payload.length; i++) {
-            payload[i] = (byte) ((symbols[i * 2] << 4) | (symbols[i * 2 + 1] & 0x0F));
-        }
-        return payload;
-    }
-
     static byte[] symbolsToPayload(byte[] symbols, int blockSymbolsSize, int blockECCSymbols, boolean hasCRC, AtomicInteger fixedErrors) throws ReedSolomonException {
         final int payloadSymbolsSize = blockSymbolsSize - blockECCSymbols;
         final int payloadByteSize = payloadSymbolsSize / 2;
@@ -210,7 +202,7 @@ public class QRTone {
             int payloadSymbolsLength = Math.min(payloadSymbolsSize, symbols.length - blockECCSymbols - blockId * blockSymbolsSize);
             // Copy payload symbols
             arraycopy(symbols, blockId * blockSymbolsSize, blockSymbols, 0, payloadSymbolsLength);
-            // Copy parity sumbols
+            // Copy parity symbols
             arraycopy(symbols, blockId * blockSymbolsSize + payloadSymbolsLength, blockSymbols, payloadSymbolsSize, blockECCSymbols);
             // Use Reed-Solomon in order to fix correctable errors
             // Fix symbols thanks to ECC parity symbols

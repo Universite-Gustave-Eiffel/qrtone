@@ -994,7 +994,7 @@ int32_t qrtone_set_payload_ext(qrtone_t* this, int8_t* payload, uint8_t payload_
     return 2 * this->gate_length + (this->symbols_to_deliver_length / 2) * (this->word_silence_length + this->word_length);
 }
 
-int32_t qrtone_set_payload(qrtone_t* this, int8_t* payload, uint8_t payload_length) {
+int32_t qrtone_set_payload(qrtone_t* this, const int8_t* payload, uint8_t payload_length) {
     return qrtone_set_payload_ext(this, payload, payload_length, QRTONE_DEFAULT_ECC_LEVEL, 1);
 }
 
@@ -1057,4 +1057,68 @@ void qrtone_free(qrtone_t* this) {
     ecc_reed_solomon_encoder_free(&(this->encoder));
     qrtone_trigger_analyzer_free(&(this->trigger_analyzer));
 }
+
+int8_t* qrtone_symbols_to_payload(qrtone_t* this, int8_t* symbols, uint8_t symbols_length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t has_crc) {
+    int32_t payload_symbols_size = block_symbols_size - block_ecc_symbols;
+    int32_t payload_byte_size = payload_symbols_size / 2;
+    int32_t payload_length = ((symbols_length / block_symbols_size) * payload_symbols_size + max(0, symbols_length % block_symbols_size - block_ecc_symbols)) / 2;
+    int32_t number_of_blocks = (int32_t)ceil(symbols_length / (double)block_symbols_size);
+
+    // Cancel permutation of symbols
+    qrtone_deinterleave_symbols(symbols, symbols_length, block_symbols_size);
+    int32_t offset = 0;
+    if(has_crc) {
+        offset = -CRC_BYTE_LENGTH;
+    }
+    int8_t* payload = malloc(payload_length + offset);
+    int32_t crc_value[CRC_BYTE_LENGTH];
+    int32_t crc_index = 0;
+    int32_t block_id;
+    int32_t* block_symbols = malloc(sizeof(int32_t) * block_symbols_size);
+    for(block_id = 0; block_id < number_of_blocks; block_id++) {
+        memset(block_symbols, 0, sizeof(int32_t) * block_symbols_size);
+        int32_t payload_symbols_length = min(payload_symbols_size, symbols_length - block_ecc_symbols - block_id * block_symbols_size);
+        // Copy payload symbols
+        qrtone_arraycopy_to32bits(symbols, block_id * block_symbols_size, block_symbols, 0, payload_symbols_length);
+        // Copy parity symbols
+        qrtone_arraycopy_to32bits(symbols, block_id * block_symbols_size + payload_symbols_length, block_symbols, payload_symbols_size, block_ecc_symbols);
+        // Use Reed-Solomon in order to fix correctable errors
+        // Fix symbols thanks to ECC parity symbols
+        int32_t ret = ecc_reed_solomon_decoder_decode(&(this->encoder.field), block_symbols, block_symbols_size, block_ecc_symbols, &(this->fixed_errors));
+        if(ret == ECC_REED_SOLOMON_ERROR) {
+            free(payload);
+            payload = NULL;
+            break;
+        }
+        // copy result to payload
+        int32_t payload_block_byte_size = min(payload_byte_size, payload_length + offset - block_id * payload_byte_size);
+        int32_t i;
+        for(i=0; i < payload_block_byte_size; i++) {
+            payload[i + block_id * payload_byte_size] = (int8_t)((block_symbols[i * 2] << 4) | (block_symbols[i * 2 + 1] & 0x0f));
+        }
+        if(has_crc) {
+            int32_t maxi = min(payload_byte_size, payload_length - block_id * payload_byte_size);
+            for(i = max(0, payload_block_byte_size); i < maxi; i++) {
+                crc_value[crc_index++] = ((block_symbols[i * 2] << 4) | (block_symbols[i * 2 + 1] & 0x0F));
+            }
+        }
+    }
+    free(block_symbols);
+    if(payload != NULL && has_crc) {
+        int32_t stored_crc = 0;
+        stored_crc = stored_crc | crc_value[0] << 8;
+        stored_crc = stored_crc | crc_value[1];
+        // Check if fixed payload+CRC give a correct result
+        qrtone_crc16_t crc16;
+        qrtone_crc16_init(&crc16);
+        qrtone_crc16_add_array(&crc16, payload, payload_length + offset);
+        if(crc16.crc16 != stored_crc) {
+            free(payload);
+            payload = NULL;
+        }
+    }
+    return payload;
+}
+
+
 
