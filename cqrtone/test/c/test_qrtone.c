@@ -360,6 +360,23 @@ MU_TEST(testGenerate) {
 	free(samples);
 }
 
+MU_TEST(testHeaderEncodeDecode) {
+	qrtone_header_t header;
+	qrtone_header_init(&header, sizeof(IPFS_PAYLOAD), 14, 2, 1);
+	header.ecc_level = 0;
+
+	int8_t headerdata[3];
+	qrtone_header_encode(&header, headerdata);
+
+	qrtone_header_t decoded_header;
+	qrtone_header_init_from_data(&decoded_header, headerdata);
+
+	mu_assert_int_eq(header.length, decoded_header.length);
+	mu_assert_int_eq(header.ecc_level, decoded_header.ecc_level);
+	mu_assert_int_eq(header.crc, decoded_header.crc);
+	mu_assert_int_eq(header.number_of_blocks, decoded_header.number_of_blocks);
+}
+
 
 MU_TEST(testWriteSignal) {
 	FILE* f = fopen("audioTest_44100_16bitsPCM.raw", "wb");
@@ -378,7 +395,9 @@ MU_TEST(testWriteSignal) {
 	int blankBefore = (int)(sample_rate * 0.55);
 	int blankAfter = (int)(sample_rate * 0.6);
 
-	int32_t samples_length = blankBefore + blankAfter + qrtone_set_payload(&qrtone, IPFS_PAYLOAD, sizeof(IPFS_PAYLOAD));
+	int8_t payload[] = {0x00, 0x04, 'n', 'i' , 'c' , 'o', 0x01, 0x05, 'h', 'e', 'l', 'l', 'o' };
+
+	int32_t samples_length = blankBefore + blankAfter + qrtone_set_payload(&qrtone, payload, sizeof(payload));
 
 	float* samples = malloc(sizeof(float) * samples_length);
 
@@ -389,7 +408,7 @@ MU_TEST(testWriteSignal) {
 
 	// Write signal
 	int s;
-	float factor = 32767. / (power_peak * 4);
+	float factor = 32767.f / (power_peak * 4);
 	for (s = 0; s < samples_length; s++) {
 		int16_t sample = (int16_t)(samples[s] * factor);
 		fwrite(&sample, sizeof(int16_t), 1, f);
@@ -416,8 +435,9 @@ MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(testHannWindow);
 	MU_RUN_TEST(testPeakFinding);
 	MU_RUN_TEST(testSymbolsInterleaving);
-	MU_RUN_TEST(testGenerate);
-	//MU_RUN_TEST(testWriteSignal);
+	//MU_RUN_TEST(testGenerate);
+	MU_RUN_TEST(testWriteSignal);
+	MU_RUN_TEST(testHeaderEncodeDecode);
 }
 
 int main(int argc, char** argv) {

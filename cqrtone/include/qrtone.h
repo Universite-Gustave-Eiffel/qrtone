@@ -221,6 +221,12 @@ int32_t qrtone_set_payload_ext(qrtone_t* this, int8_t* payload, uint8_t payload_
 
 void qrtone_get_samples(qrtone_t* this, float* samples, int32_t samples_length, int32_t offset, float power);
 
+void qrtone_header_init(qrtone_header_t* this, uint8_t length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t crc);
+
+void qrtone_header_encode(qrtone_header_t* this, int8_t* data);
+
+int8_t qrtone_header_init_from_data(qrtone_header_t* this, int8_t* data);
+
 void qrtone_free(qrtone_t* this);
 
 #ifdef __cplusplus

@@ -104,7 +104,7 @@ const int32_t ECC_SYMBOLS[][2] = { {14, 2}, {14, 4}, {12, 6}, {10, 6} };
 #define QRTONE_DEFAULT_TRIGGER_SNR 15
 #define QRTONE_DEFAULT_ECC_LEVEL QRTONE_ECC_Q
 #define QRTONE_PERCENTILE_BACKGROUND 0.5
-
+#define QRTONE_TUKEY_ALPHA 0.5
 
 enum QRTONE_STATE { QRTONE_WAITING_TRIGGER, QRTONE_PARSING_SYMBOLS };
 
@@ -953,9 +953,9 @@ void qrtone_payload_to_symbols(qrtone_t* this, int8_t* payload, uint8_t payload_
         int32_t payload_size = min(header.payload_byte_size, payload_length - block_id * header.payload_byte_size);
         for (i = 0; i < payload_size; i++) {
             // offset most significant bits to the right without keeping sign
-            block_symbols[i * 2] = (payload[i + block_id * header.payload_byte_size] >> 4) & 0x0F;
+            block_symbols[i * 2] = (payload_bytes[i + block_id * header.payload_byte_size] >> 4) & 0x0F;
             // keep only least significant bits for the second hexadecimal symbol
-            block_symbols[i * 2 + 1] = payload[i + block_id * header.payload_byte_size] & 0x0F;
+            block_symbols[i * 2 + 1] = payload_bytes[i + block_id * header.payload_byte_size] & 0x0F;
         }
         // Add ECC parity symbols
         ecc_reed_solomon_encoder_encode(&(this->encoder), block_symbols, block_symbols_size, block_ecc_symbols);
@@ -1035,7 +1035,7 @@ void qrtone_get_samples(qrtone_t* this, float* samples, int32_t samples_length, 
             float f2 = (float)this->frequencies[this->symbols_to_deliver[i + 1] + FREQUENCY_ROOT];
             qrtone_generate_pitch(samples + max(0, cursor - offset), max(0, min(this->word_length - max(0, offset - cursor), samples_length - max(0, cursor - offset))), max(0, offset - cursor), (float)this->sample_rate, f1, power / 2);
             qrtone_generate_pitch(samples + max(0, cursor - offset), max(0, min(this->word_length - max(0, offset - cursor), samples_length - max(0, cursor - offset))), max(0, offset - cursor), (float)this->sample_rate, f2, power / 2);
-            qrtone_hann_window(samples + max(0, cursor - offset), max(0, min(this->word_length - max(0, offset - cursor), samples_length - max(0, cursor - offset))), this->word_length, max(0, offset - cursor));
+            qrtone_tukey_window(samples + max(0, cursor - offset), QRTONE_TUKEY_ALPHA, max(0, min(this->word_length - max(0, offset - cursor), samples_length - max(0, cursor - offset))), this->word_length, max(0, offset - cursor));
         }
         cursor += this->word_length;
         if (cursor > offset + samples_length) {

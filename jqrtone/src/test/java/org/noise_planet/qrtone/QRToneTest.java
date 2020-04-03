@@ -524,6 +524,7 @@ public class QRToneTest {
         assertEquals(1, fixedErros.get());
     }
 
+    @Test
     public void testToneGeneration() throws IOException {
         double sampleRate = 44100;
         double timeBlankBefore = 3;
@@ -536,7 +537,8 @@ public class QRToneTest {
         Configuration configuration = Configuration.getAudible(sampleRate);
         QRTone qrTone = new QRTone(configuration);
         System.out.println(String.format(Locale.ROOT, "%.1f Hz", qrTone.getFrequencies()[31]));
-        final int dataSampleLength = qrTone.setPayload(IPFS_PAYLOAD);
+        byte payload[] = {0x00, 0x04, 'n', 'i' , 'c' , 'o', 0x01, 0x05, 'h', 'e', 'l', 'l', 'o' };
+        final int dataSampleLength = qrTone.setPayload(payload);
         float[] samples = new float[samplesBefore + dataSampleLength + samplesAfter];
         Random random = new Random(QRTone.PERMUTATION_SEED);
         int cursor = 0;
