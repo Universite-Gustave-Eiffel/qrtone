@@ -22,3 +22,5 @@ ubuntu-xenial-16.04-cloudimg-console.log
 # Avoid ignoring Maven wrapper jar file (.jar files are usually ignored)
 !/.mvn/wrapper/maven-wrapper.jar
 .attach_pid*
+venv
+.vs/
