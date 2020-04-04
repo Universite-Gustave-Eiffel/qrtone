@@ -1062,6 +1062,31 @@ void qrtone_free(qrtone_t* this) {
     qrtone_trigger_analyzer_free(&(this->trigger_analyzer));
 }
 
+void qrtone_reset(qrtone_t* this) {
+    if (this->symbols_cache != NULL) {
+        free(this->symbols_cache);
+        this->symbols_cache = NULL;
+        this->symbols_cache_length = 0;
+    }
+    if (this->header_cache != NULL) {
+        free(this->header_cache);
+        this->header_cache = NULL;
+    }
+    if (this->symbols_to_deliver != NULL) {
+        free(this->symbols_to_deliver);
+        this->symbols_to_deliver = NULL;
+        this->symbols_to_deliver_length = 0;
+    }
+    qrtone_trigger_analyzer_reset(&(this->trigger_analyzer));
+    int32_t idfreq;
+    for (idfreq = 0; idfreq < QRTONE_NUM_FREQUENCIES; idfreq++) {
+        qrtone_goertzel_reset(&(this->frequency_analyzers[idfreq]));
+    }
+    this->qr_tone_state = QRTONE_WAITING_TRIGGER;
+    this->symbol_index = 0;
+    this->first_tone_sample_index = -1;
+}
+
 int8_t* qrtone_symbols_to_payload(qrtone_t* this, int8_t* symbols, int32_t symbols_length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t has_crc) {
     int32_t payload_symbols_size = block_symbols_size - block_ecc_symbols;
     int32_t payload_byte_size = payload_symbols_size / 2;
@@ -1152,6 +1177,26 @@ int32_t qrtone_get_tone_index(qrtone_t* this, int32_t samples_length) {
     return (int32_t)(samples_length - (this->pushed_samples - qrtone_get_tone_location(this)));
 }
 
+void qrtone_cached_symbols_to_payload(qrtone_t* this) {
+    if(this->payload != NULL) {
+        free(this->payload);
+    }
+    this->payload = qrtone_symbols_to_payload(this, this->symbols_cache, this->symbols_cache_length, ECC_SYMBOLS[this->header_cache->ecc_level][0], ECC_SYMBOLS[this->header_cache->ecc_level][1], this->header_cache->crc);
+}
+
+void qrtone_cached_symbols_to_header(qrtone_t* this) {
+    int8_t* header_bytes = qrtone_symbols_to_payload(this, this->symbols_cache, this->symbols_cache_length, HEADER_SYMBOLS, HEADER_ECC_SYMBOLS, 0);
+    if(this->header_cache != NULL) {
+        free(this->header_cache);
+    }
+    this->header_cache = malloc(sizeof(qrtone_header_t));
+    if(!qrtone_header_init_from_data(this->header_cache, header_bytes)) {
+        this->header_cache = NULL;
+    }
+    free(header_bytes);
+}
+
+
 int8_t qrtone_analyze_tones(qrtone_t* this, float* samples, int32_t samples_length) {
     int32_t cursor = max(0, qrtone_get_tone_index(this, samples_length));
     while(cursor < samples_length) {
@@ -1194,13 +1239,13 @@ int8_t qrtone_analyze_tones(qrtone_t* this, float* samples, int32_t samples_leng
                     qrtone_cached_symbols_to_header(this);
                     // CRC error
                     if (this->header_cache == NULL) {
-                        reset();
+                        qrtone_reset(this);
                         break;
                     }
                     free(this->symbols_cache);
                     this->symbols_cache = malloc(this->header_cache->number_of_symbols);
                     this->symbol_index = 0;
-                    this->first_tone_sample_index += (HEADER_SYMBOLS / 2) * (this->word_length + this->word_silence_length);
+                    this->first_tone_sample_index += ((int64_t)(HEADER_SYMBOLS) / 2) * ((int64_t)this->word_length + this->word_silence_length);
                 } else {
                     // Decoding complete
                     qrtone_cached_symbols_to_payload(this);
