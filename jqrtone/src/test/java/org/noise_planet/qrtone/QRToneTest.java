@@ -68,7 +68,7 @@ public class QRToneTest {
         AtomicLong next = new AtomicLong(1337);
         for(int i=0; i < IPFS_PAYLOAD.length; i++) {
             byte[] alteredPayload = Arrays.copyOf(IPFS_PAYLOAD, IPFS_PAYLOAD.length);
-            alteredPayload[i] = (byte) (QRTone.warbleRand(next) % 255);
+            alteredPayload[i] = (byte) (QRTone.rand(next) % 255);
             assertNotEquals(base, QRTone.crc8(alteredPayload, 0, alteredPayload.length));
         }
     }
@@ -349,7 +349,7 @@ public class QRToneTest {
         int[] expected= new int[] {1199,22292,14258,30291,11005,15335,22572,27361,8276,27653};
         AtomicLong seed = new AtomicLong(1337);
         for(int expectedValue : expected) {
-            assertEquals(expectedValue, QRTone.warbleRand(seed));
+            assertEquals(expectedValue, QRTone.rand(seed));
         }
     }
 

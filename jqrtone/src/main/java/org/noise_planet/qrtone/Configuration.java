@@ -34,7 +34,7 @@
 package org.noise_planet.qrtone;
 
 /**
- * OpenWarble configuration object
+ * QRTone configuration object
  */
 public class Configuration {
   public enum ECC_LEVEL {ECC_L, ECC_M, ECC_Q, ECC_H}

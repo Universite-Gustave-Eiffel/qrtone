@@ -342,7 +342,7 @@ public class QRTone {
      * @param next Seed
      * @return pseudo-random value
      */
-    public static int warbleRand(AtomicLong next) {
+    public static int rand(AtomicLong next) {
         next.set(next.get() * 1103515245L + 12345L);
         return (int)(((next.get() / 65536) & 0xFFFF  % 32768));
     }
