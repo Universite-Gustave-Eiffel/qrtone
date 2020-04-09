@@ -399,7 +399,7 @@ public class QRTone {
         }
     }
 
-    void setTriggerCallback(TriggerAnalyzer.TriggerCallback triggerCallback) {
+    public void setTriggerCallback(TriggerAnalyzer.TriggerCallback triggerCallback) {
         triggerAnalyzer.setTriggerCallback(triggerCallback);
     }
 

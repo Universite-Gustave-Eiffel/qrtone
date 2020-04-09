@@ -45,7 +45,7 @@ public class Configuration {
   public static final double DEFAULT_GATE_TIME = 0.12;
   public static final double DEFAULT_AUDIBLE_FIRST_FREQUENCY = 1720;
   public static final double DEFAULT_INAUDIBLE_FIRST_FREQUENCY = 18200;
-  public static final int DEFAULT_INAUDIBLE_STEP = 120;
+  public static final int DEFAULT_INAUDIBLE_STEP = 50;
   public static final double DEFAULT_TRIGGER_SNR = 15;
   public static final ECC_LEVEL DEFAULT_ECC_LEVEL = ECC_LEVEL.ECC_Q;
 
