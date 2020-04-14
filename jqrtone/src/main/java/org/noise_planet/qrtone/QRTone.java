@@ -99,6 +99,10 @@ public class QRTone {
         }
     }
 
+    public long getPushedSamples() {
+        return pushedSamples;
+    }
+
     public Configuration getConfiguration() {
         return configuration;
     }

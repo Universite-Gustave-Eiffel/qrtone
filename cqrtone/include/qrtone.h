@@ -232,6 +232,8 @@ int8_t* qrtone_symbols_to_payload(qrtone_t* this, int8_t* symbols, int32_t symbo
 
 void qrtone_payload_to_symbols(qrtone_t* this, int8_t* payload, uint8_t payload_length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t has_crc, int8_t* symbols);
 
+void qrtone_generate_pitch(float* samples, int32_t samples_length, int32_t offset, double sample_rate, float frequency, double power_peak);
+
 void qrtone_free(qrtone_t* this);
 
 int8_t qrtone_push_samples(qrtone_t* this, float* samples, int32_t samples_length);
