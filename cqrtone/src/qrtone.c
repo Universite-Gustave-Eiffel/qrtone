@@ -49,7 +49,7 @@
 #include "qrtone.h"
 #include "math.h"
 
-#define QRTONE_2PI 2 * 3.141592653589793115997963468544185161590576171875
+#define QRTONE_2PI 6.283185307179586
 
 // Column and rows of DTMF that make a char
 #define FREQUENCY_ROOT 16
