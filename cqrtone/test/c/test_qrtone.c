@@ -56,6 +56,10 @@
 
 #define QRTONE_FLOAT_EPSILON 0.000001
 
+#ifndef M_PI
+#define M_PI 3.1415926535897932385
+#endif
+
 #define SAMPLES 2205
 
 // sunspot data
@@ -138,7 +142,7 @@ MU_TEST(test1khzIterative) {
 	int32_t cursor = 0;
 
 	while (cursor < SAMPLES) {
-		int32_t window_size = min((rand() % 115) + 20, SAMPLES - cursor);
+		int32_t window_size = MIN((rand() % 115) + 20, SAMPLES - cursor);
 		qrtone_goertzel_process_samples(&goertzel, audio + cursor, window_size);
 		cursor += window_size;
 	}
@@ -394,12 +398,12 @@ MU_TEST(testGenerate) {
 	qrtone_t qrtone_decoder;
 	qrtone_init(&qrtone_decoder, sample_rate);
 	while (cursor < total_length) {
-		int32_t window_size = min(qrtone_get_maximum_length(&qrtone_decoder), total_length - cursor); //min(qrtone_get_maximum_length(&qrtone), min((rand() % 115) + 20, total_length - cursor));
+		int32_t window_size = MIN(qrtone_get_maximum_length(&qrtone_decoder), total_length - cursor);
 		float* window = malloc(sizeof(float) * window_size);
 		memset(window, 0, sizeof(float) * window_size);
 		// add audio samples
 		if(cursor + window_size > offset_before && cursor < samples_length - offset_before) {
-			qrtone_get_samples(&qrtone, window + max(0, offset_before - cursor), window_size - max(0, offset_before - cursor), max(0, cursor - offset_before), powerPeak);
+			qrtone_get_samples(&qrtone, window + MAX(0, offset_before - cursor), window_size - MAX(0, offset_before - cursor), MAX(0, cursor - offset_before), powerPeak);
 		}
 		// add noise
 		qrtone_generate_pitch(window, window_size, cursor, sample_rate, 125.0f, noise_peak);
@@ -555,7 +559,7 @@ MU_TEST(testSymbolsEncodingDecodingWithError) {
 	mu_assert_int_array_eq(expected_symbols, header.number_of_symbols, symbols, header.number_of_symbols);
 
 	// Insert error
-	symbols[5] = max(0, min(15, ~symbols[5]));
+	symbols[5] = MAX(0, MIN(15, ~symbols[5]));
 
 	// revert back to payload
 
