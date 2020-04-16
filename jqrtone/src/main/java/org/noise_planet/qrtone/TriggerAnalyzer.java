@@ -114,7 +114,7 @@ public class TriggerAnalyzer {
     private void doProcess(float[] samples, AtomicInteger windowProcessed,
                            IterativeGeneralizedGoertzel[] frequencyAnalyzers) {
         int processed = 0;
-        while(processed < samples.length) {
+        while(firstToneLocation == -1 && processed < samples.length) {
             int toProcess = Math.min(samples.length - processed,windowAnalyze - windowProcessed.get());
             QRTone.applyHann(samples,processed, processed + toProcess, windowAnalyze, windowProcessed.get());
             for(int idfreq = 0; idfreq < frequencyAnalyzers.length; idfreq++) {
@@ -150,7 +150,7 @@ public class TriggerAnalyzer {
                             // Check if for the first peak the level was inferior than trigger level
                             if(firstPeakIndex >= 0 && firstPeakIndex < splHistory[0].size()
                                     && splHistory[0].get(firstPeakIndex) > element.value - triggerSnr &&
-                                    splHistory[frequencies.length - 1].get(firstPeakIndex) < backgroundNoiseSecondPeak + triggerSnr) {
+                                    splHistory[frequencies.length - 1].get(firstPeakIndex) < element.value - triggerSnr) {
                                 // All trigger conditions are met
                                 // Evaluate the exact position of the first tone
                                 long peakLocation = findPeakLocation(splHistory[frequencies.length - 1].get(peakIndex-1)

@@ -153,6 +153,7 @@ typedef struct _qrtone_t {
     int64_t pushed_samples;
     int32_t symbol_index;
     int8_t* payload;
+    int32_t payload_length;
     int32_t fixed_errors;
     ecc_reed_solomon_encoder_t encoder;
 } qrtone_t;
@@ -231,7 +232,13 @@ int8_t* qrtone_symbols_to_payload(qrtone_t* this, int8_t* symbols, int32_t symbo
 
 void qrtone_payload_to_symbols(qrtone_t* this, int8_t* payload, uint8_t payload_length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t has_crc, int8_t* symbols);
 
+void qrtone_generate_pitch(float* samples, int32_t samples_length, int32_t offset, double sample_rate, float frequency, double power_peak);
+
 void qrtone_free(qrtone_t* this);
+
+int8_t qrtone_push_samples(qrtone_t* this, float* samples, int32_t samples_length);
+
+int32_t qrtone_get_maximum_length(qrtone_t* this);
 
 #ifdef __cplusplus
 }

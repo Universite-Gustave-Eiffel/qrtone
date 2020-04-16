@@ -446,6 +446,8 @@ void ecc_generic_gf_poly_copy(ecc_generic_gf_poly_t* this, ecc_generic_gf_poly_t
          if (ecc_generic_gf_poly_is_zero(&r_last)) {
              // Oops, Euclidean algorithm already terminated?
              ret = ECC_REED_SOLOMON_ERROR;
+             ecc_generic_gf_poly_free(&t);
+             ecc_generic_gf_poly_free(&r);
          }
          else {
              ecc_generic_gf_poly_free(&r);

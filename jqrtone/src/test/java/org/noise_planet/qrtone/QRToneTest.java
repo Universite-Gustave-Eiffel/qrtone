@@ -558,10 +558,10 @@ public class QRToneTest {
 
     @Test
     public void testToneDetection() throws IOException {
-        boolean writeCSV = false;
+        boolean writeCSV = true;
         double sampleRate = 44100;
-        double timeBlankBefore = 1.1333;
-        double timeBlankAfter = 2;
+        double timeBlankBefore = 0.35;
+        double timeBlankAfter = 0.35;
         double powerRMS = Math.pow(10, -26.0 / 20.0); // -26 dBFS
         double powerPeak = powerRMS * Math.sqrt(2);
         double noisePeak = Math.pow(10, -50.0 / 20.0); // -26 dBFS
@@ -569,24 +569,24 @@ public class QRToneTest {
         int samplesAfter = (int)(timeBlankAfter * sampleRate);
         Configuration configuration = Configuration.getAudible(sampleRate);
         QRTone qrTone = new QRTone(configuration);
-        QRToneCallback csvWriter = new QRToneCallback();
+        QRToneCallback csvWriter = new QRToneCallback(qrTone);
+        qrTone.setTriggerCallback(csvWriter);
         if(writeCSV) {
             csvWriter.open("target/spectrum.csv");
-            qrTone.setTriggerCallback(csvWriter);
         }
         final int dataSampleLength = qrTone.setPayload(IPFS_PAYLOAD);
         float[] audio = new float[dataSampleLength];
         float[] samples = new float[samplesBefore + dataSampleLength + samplesAfter];
         qrTone.getSamples(audio, 0, powerPeak);
         System.arraycopy(audio, 0, samples, samplesBefore, dataSampleLength);
-        Random random = new Random(1337);
-        for (int s = 0; s < samples.length; s++) {
-            samples[s] += (float)(random.nextGaussian() * noisePeak);
+        QRTone.generatePitch(samples, 0, samples.length, 0, sampleRate, 125, noisePeak);
+        if(writeCSV) {
+            writeFloatToFile("target/inputSignal.raw", samples);
         }
         long start = System.currentTimeMillis();
         int cursor = 0;
         while (cursor < samples.length) {
-            int windowSize = Math.min(random.nextInt(115) + 20, samples.length - cursor);
+            int windowSize = Math.min(qrTone.getMaximumWindowLength(), samples.length - cursor);
             float[] window = new float[windowSize];
             System.arraycopy(samples, cursor, window, 0, window.length);
             if(qrTone.pushSamples(window)) {
@@ -658,7 +658,7 @@ public class QRToneTest {
         int samplesBefore = (int)(timeBlankBefore * sampleRate);
         Configuration configuration = Configuration.getAudible(sampleRate);
         QRTone qrTone = new QRTone(configuration);
-        QRToneCallback csvWriter = new QRToneCallback();
+        QRToneCallback csvWriter = new QRToneCallback(qrTone);
         if(writeCSV) {
             csvWriter.open("target/spectrum.csv");
             qrTone.setTriggerCallback(csvWriter);
@@ -709,7 +709,13 @@ public class QRToneTest {
 
     static class QRToneCallback implements TriggerAnalyzer.TriggerCallback {
         double[] frequencies;
-        Writer writer;
+        Writer writer = null;
+        QRTone qrTone;
+
+        public QRToneCallback(QRTone qrTone) {
+            this.qrTone = qrTone;
+        }
+
         public void open(String path) throws FileNotFoundException {
             FileOutputStream fos = new FileOutputStream(path);
             BufferedOutputStream bos = new BufferedOutputStream(fos);
@@ -718,29 +724,33 @@ public class QRToneTest {
 
         @Override
         public void onTrigger(TriggerAnalyzer triggerAnalyzer, long messageStartLocation) {
-            System.out.println(String.format(Locale.ROOT, "Found trigger at %.3f",messageStartLocation / triggerAnalyzer.sampleRate));
+            long firstTone = qrTone.getPushedSamples() - (triggerAnalyzer.getTotalProcessed() - messageStartLocation);
+            System.out.println(String.format(Locale.ROOT, "Found trigger at %.3f",firstTone / triggerAnalyzer.sampleRate));
         }
 
         @Override
         public void onNewLevels(TriggerAnalyzer triggerAnalyzer, long location, double[] spl) {
-            try {
-                if (frequencies == null) {
-                    frequencies = triggerAnalyzer.frequencies;
-                    writer.write("t");
-                    for (double frequency : frequencies) {
-                        writer.write(String.format(Locale.ROOT, ",%.0f Hz (L)", frequency));
-                        writer.write(String.format(Locale.ROOT, ",%.0f Hz (L50+15)", frequency));
+            long realLocation = qrTone.getPushedSamples() - (triggerAnalyzer.getTotalProcessed() - location);
+            if(writer != null) {
+                try {
+                    if (frequencies == null) {
+                        frequencies = triggerAnalyzer.frequencies;
+                        writer.write("t");
+                        for (double frequency : frequencies) {
+                            writer.write(String.format(Locale.ROOT, ",%.0f Hz (L)", frequency));
+                            writer.write(String.format(Locale.ROOT, ",%.0f Hz (L50+15)", frequency));
+                        }
+                        writer.write("\n");
+                    }
+                    writer.write(String.format(Locale.ROOT, "%.3f", realLocation / triggerAnalyzer.sampleRate));
+                    for (int idFreq = 0; idFreq < spl.length; idFreq++) {
+                        writer.write(String.format(Locale.ROOT, ",%.2f", spl[idFreq]));
+                        writer.write(String.format(Locale.ROOT, ",%.2f", triggerAnalyzer.backgroundNoiseEvaluator.result() + 15));
                     }
                     writer.write("\n");
+                } catch (IOException ex) {
+                    System.err.println(ex.getLocalizedMessage());
                 }
-                writer.write(String.format(Locale.ROOT, "%.3f", location / triggerAnalyzer.sampleRate));
-                for (int idFreq=0; idFreq<spl.length; idFreq++) {
-                    writer.write(String.format(Locale.ROOT, ",%.2f", spl[idFreq]));
-                    writer.write(String.format(Locale.ROOT, ",%.2f", triggerAnalyzer.backgroundNoiseEvaluator.result() + 15));
-                }
-                writer.write("\n");
-            } catch (IOException ex) {
-                System.err.println(ex.getLocalizedMessage());
             }
         }
 

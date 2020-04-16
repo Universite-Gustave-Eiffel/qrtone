@@ -99,6 +99,10 @@ public class QRTone {
         }
     }
 
+    public long getPushedSamples() {
+        return pushedSamples;
+    }
+
     public Configuration getConfiguration() {
         return configuration;
     }
@@ -399,7 +403,7 @@ public class QRTone {
         }
     }
 
-    void setTriggerCallback(TriggerAnalyzer.TriggerCallback triggerCallback) {
+    public void setTriggerCallback(TriggerAnalyzer.TriggerCallback triggerCallback) {
         triggerAnalyzer.setTriggerCallback(triggerCallback);
     }
 

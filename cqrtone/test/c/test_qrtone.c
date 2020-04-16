@@ -343,21 +343,90 @@ MU_TEST(testSymbolsInterleaving) {
 	free(data_interleaved);
 }
 
+// Marsaglia and Bray, ``A Convenient Method for Generating Normal Variables'' 
+double gaussrand()
+{
+	static double V1, V2, S;
+	static int phase = 0;
+	double X;
+
+	if (phase == 0) {
+		do {
+			double U1 = (double)rand() / RAND_MAX;
+			double U2 = (double)rand() / RAND_MAX;
+
+			V1 = 2 * U1 - 1;
+			V2 = 2 * U2 - 1;
+			S = V1 * V1 + V2 * V2;
+		} while (S >= 1 || S == 0);
+
+		X = V1 * sqrt(-2 * log(S) / S);
+	}
+	else
+		X = V2 * sqrt(-2 * log(S) / S);
+
+	phase = 1 - phase;
+
+	return X;
+}
+
 MU_TEST(testGenerate) {
+	int writeFile = 0;
+	FILE* f;
+	if(writeFile) {
+		f = fopen("inputsignal_44100_16bitsPCM.raw", "wb");
+	}
 	qrtone_t qrtone;
 	double sample_rate = 44100;
 	qrtone_init(&qrtone, sample_rate);
+	double powerRMS = pow(10.0, -26.0 / 20.0);
+	double powerPeak = powerRMS * sqrt(2);
+	double noise_peak = pow(10.0, -50.0 / 20.0);
 
 	int32_t samples_length = qrtone_set_payload(&qrtone, IPFS_PAYLOAD, sizeof(IPFS_PAYLOAD));
 
-	float* samples = malloc(sizeof(float) * samples_length);
+	int32_t offset_before = (int32_t)(sample_rate * 0.35);
 
-	memset(samples, 0, sizeof(float) * samples_length);
+	int32_t total_length = offset_before + samples_length + offset_before;
 
-	qrtone_get_samples(&qrtone, samples, qrtone.gate_length * 3, qrtone.gate_length - 256, powf(10.0f, -16.0f / 20.0f));
+	int32_t cursor = 0;
+	int32_t i;
+	qrtone_t qrtone_decoder;
+	qrtone_init(&qrtone_decoder, sample_rate);
+	while (cursor < total_length) {
+		int32_t window_size = min(qrtone_get_maximum_length(&qrtone_decoder), total_length - cursor); //min(qrtone_get_maximum_length(&qrtone), min((rand() % 115) + 20, total_length - cursor));
+		float* window = malloc(sizeof(float) * window_size);
+		memset(window, 0, sizeof(float) * window_size);
+		// add audio samples
+		if(cursor + window_size > offset_before && cursor < samples_length - offset_before) {
+			qrtone_get_samples(&qrtone, window + max(0, offset_before - cursor), window_size - max(0, offset_before - cursor), max(0, cursor - offset_before), powerPeak);
+		}
+		// add noise
+		qrtone_generate_pitch(window, window_size, cursor, sample_rate, 125.0f, noise_peak);
+		for(i=0; i < window_size; i++) {
+			if(writeFile) {
+				int16_t sample = (int16_t)(window[i] * 32768);
+				fwrite(&sample, sizeof(int16_t), 1, f);
+			}
+		}
+		if(qrtone_push_samples(&qrtone_decoder, window, window_size)) {
+			// Got data
+			free(window);
+			break;
+		}
+		cursor += window_size;
+		free(window);
+	}
+	if(writeFile) {
+		fclose(f);
+	}
+	mu_assert(qrtone_decoder.payload != NULL, "no decoded message");
+	if(qrtone_decoder.payload != NULL) {
+		mu_assert_int_array_eq(IPFS_PAYLOAD, sizeof(IPFS_PAYLOAD), qrtone_decoder.payload, qrtone_decoder.payload_length);
+	}
 
 	qrtone_free(&qrtone);
-	free(samples);
+	qrtone_free(&qrtone_decoder);
 }
 
 MU_TEST(testHeaderEncodeDecode) {
@@ -486,7 +555,7 @@ MU_TEST(testSymbolsEncodingDecodingWithError) {
 	mu_assert_int_array_eq(expected_symbols, header.number_of_symbols, symbols, header.number_of_symbols);
 
 	// Insert error
-	symbols[5] = ~symbols[5];
+	symbols[5] = max(0, min(15, ~symbols[5]));
 
 	// revert back to payload
 
@@ -524,7 +593,7 @@ MU_TEST_SUITE(test_suite) {
 }
 
 int main(int argc, char** argv) {
-	//_crtBreakAlloc = 13205;
+	//_crtBreakAlloc = 4410;
 	MU_RUN_SUITE(test_suite);
 	MU_REPORT();
 #ifdef _WIN32
