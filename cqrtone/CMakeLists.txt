@@ -36,8 +36,9 @@ target_link_libraries (qrtone ${LIBM})
 #------------#
 #    TEST 1
 #------------#
-
 set(TEST_DATA_DIR "${PROJECT_BINARY_DIR}/TestAudio")
+
+file(MAKE_DIRECTORY ${TEST_DATA_DIR})
 
 # Test executable and folder
 set(ECC_TESTS
