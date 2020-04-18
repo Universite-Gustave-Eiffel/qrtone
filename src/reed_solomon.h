@@ -7,18 +7,18 @@
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- *  Redistributions of source code must retain the above copyright notice, this
+ *  Redistributions of source code must retain the above copyright notice, self
  *   list of conditions and the following disclaimer.
  *
  *  Redistributions in binary form must reproduce the above copyright notice,
- *   this list of conditions and the following disclaimer in the documentation
+ *   self list of conditions and the following disclaimer in the documentation
  *   and/or other materials provided with the distribution.
  *
  *  Neither the name of the copyright holder nor the names of its
  *   contributors may be used to endorse or promote products derived from
- *   this software without specific prior written permission.
+ *   self software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * self SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
@@ -27,7 +27,7 @@
  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * OF self SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
  
@@ -81,45 +81,45 @@ typedef struct _ecc_reed_solomon_encoder_t {
     ecc_reed_solomon_cached_generator_t* cached_generators;
 } ecc_reed_solomon_encoder_t;
 
-void ecc_generic_gf_poly_init(ecc_generic_gf_poly_t* this, int* coefficients, int coefficients_length);
+void ecc_generic_gf_poly_init(ecc_generic_gf_poly_t* self, int32_t* coefficients, int32_t coefficients_length);
 
-void ecc_generic_gf_init(ecc_generic_gf_t* this, int32_t primitive, int32_t size, int32_t b);
+void ecc_generic_gf_init(ecc_generic_gf_t* self, int32_t primitive, int32_t size, int32_t b);
 
-void ecc_generic_gf_free(ecc_generic_gf_t* this);
+void ecc_generic_gf_free(ecc_generic_gf_t* self);
 
-void ecc_generic_gf_poly_free(ecc_generic_gf_poly_t* this);
+void ecc_generic_gf_poly_free(ecc_generic_gf_poly_t* self);
 
-int ecc_generic_gf_build_monomial(ecc_generic_gf_poly_t* poly, int32_t degree, int32_t coefficient);
+int32_t ecc_generic_gf_build_monomial(ecc_generic_gf_poly_t* poly, int32_t degree, int32_t coefficient);
 
-void ecc_generic_gf_poly_multiply(ecc_generic_gf_poly_t* this, ecc_generic_gf_t* field, int32_t scalar, ecc_generic_gf_poly_t* result);
+void ecc_generic_gf_poly_multiply(ecc_generic_gf_poly_t* self, ecc_generic_gf_t* field, int32_t scalar, ecc_generic_gf_poly_t* result);
 
-int ecc_generic_gf_poly_is_zero(ecc_generic_gf_poly_t* this);
+int32_t ecc_generic_gf_poly_is_zero(ecc_generic_gf_poly_t* self);
 
-int32_t ecc_generic_gf_poly_get_coefficient(ecc_generic_gf_poly_t* this, int32_t degree);
+int32_t ecc_generic_gf_poly_get_coefficient(ecc_generic_gf_poly_t* self, int32_t degree);
 
-int32_t ecc_generic_gf_inverse(ecc_generic_gf_t* this, int32_t a);
+int32_t ecc_generic_gf_inverse(ecc_generic_gf_t* self, int32_t a);
 
-void ecc_generic_gf_poly_add_or_substract(ecc_generic_gf_poly_t* this, ecc_generic_gf_poly_t* other, ecc_generic_gf_poly_t* result);
+void ecc_generic_gf_poly_add_or_substract(ecc_generic_gf_poly_t* self, ecc_generic_gf_poly_t* other, ecc_generic_gf_poly_t* result);
 
-int32_t ecc_generic_gf_poly_get_degree(ecc_generic_gf_poly_t* this);
+int32_t ecc_generic_gf_poly_get_degree(ecc_generic_gf_poly_t* self);
 
-void ecc_generic_gf_poly_multiply_other(ecc_generic_gf_poly_t* this, ecc_generic_gf_t* field, ecc_generic_gf_poly_t* other, ecc_generic_gf_poly_t* result);
+void ecc_generic_gf_poly_multiply_other(ecc_generic_gf_poly_t* self, ecc_generic_gf_t* field, ecc_generic_gf_poly_t* other, ecc_generic_gf_poly_t* result);
 
 /**
  * @return product of a and b in GF(size)
  */
-int32_t ecc_generic_gf_multiply(ecc_generic_gf_t* this, int32_t a, int32_t b);
+int32_t ecc_generic_gf_multiply(ecc_generic_gf_t* self, int32_t a, int32_t b);
 
 /**
  * @return evaluation of this polynomial at a given point
  */
-int32_t ecc_generic_gf_poly_evaluate_at(ecc_generic_gf_poly_t* this, ecc_generic_gf_t* field, int32_t a);
+int32_t ecc_generic_gf_poly_evaluate_at(ecc_generic_gf_poly_t* self, ecc_generic_gf_t* field, int32_t a);
 
-void ecc_reed_solomon_encoder_free(ecc_reed_solomon_encoder_t* this);
+void ecc_reed_solomon_encoder_free(ecc_reed_solomon_encoder_t* self);
 
-void ecc_reed_solomon_encoder_init(ecc_reed_solomon_encoder_t* this, int32_t primitive, int32_t size, int32_t b);
+void ecc_reed_solomon_encoder_init(ecc_reed_solomon_encoder_t* self, int32_t primitive, int32_t size, int32_t b);
 
-void ecc_reed_solomon_encoder_encode(ecc_reed_solomon_encoder_t* this, int32_t* to_encode, int32_t to_encode_length, int32_t ec_bytes);
+void ecc_reed_solomon_encoder_encode(ecc_reed_solomon_encoder_t* self, int32_t* to_encode, int32_t to_encode_length, int32_t ec_bytes);
 
 /**
  * @return ecc_ERROR_CODES
