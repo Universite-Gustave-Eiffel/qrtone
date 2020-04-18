@@ -1,7 +1,7 @@
 /*
  * BSD 3-Clause License
  *
- * Copyright (c) Unit� Mixte de Recherche en Acoustique Environnementale (univ-gustave-eiffel)
+ * Copyright (c) Unité Mixte de Recherche en Acoustique Environnementale (univ-gustave-eiffel)
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -36,9 +36,18 @@
  * @author Nicolas Fortin @NicolasCumu
  * @date 24/03/2020
  * @brief Api of QRTone library
- * Usage:
- * 1. Declare struct instance of qrtone_t
- * TODO
+ * Usage
+ * Audio to Message:
+ * 1. Declare instance of qrtone_t with qrtone_new
+ * 2. Init with qrtone_init
+ * 3. Get maximal expected window length with qrtone_get_maximum_length
+ * 4. Push window samples with qrtone_push_samples
+ * 5. When qrtone_push_samples return 1 then retrieve payload with qrtone_get_payload and qrtone_get_payload_length
+ * Message to Audio
+ * 1. Declare instance of qrtone_t with qrtone_new
+ * 2. Init with qrtone_init
+ * 3. Set message with qrtone_set_payload or qrtone_set_payload_ext
+ * 4. Retrieve audio samples to send with qrtone_get_samples
  */
 
 #ifndef QRTONE_H
@@ -50,6 +59,13 @@ extern "C" {
 
 #include <stdint.h>
 
+/**
+ * Error correction level parameter
+ *  L ecc level 7% error correction level
+ *  M ecc level 15% error correction level
+ *  Q ecc level 25% error correction level
+ *  H ecc level 30% error correction level
+ */
 enum QRTONE_ECC_LEVEL { QRTONE_ECC_L = 0, QRTONE_ECC_M = 1, QRTONE_ECC_Q = 2, QRTONE_ECC_H = 3};
 
 typedef struct _qrtone_t qrtone_t;
@@ -58,35 +74,99 @@ typedef struct _qrtone_t qrtone_t;
 // INITIALIZATION
 ///////////////////////
 
+/**
+ * Allocation memory for a qrtone_t instance.
+ * @return A pointer to the qrtone structure.
+ */
 qrtone_t* qrtone_new(void);
 
+/**
+ * Initialization of the internal attributes of a qrtone_t instance. Must only be called once.
+ * @param this A pointer to the qrtone structure.
+ * @param sample_rate Sample rate in Hz.
+ */
 void qrtone_init(qrtone_t* this, double sample_rate);
 
+/**
+ * Free allocated memory for a qrtone_t instance.
+ * @param this A pointer to the initialized qrtone structure.
+ */
 void qrtone_free(qrtone_t* this);
 
 ////////////////////////
 // Receive payload
 ////////////////////////
 
+/**
+ * Compute the maximum samples_length to feed with the method `qrtone_push_samples`
+ * @param this A pointer to the initialized qrtone structure.
+ * @return The maximum samples_length to feed with the method `qrtone_push_samples`
+ */
 int32_t qrtone_get_maximum_length(qrtone_t* this);
 
+/**
+ * Process audio samples in order to find payload in tones.
+ * @param this A pointer to the initialized qrtone structure.
+ * @param samples Audio samples array in float. All tests have been done with values between -1 and 1.
+ * @param samples_length Size Audio samples array. The size should be inferior or equal to `qrtone_get_maximum_length`.
+ * @return 1 if a payload has been received, 0 otherwise.
+ */
 int8_t qrtone_push_samples(qrtone_t* this, float* samples, int32_t samples_length);
 
+/**
+ * Fetch stored payload. Call this function only when `qrtone_push_samples` return 1.
+ * @param this A pointer to the initialized qrtone structure.
+ * @return int8_t array of the size provided by `qrtone_get_payload_length`. QRTone is responsible for freeing this array.
+ */
 int8_t* qrtone_get_payload(qrtone_t* this);
 
+/**
+ * Get stored payload length. Call this function only when `qrtone_push_samples` return 1.
+ * @param this A pointer to the initialized qrtone structure.
+ * @return int8_t stored payload length.
+ */
 int32_t qrtone_get_payload_length(qrtone_t* this);
 
+/**
+ * When there is not enough signal/noise ratio, some bytes could be error corrected by Reed-Solomon code.
+ * @param this A pointer to the initialized qrtone structure.
+ * @return Number of fixed
+ */
 int32_t qrtone_get_fixed_errors(qrtone_t* this);
 
 ///////////////////////////
 // Send payload
 ///////////////////////////
 
-void qrtone_get_samples(qrtone_t* this, float* samples, int32_t samples_length, int32_t offset, float power);
-
+/**
+ * Set the message to send. With QRTONE_ECC_Q ECC level and with a CRC code.
+ * @param this A pointer to the initialized qrtone structure.
+ * @param payload Byte array to send.
+ * @param payload Byte array length. Should be less than 255 bytes.
+ * @return The number of audio samples to send.
+ */
 int32_t qrtone_set_payload(qrtone_t* this, int8_t* payload, uint8_t payload_length);
 
+/**
+ * Set the message to send, with additional parameters.
+ * @param this A pointer to the initialized qrtone structure.
+ * @param payload Byte array to send.
+ * @param payload Byte array length. Should be less than 255 bytes.
+ * @param ecc_level Error correction level `QRTONE_ECC_LEVEL`. Error correction level add robustness at the cost of tone length.
+ * @param add_crc If 1 ,add a crc16 code in order to check if the message has not been altered on the receiver side.
+ * @return The number of audio samples to send.
+ */
 int32_t qrtone_set_payload_ext(qrtone_t* this, int8_t* payload, uint8_t payload_length, int8_t ecc_level, int8_t add_crc);
+
+/**
+ * Populate the provided array with audio samples
+ * @param this A pointer to the initialized qrtone structure.
+ * @param samples Pre-allocated array of samples_length length
+ * @param samples_length array length. samples_length + offset should be equal or inferior than the total number of audio samples.
+ * @param offset Cursor of the audio samples. Must be positive.
+ * @param power Amplitude of the audio tones.
+ */
+void qrtone_get_samples(qrtone_t* this, float* samples, int32_t samples_length, int32_t offset, float power);
 
 #ifdef __cplusplus
 }
