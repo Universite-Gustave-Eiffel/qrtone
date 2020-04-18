@@ -52,6 +52,44 @@ static char raw_audio_buffer[AUDIO_CHUNK_SIZE];
 static float scaled_input_buffer[MAX_WINDOW_SIZE];
 
 /**
+ * Display message on Oled Screen
+ * Message use a special format specified by the demo android app:
+ * [field type int8_t][field_length int8_t][field_content int8_t array]
+ * There is currently 2 type of field username(0) and message(1)
+ */
+void process_message(void) {
+  char* user_name = NULL;
+  int user_name_length = 0;
+  char* message = NULL;
+  int message_length = 0;
+  int8_t* data = qrtone_get_payload(qrtone);
+  int32_t data_length = qrtone_get_payload_length(qrtone);
+  int c = 0;
+  while(c < data_length) {
+    if(data[c] == 0) {
+      // username
+      user_name_length = (int32_t)data[c+1];
+      user_name = (char*)&(data[c+2]);
+    } else if(data[c]==1) {
+      message_length = (int32_t)data[c+1];
+      message = (char*)&(data[c+2]);
+    }
+  }
+  if(user_name != NULL && message != NULL) {
+    Screen.clean();
+    // Print username
+    char buf[256];
+    memset(buf, 0, 256);
+    memcpy(buf, user_name, user_name_length);
+    Screen.print(0, buf, false);
+    // Print message
+    memset(buf, 0, 256);
+    memcpy(buf, message, message_length);
+    Screen.print(1, buf, true);    
+  }
+}
+
+/**
  * Called by AudioClass when the audio buffer is full
  */
 void recordCallback(void)
@@ -62,15 +100,27 @@ void recordCallback(void)
   char* end_reader = &raw_audio_buffer[length];
   const int offset = 4; // short samples size + skip right channel
   int sample_index = 0;
+  int max_window_length = qrtone_get_maximum_length(qrtone);
   while(cur_reader < end_reader)
   {
     int16_t sample = *((int16_t *)cur_reader);
     scaled_input_buffer[sample_index++] = (float)sample / 32768.0f;
+    if(sample_index == max_window_length) {
+      // End of max window length
+      if(qrtone_push_samples(qrtone, scaled_input_buffer, sample_index)) {
+        // Got a message
+        process_message();
+        sample_index = 0;
+      }
+      max_window_length = qrtone_get_maximum_length(qrtone);
+    }
     cur_reader += offset;
   }
-  if(qrtone_push_samples(qrtone, scaled_input_buffer, sample_index)) {
-    // Got a message
-    
+  if(sample_index > 0) {
+    if(qrtone_push_samples(qrtone, scaled_input_buffer, sample_index)) {
+      // Got a message
+      process_message();
+    }
   }
 }
 
@@ -78,17 +128,26 @@ void setup(void)
 {
   Screen.init();
   Audio.format(SAMPLE_RATE, SAMPLE_SIZE);
+  // disable automatic level control
+  Audio.setPGAGain(0x1F);
 
   // Allocate struct
   qrtone = qrtone_new();
   
   // Init internal state
   qrtone_init(qrtone, SAMPLE_RATE);
+
+  delay(100);
+  
+  // Start to record audio data
+  Audio.startRecord(recordCallback);
+  
+  printIdleMessage();
 }
 
 void loop(void)
 {
-  printIdleMessage();
+  delay(100);
 }
 
 void printIdleMessage()
