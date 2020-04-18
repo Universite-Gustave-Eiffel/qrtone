@@ -47,6 +47,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "qrtone.h"
+#include "reed_solomon.h"
 #include "math.h"
 
 #define QRTONE_2PI 6.283185307179586
@@ -738,7 +739,37 @@ int64_t qrtone_peak_finder_get_last_peak_index(qrtone_peak_finder_t* this) {
     return this->last_peak_index;
 }
 
-void qrtone_header_init(qrtone_header_t* this, uint8_t length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t crc) {
+qrtone_header_t* qrtone_header_new(void) {
+    return malloc(sizeof(qrtone_header_t));
+}
+
+uint8_t qrtone_header_get_length(qrtone_header_t* this) {
+    return this->length;
+}
+
+int8_t qrtone_header_get_crc(qrtone_header_t* this) {
+    return this->crc;
+}
+
+int8_t qrtone_header_get_ecc_level(qrtone_header_t* this) {
+    return this->ecc_level;
+}
+
+int32_t qrtone_header_get_payload_symbols_size(qrtone_header_t* this) {
+    return this->payload_symbols_size;
+}
+
+int32_t qrtone_header_get_payload_byte_size(qrtone_header_t* this) {
+    return this->payload_byte_size;
+}
+int32_t qrtone_header_get_number_of_blocks(qrtone_header_t* this) {
+    return this->number_of_blocks;
+}
+int32_t qrtone_header_get_number_of_symbols(qrtone_header_t* this) {
+    return this->number_of_symbols;
+}
+
+void qrtone_header_init(qrtone_header_t* this, uint8_t length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t crc, int8_t ecc_level) {
     this->length = length;
     int32_t crc_length = 0;
     if (crc) {
@@ -749,6 +780,7 @@ void qrtone_header_init(qrtone_header_t* this, uint8_t length, int32_t block_sym
     this->number_of_blocks = (int32_t)ceilf((((int32_t)length + crc_length) * 2) / (float)this->payload_symbols_size);
     this->number_of_symbols = this->number_of_blocks * block_ecc_symbols + (length + crc_length) * 2;
     this->crc = crc;
+    this->ecc_level = ecc_level;
 }
 
 void qrtone_header_encode(qrtone_header_t* this, int8_t* data) {
@@ -781,7 +813,7 @@ int8_t qrtone_header_init_from_data(qrtone_header_t* this, int8_t* data) {
     }
     this->ecc_level = data[1] & 0x3;
 
-    qrtone_header_init(this, data[0], ECC_SYMBOLS[this->ecc_level][0], ECC_SYMBOLS[this->ecc_level][1], (int8_t)(data[1] >> 3));
+    qrtone_header_init(this, data[0], ECC_SYMBOLS[this->ecc_level][0], ECC_SYMBOLS[this->ecc_level][1], (int8_t)(data[1] >> 3), this->ecc_level);
     return TRUE;
 }
 
@@ -1073,7 +1105,7 @@ void qrtone_arraycopy_to32bits(int8_t* src, int32_t src_pos, int32_t* dest, int3
 
 void qrtone_payload_to_symbols(qrtone_t* this, int8_t* payload, uint8_t payload_length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t has_crc, int8_t* symbols){
     qrtone_header_t header;
-    qrtone_header_init(&header, payload_length, block_symbols_size, block_ecc_symbols, has_crc);
+    qrtone_header_init(&header, payload_length, block_symbols_size, block_ecc_symbols, has_crc, 0);
     int8_t* payload_bytes;
     if (has_crc) {
         payload_bytes = malloc((size_t)payload_length + CRC_BYTE_LENGTH);
@@ -1118,8 +1150,7 @@ int32_t qrtone_set_payload_ext(qrtone_t* this, int8_t* payload, uint8_t payload_
         return 0;
     }
     qrtone_header_t header;
-    qrtone_header_init(&header, payload_length, ECC_SYMBOLS[ecc_level][0], ECC_SYMBOLS[ecc_level][1], add_crc);
-    header.ecc_level = ecc_level;
+    qrtone_header_init(&header, payload_length, ECC_SYMBOLS[ecc_level][0], ECC_SYMBOLS[ecc_level][1], add_crc, ecc_level);
     if (this->symbols_to_deliver != NULL) {
         free(this->symbols_to_deliver);
         this->symbols_to_deliver = NULL;
@@ -1437,3 +1468,6 @@ int32_t qrtone_get_payload_length(qrtone_t* this) {
 }
 
 
+int32_t qrtone_get_fixed_errors(qrtone_t* this) {
+    return this->fixed_errors;
+}

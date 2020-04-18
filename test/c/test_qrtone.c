@@ -162,23 +162,34 @@ void qrtone_interleave_symbols(int8_t * symbols, int32_t symbols_length, int32_t
 
 void qrtone_deinterleave_symbols(int8_t * symbols, int32_t symbols_length, int32_t block_size);
 
-int32_t qrtone_set_payload(qrtone_t * this, int8_t * payload, uint8_t payload_length);
+void qrtone_generate_pitch(float* samples, int32_t samples_length, int32_t offset, double sample_rate, float frequency, double power_peak);
 
-int32_t qrtone_set_payload_ext(qrtone_t * this, int8_t * payload, uint8_t payload_length, int8_t ecc_level, int8_t add_crc);
+qrtone_header_t* qrtone_header_new(void);
 
-void qrtone_get_samples(qrtone_t * this, float* samples, int32_t samples_length, int32_t offset, float power);
-
-void qrtone_header_init(qrtone_header_t * this, uint8_t length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t crc);
+void qrtone_header_init(qrtone_header_t * this, uint8_t length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t crc, int8_t ecc_level);
 
 void qrtone_header_encode(qrtone_header_t * this, int8_t * data);
 
 int8_t qrtone_header_init_from_data(qrtone_header_t * this, int8_t * data);
 
+uint8_t qrtone_header_get_length(qrtone_header_t* this);
+
+int8_t qrtone_header_get_crc(qrtone_header_t* this);
+
+int8_t qrtone_header_get_ecc_level(qrtone_header_t* this);
+
+int32_t qrtone_header_get_payload_symbols_size(qrtone_header_t* this);
+
+int32_t qrtone_header_get_payload_byte_size(qrtone_header_t* this);
+
+int32_t qrtone_header_get_number_of_blocks(qrtone_header_t* this);
+
+int32_t qrtone_header_get_number_of_symbols(qrtone_header_t* this);
+
 int8_t* qrtone_symbols_to_payload(qrtone_t * this, int8_t * symbols, int32_t symbols_length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t has_crc);
 
 void qrtone_payload_to_symbols(qrtone_t * this, int8_t * payload, uint8_t payload_length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t has_crc, int8_t * symbols);
 
-void qrtone_generate_pitch(float* samples, int32_t samples_length, int32_t offset, double sample_rate, float frequency, double power_peak);
 
 MU_TEST(testCRC8) {
 	int8_t data[] = { 0x0A, 0x0F, 0x08, 0x01, 0x05, 0x0B, 0x03 };
@@ -514,7 +525,6 @@ MU_TEST(testGenerate) {
 	int32_t total_length = offset_before + samples_length + offset_before;
 
 	int32_t cursor = 0;
-	int32_t i;
 	qrtone_t* qrtone_decoder = qrtone_new();
 	qrtone_init(qrtone_decoder, sample_rate);
 	while (cursor < total_length) {
@@ -527,6 +537,7 @@ MU_TEST(testGenerate) {
 		}
 		// add noise
 		qrtone_generate_pitch(window, window_size, cursor, sample_rate, 125.0f, noise_peak);
+		int32_t i;
 		for(i=0; i < window_size; i++) {
 			if(writeFile) {
 				int16_t sample = (int16_t)(window[i] * 32768);
@@ -556,20 +567,22 @@ MU_TEST(testGenerate) {
 }
 
 MU_TEST(testHeaderEncodeDecode) {
-	qrtone_header_t header;
-	qrtone_header_init(&header, sizeof(IPFS_PAYLOAD), 14, 2, 1);
-	header.ecc_level = 0;
+	qrtone_header_t* header = qrtone_header_new();
+	qrtone_header_init(header, sizeof(IPFS_PAYLOAD), 14, 2, 1, 0);
 
 	int8_t headerdata[3];
-	qrtone_header_encode(&header, headerdata);
+	qrtone_header_encode(header, headerdata);
 
-	qrtone_header_t decoded_header;
-	qrtone_header_init_from_data(&decoded_header, headerdata);
+	qrtone_header_t* decoded_header = qrtone_header_new();
+	qrtone_header_init_from_data(decoded_header, headerdata);
 
-	mu_assert_int_eq(header.length, decoded_header.length);
-	mu_assert_int_eq(header.ecc_level, decoded_header.ecc_level);
-	mu_assert_int_eq(header.crc, decoded_header.crc);
-	mu_assert_int_eq(header.number_of_blocks, decoded_header.number_of_blocks);
+	mu_assert_int_eq(qrtone_header_get_length(header), qrtone_header_get_length(decoded_header));
+	mu_assert_int_eq(qrtone_header_get_ecc_level(header), qrtone_header_get_ecc_level(decoded_header));
+	mu_assert_int_eq(qrtone_header_get_crc(header), qrtone_header_get_crc(decoded_header));
+	mu_assert_int_eq(qrtone_header_get_number_of_blocks(header), qrtone_header_get_number_of_blocks(decoded_header));
+
+	free(header);
+	free(decoded_header);
 }
 
 
@@ -581,9 +594,9 @@ MU_TEST(testWriteSignal) {
 		exit(1);
 	}
 
-	qrtone_t qrtone;
+	qrtone_t* qrtone = qrtone_new();
 	double sample_rate = 44100;
-	qrtone_init(&qrtone, sample_rate);
+	qrtone_init(qrtone, sample_rate);
 
 	float power_peak = powf(10.0f, -16.0f / 20.0f);
 
@@ -592,13 +605,13 @@ MU_TEST(testWriteSignal) {
 
 	int8_t payload[] = {0x00, 0x04, 'n', 'i' , 'c' , 'o', 0x01, 0x05, 'h', 'e', 'l', 'l', 'o' };
 
-	int32_t samples_length = blankBefore + blankAfter + qrtone_set_payload(&qrtone, payload, sizeof(payload));
+	int32_t samples_length = blankBefore + blankAfter + qrtone_set_payload(qrtone, payload, sizeof(payload));
 
 	float* samples = malloc(sizeof(float) * samples_length);
 
 	memset(samples, 0, sizeof(float) * samples_length);
 
-	qrtone_get_samples(&qrtone, samples + blankBefore, samples_length, 0, power_peak);
+	qrtone_get_samples(qrtone, samples + blankBefore, samples_length, 0, power_peak);
 
 
 	// Write signal
@@ -609,17 +622,19 @@ MU_TEST(testWriteSignal) {
 		fwrite(&sample, sizeof(int16_t), 1, f);
 	}
 
-	qrtone_free(&qrtone);
+	qrtone_free(qrtone);
 	free(samples);
 
 	fclose(f);
+
+	free(qrtone);
 }
 
 
 MU_TEST(testSymbolsEncodingDecoding) {
-	qrtone_t qrtone;
+	qrtone_t* qrtone = qrtone_new();
 	double sample_rate = 44100;
-	qrtone_init(&qrtone, sample_rate);
+	qrtone_init(qrtone, sample_rate);
 
 	int8_t payload[] = { 0x00, 0x04, 'n', 'i' , 'c' , 'o', 0x01, 0x05, 'h', 'e', 'l', 'l', 'o' };
 	int8_t expected_symbols[] = { 0, 0, 6, 0, 1, 15, 0, 0, 8, 4, 5, 12, 6, 6, 13, 14, 8, 0, 6, 6, 6, 9, 5, 14, 6, 6, 3, 12, 6, 6, 15, 12, 2, 9, 6, 7 };;
@@ -627,75 +642,78 @@ MU_TEST(testSymbolsEncodingDecoding) {
 	int32_t block_symbols_size = 14;
 	int32_t block_ecc_symbols = 2;
 
-	qrtone_header_t header;
-	qrtone_header_init(&header, sizeof(payload), block_symbols_size, block_ecc_symbols, 1);
-	header.ecc_level = 0;
+	qrtone_header_t* header = qrtone_header_new();
+	qrtone_header_init(header, sizeof(payload), block_symbols_size, block_ecc_symbols, 1, 0);
 
 	int8_t headerdata[3];
-	qrtone_header_encode(&header, headerdata);
+	qrtone_header_encode(header, headerdata);
 
-	int8_t* symbols = malloc(header.number_of_symbols);
+	int8_t* symbols = malloc(qrtone_header_get_number_of_symbols(header));
 
-	qrtone_payload_to_symbols(&qrtone, payload, sizeof(payload), block_symbols_size, block_ecc_symbols, header.crc, symbols);
+	qrtone_payload_to_symbols(qrtone, payload, sizeof(payload), block_symbols_size, block_ecc_symbols, qrtone_header_get_crc(header), symbols);
 
-	mu_assert_int_array_eq(expected_symbols, header.number_of_symbols, symbols, header.number_of_symbols);
+	mu_assert_int_array_eq(expected_symbols, sizeof(expected_symbols), symbols, qrtone_header_get_number_of_symbols(header));
 
 	// revert back to payload
 
-	int8_t* decoded_payload = qrtone_symbols_to_payload(&qrtone, symbols, header.number_of_symbols, block_symbols_size, block_ecc_symbols, header.crc);
+	int8_t* decoded_payload = qrtone_symbols_to_payload(qrtone, symbols, qrtone_header_get_number_of_symbols(header), block_symbols_size, block_ecc_symbols, qrtone_header_get_crc(header));
 
 	mu_assert(decoded_payload != NULL, "CRC Failed");
 
-	mu_assert_int_eq(0, qrtone.fixed_errors);
+	mu_assert_int_eq(0, qrtone_get_fixed_errors(qrtone));
 
-	mu_assert_int_array_eq(payload, header.length, decoded_payload, header.length);
+	mu_assert_int_array_eq(payload, sizeof(payload), decoded_payload, qrtone_header_get_length(header));
 
 	free(symbols);
 	free(decoded_payload);
-	qrtone_free(&qrtone);
+	qrtone_free(qrtone);
+	free(qrtone);
+	free(header);
 }
 
 
 MU_TEST(testSymbolsEncodingDecodingWithError) {
-	qrtone_t qrtone;
+	qrtone_t* qrtone = qrtone_new();
 	double sample_rate = 44100;
-	qrtone_init(&qrtone, sample_rate);
+	qrtone_init(qrtone, sample_rate);
 
 	int8_t payload[] = { 0x00, 0x04, 'n', 'i' , 'c' , 'o', 0x01, 0x05, 'h', 'e', 'l', 'l', 'o' };
-	int8_t expected_symbols[] = { 0, 0, 6, 0, 1, 15, 0, 0, 8, 4, 5, 12, 6, 6, 13, 14, 8, 0, 6, 6, 6, 9, 5, 14, 6, 6, 3, 12, 6, 6, 15, 12, 2, 9, 6, 7 };;
+	int8_t expected_symbols[] = { 0, 0, 6, 0, 1, 15, 0, 0, 8, 4, 5, 12, 6, 6, 13, 14, 8, 0, 6, 6, 6, 9, 5, 14, 6, 6, 3, 12, 6, 6, 15, 12, 2, 9, 6, 7 };
 
 	int32_t block_symbols_size = 14;
 	int32_t block_ecc_symbols = 2;
 
-	qrtone_header_t header;
-	qrtone_header_init(&header, sizeof(payload), block_symbols_size, block_ecc_symbols, 1);
-	header.ecc_level = 0;
+	qrtone_header_t* header = qrtone_header_new();
+	qrtone_header_init(header, sizeof(payload), block_symbols_size, block_ecc_symbols, 1, 0);
 
 	int8_t headerdata[3];
-	qrtone_header_encode(&header, headerdata);
+	qrtone_header_encode(header, headerdata);
 
-	int8_t* symbols = malloc(header.number_of_symbols);
+	int8_t* symbols = malloc(qrtone_header_get_number_of_symbols(header));
 
-	qrtone_payload_to_symbols(&qrtone, payload, sizeof(payload), block_symbols_size, block_ecc_symbols, header.crc, symbols);
+	qrtone_payload_to_symbols(qrtone, payload, sizeof(payload), block_symbols_size, block_ecc_symbols, qrtone_header_get_crc(header), symbols);
 
-	mu_assert_int_array_eq(expected_symbols, header.number_of_symbols, symbols, header.number_of_symbols);
+	mu_assert_int_array_eq(expected_symbols, sizeof(expected_symbols), symbols, qrtone_header_get_number_of_symbols(header));
 
 	// Insert error
 	symbols[5] = MAX(0, MIN(15, ~symbols[5]));
 
 	// revert back to payload
 
-	int8_t* decoded_payload = qrtone_symbols_to_payload(&qrtone, symbols, header.number_of_symbols, block_symbols_size, block_ecc_symbols, header.crc);
+	int8_t* decoded_payload = qrtone_symbols_to_payload(qrtone, symbols, qrtone_header_get_number_of_symbols(header), block_symbols_size, block_ecc_symbols, qrtone_header_get_crc(header));
 
 	mu_assert(decoded_payload != NULL, "CRC Failed");
 
-	mu_assert_int_eq(1, qrtone.fixed_errors);
+	mu_assert_int_eq(1, qrtone_get_fixed_errors(qrtone));
 
-	mu_assert_int_array_eq(payload, header.length, decoded_payload, header.length);
+	mu_assert_int_array_eq(payload, sizeof(payload), decoded_payload, qrtone_header_get_length(header));
 
 	free(symbols);
 	free(decoded_payload);
-	qrtone_free(&qrtone);
+	qrtone_free(qrtone);
+
+	free(qrtone);
+	free(header);
 }
 
 MU_TEST_SUITE(test_suite) {

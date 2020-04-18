@@ -49,11 +49,14 @@ extern "C" {
 #endif
 
 #include <stdint.h>
-#include "reed_solomon.h"
 
 enum QRTONE_ECC_LEVEL { QRTONE_ECC_L = 0, QRTONE_ECC_M = 1, QRTONE_ECC_Q = 2, QRTONE_ECC_H = 3};
 
 typedef struct _qrtone_t qrtone_t;
+
+///////////////////////
+// INITIALIZATION
+///////////////////////
 
 qrtone_t* qrtone_new(void);
 
@@ -61,13 +64,29 @@ void qrtone_init(qrtone_t* this, double sample_rate);
 
 void qrtone_free(qrtone_t* this);
 
-int8_t qrtone_push_samples(qrtone_t* this, float* samples, int32_t samples_length);
+////////////////////////
+// Receive payload
+////////////////////////
 
 int32_t qrtone_get_maximum_length(qrtone_t* this);
+
+int8_t qrtone_push_samples(qrtone_t* this, float* samples, int32_t samples_length);
 
 int8_t* qrtone_get_payload(qrtone_t* this);
 
 int32_t qrtone_get_payload_length(qrtone_t* this);
+
+int32_t qrtone_get_fixed_errors(qrtone_t* this);
+
+///////////////////////////
+// Send payload
+///////////////////////////
+
+void qrtone_get_samples(qrtone_t* this, float* samples, int32_t samples_length, int32_t offset, float power);
+
+int32_t qrtone_set_payload(qrtone_t* this, int8_t* payload, uint8_t payload_length);
+
+int32_t qrtone_set_payload_ext(qrtone_t* this, int8_t* payload, uint8_t payload_length, int8_t ecc_level, int8_t add_crc);
 
 #ifdef __cplusplus
 }
