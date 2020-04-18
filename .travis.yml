@@ -1,7 +1,35 @@
-language: java
-jdk:
-  - openjdk8
+language: c
+matrix:
+  include:
+    # works on Precise and Trusty
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-4.9
+      env:
+         - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
+    - os: osx
+      osx_image: xcode8
+      env:
+        - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
 
-cache:
-  directories:
-    - $HOME/.m2
+before_install:
+  - eval "${MATRIX_EVAL}"
+  - if [ $TRAVIS_OS_NAME == "linux" ]; then
+      export CC="gcc-4.9";
+      export CXX="g++-4.9";
+      export LINK="gcc-4.9";
+      export LINKXX="g++-4.9";
+    fi
+        
+script:
+    - mkdir build
+    - cd build
+    - cmake ..
+    - make
+    - make test CTEST_OUTPUT_ON_FAILURE=TRUE
+    - cd ..
+    - mvn install

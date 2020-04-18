@@ -56,6 +56,10 @@
 
 #define QRTONE_FLOAT_EPSILON 0.000001
 
+#ifndef M_PI
+#define M_PI 3.1415926535897932385
+#endif
+
 #define SAMPLES 2205
 
 // sunspot data
@@ -70,28 +74,149 @@ static const double values[] = { 11.0,16.0,23.0,36.0,58.0,29.0,20.0,10.0,8.0,3.0
 // payload = map(lambda v : s(v)[0], base58.b58decode("QmXjkFQjnD8i8ntmwehoAHBfJEApETx8ebScyVzAHqgjpD"))
 int8_t IPFS_PAYLOAD[] = { 18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36, -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114 };
 
+typedef struct _qrtone_crc8_t qrtone_crc8_t;
+
+typedef struct _qrtone_crc16_t qrtone_crc16_t;
+
+typedef struct _qrtone_goertzel_t qrtone_goertzel_t;
+
+typedef struct _qrtone_percentile_t qrtone_percentile_t;
+
+typedef struct _qrtone_array_t qrtone_array_t;
+
+typedef struct _qrtone_peak_finder_t qrtone_peak_finder_t;
+
+typedef struct _qrtone_header_t qrtone_header_t;
+
+typedef struct _qrtone_trigger_analyzer_t qrtone_trigger_analyzer_t;
+
+qrtone_crc8_t* qrtone_crc8_new(void);
+
+void qrtone_crc8_init(qrtone_crc8_t * this);
+
+void qrtone_crc8_add(qrtone_crc8_t * this, const int8_t data);
+
+uint8_t qrtone_crc8_get(qrtone_crc8_t * this);
+
+void qrtone_crc8_add_array(qrtone_crc8_t * this, const int8_t * data, const int32_t data_length);
+
+qrtone_crc16_t* qrtone_crc16_new(void);
+
+void qrtone_crc16_init(qrtone_crc16_t * this);
+
+void qrtone_crc16_add_array(qrtone_crc16_t * this, const int8_t * data, const int32_t data_length);
+
+int32_t qrtone_crc16_get(qrtone_crc16_t * this);
+
+qrtone_goertzel_t* qrtone_goertzel_new(void);
+
+void qrtone_goertzel_reset(qrtone_goertzel_t * this);
+
+void qrtone_goertzel_init(qrtone_goertzel_t * this, double sample_rate, double frequency, int32_t window_size);
+
+void qrtone_goertzel_process_samples(qrtone_goertzel_t * this, float* samples, int32_t samples_len);
+
+double qrtone_goertzel_compute_rms(qrtone_goertzel_t * this);
+
+qrtone_percentile_t* qrtone_percentile_new(void);
+
+void qrtone_percentile_free(qrtone_percentile_t * this);
+
+double qrtone_percentile_result(qrtone_percentile_t * this);
+
+void qrtone_percentile_add(qrtone_percentile_t * this, double data);
+
+void qrtone_percentile_init_quantile(qrtone_percentile_t * this, double quant);
+
+qrtone_array_t* qrtone_array_new(void);
+
+float qrtone_array_last(qrtone_array_t * this);
+
+int32_t qrtone_array_size(qrtone_array_t * this);
+
+void qrtone_array_clear(qrtone_array_t * this);
+
+float qrtone_array_get(qrtone_array_t * this, int32_t index);
+
+void qrtone_array_init(qrtone_array_t * this, int32_t length);
+
+void qrtone_array_free(qrtone_array_t * this);
+
+void qrtone_array_add(qrtone_array_t * this, float value);
+
+void qrtone_peak_finder_init(qrtone_peak_finder_t * this, int32_t min_increase_count, int32_t min_decrease_count);
+
+qrtone_peak_finder_t* qrtone_peak_finder_new(void);
+
+int64_t qrtone_peak_finder_get_last_peak_index(qrtone_peak_finder_t * this);
+
+int8_t qrtone_peak_finder_add(qrtone_peak_finder_t * this, int64_t index, float value);
+
+void qrtone_hann_window(float* signal, int32_t signal_length, int32_t window_length, int32_t offset);
+
+int64_t qrtone_find_peak_location(double p0, double p1, double p2, int64_t p1_location, int32_t window_length);
+
+void qrtone_quadratic_interpolation(double p0, double p1, double p2, double* location, double* height, double* half_curvature);
+
+void qrtone_interleave_symbols(int8_t * symbols, int32_t symbols_length, int32_t block_size);
+
+void qrtone_deinterleave_symbols(int8_t * symbols, int32_t symbols_length, int32_t block_size);
+
+void qrtone_generate_pitch(float* samples, int32_t samples_length, int32_t offset, double sample_rate, float frequency, double power_peak);
+
+qrtone_header_t* qrtone_header_new(void);
+
+void qrtone_header_init(qrtone_header_t * this, uint8_t length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t crc, int8_t ecc_level);
+
+void qrtone_header_encode(qrtone_header_t * this, int8_t * data);
+
+int8_t qrtone_header_init_from_data(qrtone_header_t * this, int8_t * data);
+
+uint8_t qrtone_header_get_length(qrtone_header_t* this);
+
+int8_t qrtone_header_get_crc(qrtone_header_t* this);
+
+int8_t qrtone_header_get_ecc_level(qrtone_header_t* this);
+
+int32_t qrtone_header_get_payload_symbols_size(qrtone_header_t* this);
+
+int32_t qrtone_header_get_payload_byte_size(qrtone_header_t* this);
+
+int32_t qrtone_header_get_number_of_blocks(qrtone_header_t* this);
+
+int32_t qrtone_header_get_number_of_symbols(qrtone_header_t* this);
+
+int8_t* qrtone_symbols_to_payload(qrtone_t * this, int8_t * symbols, int32_t symbols_length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t has_crc);
+
+void qrtone_payload_to_symbols(qrtone_t * this, int8_t * payload, uint8_t payload_length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t has_crc, int8_t * symbols);
+
+
 MU_TEST(testCRC8) {
 	int8_t data[] = { 0x0A, 0x0F, 0x08, 0x01, 0x05, 0x0B, 0x03 };
 
-	qrtone_crc8_t crc;
+	qrtone_crc8_t* crc = qrtone_crc8_new();
 
-	qrtone_crc8_init(&crc);
+	qrtone_crc8_init(crc);
 
-	qrtone_crc8_add_array(&crc, data, sizeof(data));
+	qrtone_crc8_add_array(crc, data, sizeof(data));
 
-	mu_assert_int_eq(0xEA, qrtone_crc8_get(&crc));
+	mu_assert_int_eq(0xEA, qrtone_crc8_get(crc));
+
+	free(crc);
 }
 
 MU_TEST(testCRC16) {
 	int8_t data[] = { 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J' };
 
-	qrtone_crc16_t crc;
+	qrtone_crc16_t* crc = qrtone_crc16_new();
 
-	qrtone_crc16_init(&crc);
+	qrtone_crc16_init(crc);
 
-	qrtone_crc16_add_array(&crc, data, sizeof(data));
+	qrtone_crc16_add_array(crc, data, sizeof(data));
 
-	mu_assert_int_eq(0x0C9E, crc.crc16);
+	mu_assert_int_eq(0x0C9E, qrtone_crc16_get(crc));
+
+	free(crc);
 }
 
 MU_TEST(test1khz) {
@@ -107,15 +232,17 @@ MU_TEST(test1khz) {
 		audio[s] = (float)(sin(2 * M_PI * signal_frequency * t) * (powerPeak));
 	}
 
-	qrtone_goertzel_t goertzel;
+	qrtone_goertzel_t* goertzel = qrtone_goertzel_new();
 
-	qrtone_goertzel_init(&goertzel, sample_rate, signal_frequency, SAMPLES);
+	qrtone_goertzel_init(goertzel, sample_rate, signal_frequency, SAMPLES);
 
-	qrtone_goertzel_process_samples(&goertzel, audio, SAMPLES);
+	qrtone_goertzel_process_samples(goertzel, audio, SAMPLES);
 
-	double signal_rms = qrtone_goertzel_compute_rms(&goertzel);
+	double signal_rms = qrtone_goertzel_compute_rms(goertzel);
 
-	mu_assert_double_eq(20 * log10(powerRMS), 20*log10(signal_rms), 0.01);
+	mu_assert_double_eq(20 * log10(powerRMS), 20 * log10(signal_rms), 0.01);
+
+	free(goertzel);
 }
 
 MU_TEST(test1khzIterative) {
@@ -131,81 +258,87 @@ MU_TEST(test1khzIterative) {
 		audio[s] = (float)(sin(2 * M_PI * signal_frequency * t) * (powerPeak));
 	}
 
-	qrtone_goertzel_t goertzel;
+	qrtone_goertzel_t* goertzel = qrtone_goertzel_new();
 
-	qrtone_goertzel_init(&goertzel, sample_rate, signal_frequency, SAMPLES);
+	qrtone_goertzel_init(goertzel, sample_rate, signal_frequency, SAMPLES);
 
 	int32_t cursor = 0;
 
 	while (cursor < SAMPLES) {
-		int32_t window_size = min((rand() % 115) + 20, SAMPLES - cursor);
-		qrtone_goertzel_process_samples(&goertzel, audio + cursor, window_size);
+		int32_t window_size = MIN((rand() % 115) + 20, SAMPLES - cursor);
+		qrtone_goertzel_process_samples(goertzel, audio + cursor, window_size);
 		cursor += window_size;
 	}
 
-	double signal_rms = qrtone_goertzel_compute_rms(&goertzel);
+	double signal_rms = qrtone_goertzel_compute_rms(goertzel);
 
 	mu_assert_double_eq(20 * log10(powerRMS), 20 * log10(signal_rms), 0.01);
+
+	free(goertzel);
 }
 
 
 MU_TEST(testPercentile) {
-	qrtone_percentile_t percentile;
+	qrtone_percentile_t* percentile = qrtone_percentile_new();
 
-	qrtone_percentile_init_quantile(&percentile, 0.5);
+	qrtone_percentile_init_quantile(percentile, 0.5);
 	int32_t i;
 	for (i = 0; i < sizeof(years) / sizeof(int32_t); i++) {
-		qrtone_percentile_add(&percentile, values[i]);
+		qrtone_percentile_add(percentile, values[i]);
 	}
 
-	mu_assert_double_eq(41.360847658017306, qrtone_percentile_result(&percentile), 0.0000001);
+	mu_assert_double_eq(41.360847658017306, qrtone_percentile_result(percentile), 0.0000001);
 
-	qrtone_percentile_free(&percentile);
+	qrtone_percentile_free(percentile);
+
+	free(percentile);
 }
 
 
 MU_TEST(testCircularArray) {
-	qrtone_array_t a;
+	qrtone_array_t* a = qrtone_array_new();
 
-	qrtone_array_init(&a, 5);
-	mu_assert_int_eq(0, qrtone_array_size(&a));
-	qrtone_array_add(&a, 0.5f);
-	mu_assert_int_eq(1, qrtone_array_size(&a));
-	mu_assert_double_eq(0.5f, qrtone_array_get(&a, 0), QRTONE_FLOAT_EPSILON);
-	qrtone_array_add(&a, 0.1f);	
-	mu_assert_int_eq(2, qrtone_array_size(&a));
-	mu_assert_double_eq(0.5f, qrtone_array_get(&a, 0), QRTONE_FLOAT_EPSILON);
-	mu_assert_double_eq(0.1f, qrtone_array_get(&a, 1), QRTONE_FLOAT_EPSILON);
-	mu_assert_double_eq(0.1f, qrtone_array_last(&a), QRTONE_FLOAT_EPSILON);
-	qrtone_array_add(&a, 0.2f);
-	mu_assert_int_eq(3, qrtone_array_size(&a));
-	qrtone_array_add(&a, 0.3f);
-	mu_assert_int_eq(4, qrtone_array_size(&a));
-	qrtone_array_add(&a, 0.5f);
-	mu_assert_int_eq(5, qrtone_array_size(&a));
-	qrtone_array_add(&a, 0.9f);
-	mu_assert_int_eq(5, qrtone_array_size(&a));
-	qrtone_array_add(&a, 1.0f);
-	mu_assert_int_eq(5, qrtone_array_size(&a));
-	mu_assert_double_eq(1.0f, qrtone_array_last(&a), QRTONE_FLOAT_EPSILON);
-	mu_assert_double_eq(1.0f, qrtone_array_get(&a, 4), QRTONE_FLOAT_EPSILON);
-	mu_assert_double_eq(0.9f, qrtone_array_get(&a, 3), QRTONE_FLOAT_EPSILON);
-	mu_assert_double_eq(0.5f, qrtone_array_get(&a, 2), QRTONE_FLOAT_EPSILON);
-	mu_assert_double_eq(0.3f, qrtone_array_get(&a, 1), QRTONE_FLOAT_EPSILON);
-	mu_assert_double_eq(0.2f, qrtone_array_get(&a, 0), QRTONE_FLOAT_EPSILON);
+	qrtone_array_init(a, 5);
+	mu_assert_int_eq(0, qrtone_array_size(a));
+	qrtone_array_add(a, 0.5f);
+	mu_assert_int_eq(1, qrtone_array_size(a));
+	mu_assert_double_eq(0.5f, qrtone_array_get(a, 0), QRTONE_FLOAT_EPSILON);
+	qrtone_array_add(a, 0.1f);	
+	mu_assert_int_eq(2, qrtone_array_size(a));
+	mu_assert_double_eq(0.5f, qrtone_array_get(a, 0), QRTONE_FLOAT_EPSILON);
+	mu_assert_double_eq(0.1f, qrtone_array_get(a, 1), QRTONE_FLOAT_EPSILON);
+	mu_assert_double_eq(0.1f, qrtone_array_last(a), QRTONE_FLOAT_EPSILON);
+	qrtone_array_add(a, 0.2f);
+	mu_assert_int_eq(3, qrtone_array_size(a));
+	qrtone_array_add(a, 0.3f);
+	mu_assert_int_eq(4, qrtone_array_size(a));
+	qrtone_array_add(a, 0.5f);
+	mu_assert_int_eq(5, qrtone_array_size(a));
+	qrtone_array_add(a, 0.9f);
+	mu_assert_int_eq(5, qrtone_array_size(a));
+	qrtone_array_add(a, 1.0f);
+	mu_assert_int_eq(5, qrtone_array_size(a));
+	mu_assert_double_eq(1.0f, qrtone_array_last(a), QRTONE_FLOAT_EPSILON);
+	mu_assert_double_eq(1.0f, qrtone_array_get(a, 4), QRTONE_FLOAT_EPSILON);
+	mu_assert_double_eq(0.9f, qrtone_array_get(a, 3), QRTONE_FLOAT_EPSILON);
+	mu_assert_double_eq(0.5f, qrtone_array_get(a, 2), QRTONE_FLOAT_EPSILON);
+	mu_assert_double_eq(0.3f, qrtone_array_get(a, 1), QRTONE_FLOAT_EPSILON);
+	mu_assert_double_eq(0.2f, qrtone_array_get(a, 0), QRTONE_FLOAT_EPSILON);
 
-	qrtone_array_clear(&a);
-	mu_assert_int_eq(0, qrtone_array_size(&a));
-	qrtone_array_add(&a, 0.5f);
-	mu_assert_int_eq(1, qrtone_array_size(&a));
-	qrtone_array_free(&a);
+	qrtone_array_clear(a);
+	mu_assert_int_eq(0, qrtone_array_size(a));
+	qrtone_array_add(a, 0.5f);
+	mu_assert_int_eq(1, qrtone_array_size(a));
+	qrtone_array_free(a);
+
+	free(a);
 }
 
 
 MU_TEST(testPeakFinder1) {
-	qrtone_peak_finder_t p;
+	qrtone_peak_finder_t* p = qrtone_peak_finder_new();
 
-	qrtone_peak_finder_init(&p);
+	qrtone_peak_finder_init(p, -1, -1);
 
 	int32_t i;
 
@@ -213,23 +346,23 @@ MU_TEST(testPeakFinder1) {
 
 	int32_t cursor = 0;
 	for (i = 0; i < sizeof(years) / sizeof(int32_t); i++) {
-		if (qrtone_peak_finder_add(&p, (int64_t)i + 1, (float)values[i])) {
-			mu_assert_int_eq(expected[cursor++], (int32_t)p.last_peak_index);
+		if (qrtone_peak_finder_add(p, (int64_t)i + 1, (float)values[i])) {
+			mu_assert_int_eq(expected[cursor++], (int32_t)qrtone_peak_finder_get_last_peak_index(p));
 		}
 	}
 
 	mu_assert_int_eq(cursor, sizeof(expected) / sizeof(int32_t));
+
+	free(p);
 }
 
 
 
 
 MU_TEST(findPeaksIncreaseCondition) {
-	qrtone_peak_finder_t p;
+	qrtone_peak_finder_t* p = qrtone_peak_finder_new();
 
-	qrtone_peak_finder_init(&p);
-
-	p.min_increase_count = 3;
+	qrtone_peak_finder_init(p, 3, -1);
 
 	int32_t i;
 
@@ -239,23 +372,23 @@ MU_TEST(findPeaksIncreaseCondition) {
 
 	int32_t cursor = 0;
 	for (i = 0; i < sizeof(testVals) / sizeof(double); i++) {
-		if (qrtone_peak_finder_add(&p, i, (float)testVals[i])) {
-			mu_assert_int_eq(expected[cursor++], (int32_t)p.last_peak_index);
+		if (qrtone_peak_finder_add(p, i, (float)testVals[i])) {
+			mu_assert_int_eq(expected[cursor++], (int32_t)qrtone_peak_finder_get_last_peak_index(p));
 		}
 	}
 
 	mu_assert_int_eq(cursor, sizeof(expected) / sizeof(int32_t));
+
+	free(p);
 }
 
 
 
 
 MU_TEST(findPeaksDecreaseCondition) {
-	qrtone_peak_finder_t p;
+	qrtone_peak_finder_t* p = qrtone_peak_finder_new();
 
-	qrtone_peak_finder_init(&p);
-
-	p.min_decrease_count = 2;
+	qrtone_peak_finder_init(p, -1, 2);
 
 	int32_t i;
 
@@ -265,12 +398,14 @@ MU_TEST(findPeaksDecreaseCondition) {
 
 	int32_t cursor = 0;
 	for (i = 0; i < sizeof(testVals) / sizeof(double); i++) {
-		if (qrtone_peak_finder_add(&p, i , (float)testVals[i])) {
-			mu_assert_int_eq(expected[cursor++], (int32_t)p.last_peak_index);
+		if (qrtone_peak_finder_add(p, i , (float)testVals[i])) {
+			mu_assert_int_eq(expected[cursor++], (int32_t)qrtone_peak_finder_get_last_peak_index(p));
 		}
 	}
 
 	mu_assert_int_eq(cursor, sizeof(expected) / sizeof(int32_t));
+
+	free(p);
 }
 
 MU_TEST(testHannWindow) {
@@ -376,40 +511,40 @@ MU_TEST(testGenerate) {
 	if(writeFile) {
 		f = fopen("inputsignal_44100_16bitsPCM.raw", "wb");
 	}
-	qrtone_t qrtone;
+	qrtone_t* qrtone = qrtone_new();
 	double sample_rate = 44100;
-	qrtone_init(&qrtone, sample_rate);
+	qrtone_init(qrtone, sample_rate);
 	double powerRMS = pow(10.0, -26.0 / 20.0);
 	double powerPeak = powerRMS * sqrt(2);
 	double noise_peak = pow(10.0, -50.0 / 20.0);
 
-	int32_t samples_length = qrtone_set_payload(&qrtone, IPFS_PAYLOAD, sizeof(IPFS_PAYLOAD));
+	int32_t samples_length = qrtone_set_payload(qrtone, IPFS_PAYLOAD, sizeof(IPFS_PAYLOAD));
 
 	int32_t offset_before = (int32_t)(sample_rate * 0.35);
 
 	int32_t total_length = offset_before + samples_length + offset_before;
 
 	int32_t cursor = 0;
-	int32_t i;
-	qrtone_t qrtone_decoder;
-	qrtone_init(&qrtone_decoder, sample_rate);
+	qrtone_t* qrtone_decoder = qrtone_new();
+	qrtone_init(qrtone_decoder, sample_rate);
 	while (cursor < total_length) {
-		int32_t window_size = min(qrtone_get_maximum_length(&qrtone_decoder), total_length - cursor); //min(qrtone_get_maximum_length(&qrtone), min((rand() % 115) + 20, total_length - cursor));
+		int32_t window_size = MIN(qrtone_get_maximum_length(qrtone_decoder), total_length - cursor);
 		float* window = malloc(sizeof(float) * window_size);
 		memset(window, 0, sizeof(float) * window_size);
 		// add audio samples
 		if(cursor + window_size > offset_before && cursor < samples_length - offset_before) {
-			qrtone_get_samples(&qrtone, window + max(0, offset_before - cursor), window_size - max(0, offset_before - cursor), max(0, cursor - offset_before), powerPeak);
+			qrtone_get_samples(qrtone, window + MAX(0, offset_before - cursor), window_size - MAX(0, offset_before - cursor), MAX(0, cursor - offset_before), (float_t)powerPeak);
 		}
 		// add noise
 		qrtone_generate_pitch(window, window_size, cursor, sample_rate, 125.0f, noise_peak);
+		int32_t i;
 		for(i=0; i < window_size; i++) {
 			if(writeFile) {
 				int16_t sample = (int16_t)(window[i] * 32768);
 				fwrite(&sample, sizeof(int16_t), 1, f);
 			}
 		}
-		if(qrtone_push_samples(&qrtone_decoder, window, window_size)) {
+		if(qrtone_push_samples(qrtone_decoder, window, window_size)) {
 			// Got data
 			free(window);
 			break;
@@ -420,30 +555,34 @@ MU_TEST(testGenerate) {
 	if(writeFile) {
 		fclose(f);
 	}
-	mu_assert(qrtone_decoder.payload != NULL, "no decoded message");
-	if(qrtone_decoder.payload != NULL) {
-		mu_assert_int_array_eq(IPFS_PAYLOAD, sizeof(IPFS_PAYLOAD), qrtone_decoder.payload, qrtone_decoder.payload_length);
+	mu_assert(qrtone_get_payload(qrtone_decoder) != NULL, "no decoded message");
+	if(qrtone_get_payload(qrtone_decoder) != NULL) {
+		mu_assert_int_array_eq(IPFS_PAYLOAD, sizeof(IPFS_PAYLOAD), qrtone_get_payload(qrtone_decoder), qrtone_get_payload_length(qrtone_decoder));
 	}
 
-	qrtone_free(&qrtone);
-	qrtone_free(&qrtone_decoder);
+	qrtone_free(qrtone);
+	qrtone_free(qrtone_decoder);
+	free(qrtone);
+	free(qrtone_decoder);
 }
 
 MU_TEST(testHeaderEncodeDecode) {
-	qrtone_header_t header;
-	qrtone_header_init(&header, sizeof(IPFS_PAYLOAD), 14, 2, 1);
-	header.ecc_level = 0;
+	qrtone_header_t* header = qrtone_header_new();
+	qrtone_header_init(header, sizeof(IPFS_PAYLOAD), 14, 2, 1, 0);
 
 	int8_t headerdata[3];
-	qrtone_header_encode(&header, headerdata);
+	qrtone_header_encode(header, headerdata);
 
-	qrtone_header_t decoded_header;
-	qrtone_header_init_from_data(&decoded_header, headerdata);
+	qrtone_header_t* decoded_header = qrtone_header_new();
+	qrtone_header_init_from_data(decoded_header, headerdata);
 
-	mu_assert_int_eq(header.length, decoded_header.length);
-	mu_assert_int_eq(header.ecc_level, decoded_header.ecc_level);
-	mu_assert_int_eq(header.crc, decoded_header.crc);
-	mu_assert_int_eq(header.number_of_blocks, decoded_header.number_of_blocks);
+	mu_assert_int_eq(qrtone_header_get_length(header), qrtone_header_get_length(decoded_header));
+	mu_assert_int_eq(qrtone_header_get_ecc_level(header), qrtone_header_get_ecc_level(decoded_header));
+	mu_assert_int_eq(qrtone_header_get_crc(header), qrtone_header_get_crc(decoded_header));
+	mu_assert_int_eq(qrtone_header_get_number_of_blocks(header), qrtone_header_get_number_of_blocks(decoded_header));
+
+	free(header);
+	free(decoded_header);
 }
 
 
@@ -455,9 +594,9 @@ MU_TEST(testWriteSignal) {
 		exit(1);
 	}
 
-	qrtone_t qrtone;
+	qrtone_t* qrtone = qrtone_new();
 	double sample_rate = 44100;
-	qrtone_init(&qrtone, sample_rate);
+	qrtone_init(qrtone, sample_rate);
 
 	float power_peak = powf(10.0f, -16.0f / 20.0f);
 
@@ -466,13 +605,13 @@ MU_TEST(testWriteSignal) {
 
 	int8_t payload[] = {0x00, 0x04, 'n', 'i' , 'c' , 'o', 0x01, 0x05, 'h', 'e', 'l', 'l', 'o' };
 
-	int32_t samples_length = blankBefore + blankAfter + qrtone_set_payload(&qrtone, payload, sizeof(payload));
+	int32_t samples_length = blankBefore + blankAfter + qrtone_set_payload(qrtone, payload, sizeof(payload));
 
 	float* samples = malloc(sizeof(float) * samples_length);
 
 	memset(samples, 0, sizeof(float) * samples_length);
 
-	qrtone_get_samples(&qrtone, samples + blankBefore, samples_length, 0, power_peak);
+	qrtone_get_samples(qrtone, samples + blankBefore, samples_length, 0, power_peak);
 
 
 	// Write signal
@@ -483,17 +622,19 @@ MU_TEST(testWriteSignal) {
 		fwrite(&sample, sizeof(int16_t), 1, f);
 	}
 
-	qrtone_free(&qrtone);
+	qrtone_free(qrtone);
 	free(samples);
 
 	fclose(f);
+
+	free(qrtone);
 }
 
 
 MU_TEST(testSymbolsEncodingDecoding) {
-	qrtone_t qrtone;
+	qrtone_t* qrtone = qrtone_new();
 	double sample_rate = 44100;
-	qrtone_init(&qrtone, sample_rate);
+	qrtone_init(qrtone, sample_rate);
 
 	int8_t payload[] = { 0x00, 0x04, 'n', 'i' , 'c' , 'o', 0x01, 0x05, 'h', 'e', 'l', 'l', 'o' };
 	int8_t expected_symbols[] = { 0, 0, 6, 0, 1, 15, 0, 0, 8, 4, 5, 12, 6, 6, 13, 14, 8, 0, 6, 6, 6, 9, 5, 14, 6, 6, 3, 12, 6, 6, 15, 12, 2, 9, 6, 7 };;
@@ -501,75 +642,78 @@ MU_TEST(testSymbolsEncodingDecoding) {
 	int32_t block_symbols_size = 14;
 	int32_t block_ecc_symbols = 2;
 
-	qrtone_header_t header;
-	qrtone_header_init(&header, sizeof(payload), block_symbols_size, block_ecc_symbols, 1);
-	header.ecc_level = 0;
+	qrtone_header_t* header = qrtone_header_new();
+	qrtone_header_init(header, sizeof(payload), block_symbols_size, block_ecc_symbols, 1, 0);
 
 	int8_t headerdata[3];
-	qrtone_header_encode(&header, headerdata);
+	qrtone_header_encode(header, headerdata);
 
-	int8_t* symbols = malloc(header.number_of_symbols);
+	int8_t* symbols = malloc(qrtone_header_get_number_of_symbols(header));
 
-	qrtone_payload_to_symbols(&qrtone, payload, sizeof(payload), block_symbols_size, block_ecc_symbols, header.crc, symbols);
+	qrtone_payload_to_symbols(qrtone, payload, sizeof(payload), block_symbols_size, block_ecc_symbols, qrtone_header_get_crc(header), symbols);
 
-	mu_assert_int_array_eq(expected_symbols, header.number_of_symbols, symbols, header.number_of_symbols);
+	mu_assert_int_array_eq(expected_symbols, sizeof(expected_symbols), symbols, qrtone_header_get_number_of_symbols(header));
 
 	// revert back to payload
 
-	int8_t* decoded_payload = qrtone_symbols_to_payload(&qrtone, symbols, header.number_of_symbols, block_symbols_size, block_ecc_symbols, header.crc);
+	int8_t* decoded_payload = qrtone_symbols_to_payload(qrtone, symbols, qrtone_header_get_number_of_symbols(header), block_symbols_size, block_ecc_symbols, qrtone_header_get_crc(header));
 
 	mu_assert(decoded_payload != NULL, "CRC Failed");
 
-	mu_assert_int_eq(0, qrtone.fixed_errors);
+	mu_assert_int_eq(0, qrtone_get_fixed_errors(qrtone));
 
-	mu_assert_int_array_eq(payload, header.length, decoded_payload, header.length);
+	mu_assert_int_array_eq(payload, sizeof(payload), decoded_payload, qrtone_header_get_length(header));
 
 	free(symbols);
 	free(decoded_payload);
-	qrtone_free(&qrtone);
+	qrtone_free(qrtone);
+	free(qrtone);
+	free(header);
 }
 
 
 MU_TEST(testSymbolsEncodingDecodingWithError) {
-	qrtone_t qrtone;
+	qrtone_t* qrtone = qrtone_new();
 	double sample_rate = 44100;
-	qrtone_init(&qrtone, sample_rate);
+	qrtone_init(qrtone, sample_rate);
 
 	int8_t payload[] = { 0x00, 0x04, 'n', 'i' , 'c' , 'o', 0x01, 0x05, 'h', 'e', 'l', 'l', 'o' };
-	int8_t expected_symbols[] = { 0, 0, 6, 0, 1, 15, 0, 0, 8, 4, 5, 12, 6, 6, 13, 14, 8, 0, 6, 6, 6, 9, 5, 14, 6, 6, 3, 12, 6, 6, 15, 12, 2, 9, 6, 7 };;
+	int8_t expected_symbols[] = { 0, 0, 6, 0, 1, 15, 0, 0, 8, 4, 5, 12, 6, 6, 13, 14, 8, 0, 6, 6, 6, 9, 5, 14, 6, 6, 3, 12, 6, 6, 15, 12, 2, 9, 6, 7 };
 
 	int32_t block_symbols_size = 14;
 	int32_t block_ecc_symbols = 2;
 
-	qrtone_header_t header;
-	qrtone_header_init(&header, sizeof(payload), block_symbols_size, block_ecc_symbols, 1);
-	header.ecc_level = 0;
+	qrtone_header_t* header = qrtone_header_new();
+	qrtone_header_init(header, sizeof(payload), block_symbols_size, block_ecc_symbols, 1, 0);
 
 	int8_t headerdata[3];
-	qrtone_header_encode(&header, headerdata);
+	qrtone_header_encode(header, headerdata);
 
-	int8_t* symbols = malloc(header.number_of_symbols);
+	int8_t* symbols = malloc(qrtone_header_get_number_of_symbols(header));
 
-	qrtone_payload_to_symbols(&qrtone, payload, sizeof(payload), block_symbols_size, block_ecc_symbols, header.crc, symbols);
+	qrtone_payload_to_symbols(qrtone, payload, sizeof(payload), block_symbols_size, block_ecc_symbols, qrtone_header_get_crc(header), symbols);
 
-	mu_assert_int_array_eq(expected_symbols, header.number_of_symbols, symbols, header.number_of_symbols);
+	mu_assert_int_array_eq(expected_symbols, sizeof(expected_symbols), symbols, qrtone_header_get_number_of_symbols(header));
 
 	// Insert error
-	symbols[5] = max(0, min(15, ~symbols[5]));
+	symbols[5] = MAX(0, MIN(15, ~symbols[5]));
 
 	// revert back to payload
 
-	int8_t* decoded_payload = qrtone_symbols_to_payload(&qrtone, symbols, header.number_of_symbols, block_symbols_size, block_ecc_symbols, header.crc);
+	int8_t* decoded_payload = qrtone_symbols_to_payload(qrtone, symbols, qrtone_header_get_number_of_symbols(header), block_symbols_size, block_ecc_symbols, qrtone_header_get_crc(header));
 
 	mu_assert(decoded_payload != NULL, "CRC Failed");
 
-	mu_assert_int_eq(1, qrtone.fixed_errors);
+	mu_assert_int_eq(1, qrtone_get_fixed_errors(qrtone));
 
-	mu_assert_int_array_eq(payload, header.length, decoded_payload, header.length);
+	mu_assert_int_array_eq(payload, sizeof(payload), decoded_payload, qrtone_header_get_length(header));
 
 	free(symbols);
 	free(decoded_payload);
-	qrtone_free(&qrtone);
+	qrtone_free(qrtone);
+
+	free(qrtone);
+	free(header);
 }
 
 MU_TEST_SUITE(test_suite) {

@@ -47,6 +47,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "qrtone.h"
+#include "reed_solomon.h"
 #include "math.h"
 
 #define QRTONE_2PI 6.283185307179586
@@ -149,6 +150,116 @@ struct _qrtonecomplex CX_EXP(const qrtonecomplex c1) {
     return ret;
 }
 
+
+// DTMF 16*16 frequencies
+#define QRTONE_NUM_FREQUENCIES 32
+
+typedef struct _qrtone_crc8_t {
+    int32_t crc8;
+} qrtone_crc8_t;
+
+typedef struct _qrtone_crc16_t {
+    int32_t crc16;
+} qrtone_crc16_t;
+
+typedef struct _qrtone_goertzel_t {
+    double s0;
+    double s1;
+    double s2;
+    double cos_pik_term2;
+    double pik_term;
+    float last_sample;
+    double sample_rate;
+    int32_t window_size;
+    int32_t processed_samples;
+} qrtone_goertzel_t;
+
+typedef struct _qrtone_percentile_t {
+    double* q;
+    double* dn;
+    double* np;
+    int32_t* n;
+    int32_t count;
+    int32_t marker_count;
+} qrtone_percentile_t;
+
+typedef struct _qrtone_array_t {
+    float* values;
+    int32_t values_length;
+    int32_t cursor;
+    int32_t inserted;
+} qrtone_array_t;
+
+typedef struct _qrtone_peak_finder_t {
+    int8_t increase; // boolean increase state
+    double old_val;
+    int64_t old_index;
+    int8_t added;
+    double last_peak_value;
+    int64_t last_peak_index;
+    int32_t increase_count;
+    int32_t decrease_count;
+    int32_t min_increase_count;
+    int32_t min_decrease_count;
+} qrtone_peak_finder_t;
+
+typedef struct _qrtone_header_t {
+    uint8_t length; // payload length
+    int8_t crc;
+    int8_t ecc_level;
+    int32_t payload_symbols_size;
+    int32_t payload_byte_size;
+    int32_t number_of_blocks;
+    int32_t number_of_symbols;
+} qrtone_header_t;
+
+typedef struct _qrtone_trigger_analyzer_t {
+    int32_t processed_window_alpha;
+    int32_t processed_window_beta;
+    int32_t window_offset;
+    int32_t gate_length;
+    qrtone_goertzel_t frequency_analyzers_alpha[2];
+    qrtone_goertzel_t frequency_analyzers_beta[2];
+    qrtone_percentile_t background_noise_evaluator;
+    qrtone_array_t spl_history[2];
+    qrtone_peak_finder_t peak_finder;
+    int32_t window_analyze;
+    int64_t total_processed;
+    double frequencies[2];
+    double sample_rate;
+    double trigger_snr;
+    int64_t first_tone_location;
+} qrtone_trigger_analyzer_t;
+
+typedef struct _qrtone_t {
+    int8_t qr_tone_state;
+    qrtone_goertzel_t frequency_analyzers[QRTONE_NUM_FREQUENCIES];
+    int64_t first_tone_sample_index;
+    int32_t word_length;
+    int32_t gate_length;
+    int32_t word_silence_length;
+    double gate1_frequency;
+    double gate2_frequency;
+    double sample_rate;
+    double frequencies[QRTONE_NUM_FREQUENCIES];
+    qrtone_trigger_analyzer_t trigger_analyzer;
+    int8_t* symbols_to_deliver;
+    int32_t symbols_to_deliver_length;
+    int8_t* symbols_cache;
+    int32_t symbols_cache_length;
+    qrtone_header_t* header_cache;
+    int64_t pushed_samples;
+    int32_t symbol_index;
+    int8_t* payload;
+    int32_t payload_length;
+    int32_t fixed_errors;
+    ecc_reed_solomon_encoder_t encoder;
+} qrtone_t;
+
+qrtone_crc8_t* qrtone_crc8_new(void) {
+    return malloc(sizeof(qrtone_crc8_t));
+}
+
 void qrtone_crc8_init(qrtone_crc8_t* this) {
     this->crc8 = 0;
 }
@@ -180,6 +291,10 @@ uint8_t qrtone_crc8_get(qrtone_crc8_t* this) {
     return this->crc8 & 0xFF;
 }
 
+qrtone_crc16_t* qrtone_crc16_new(void) {
+    return malloc(sizeof(qrtone_crc16_t));
+}
+
 void qrtone_crc16_init(qrtone_crc16_t* this) {
     this->crc16 = 0;
 }
@@ -205,6 +320,23 @@ void qrtone_crc16_add_array(qrtone_crc16_t* this, const int8_t* data, const int3
     }
 }
 
+
+int32_t qrtone_crc16_get(qrtone_crc16_t* this) {
+    return this->crc16;
+}
+
+qrtone_goertzel_t* qrtone_goertzel_new(void) {
+    return malloc(sizeof(qrtone_goertzel_t));
+}
+
+void qrtone_goertzel_reset(qrtone_goertzel_t* this) {
+    this->s0 = 0;
+    this->s1 = 0;
+    this->s2 = 0;
+    this->processed_samples = 0;
+    this->last_sample = 0;
+}
+
 void qrtone_goertzel_init(qrtone_goertzel_t* this, double sample_rate, double frequency, int32_t window_size) {
         this->sample_rate = sample_rate;
         this->window_size = window_size;
@@ -215,13 +347,6 @@ void qrtone_goertzel_init(qrtone_goertzel_t* this, double sample_rate, double fr
         qrtone_goertzel_reset(this);
 }
 
-void qrtone_goertzel_reset(qrtone_goertzel_t* this) {
-    this->s0 = 0;
-    this->s1 = 0;
-    this->s2 = 0;
-    this->processed_samples = 0;
-    this->last_sample = 0;
-}
 
 void qrtone_goertzel_process_samples(qrtone_goertzel_t* this, float* samples,int32_t samples_len) {
     if (this->processed_samples + samples_len <= this->window_size) {
@@ -372,6 +497,9 @@ void qrtone_percentile_add_quantile(qrtone_percentile_t* this, double quant) {
     qrtone_percentile_update_markers(this);
 }
 
+qrtone_percentile_t* qrtone_percentile_new(void) {
+    return malloc(sizeof(qrtone_percentile_t));
+}
 /**
  * P^2 algorithm as documented in "The P-Square Algorithm for Dynamic Calculation of Percentiles and Histograms
  * without Storing Observations," Communications of the ACM, October 1985 by R. Jain and I. Chlamtac.
@@ -506,6 +634,10 @@ void qrtone_percentile_free(qrtone_percentile_t* this) {
     free(this->n);
 }
 
+qrtone_array_t* qrtone_array_new(void) {
+    return malloc(sizeof(qrtone_array_t));
+}
+
 void qrtone_array_init(qrtone_array_t* this, int32_t length) {
     this->values = malloc(sizeof(float) * length);
     memset(this->values, 0, sizeof(float) * length);
@@ -548,7 +680,11 @@ void qrtone_array_add(qrtone_array_t* this, float value) {
     this->inserted = min(this->values_length, this->inserted + 1);
 }
 
-void qrtone_peak_finder_init(qrtone_peak_finder_t* this) {
+qrtone_peak_finder_t* qrtone_peak_finder_new(void) {
+    return malloc(sizeof(qrtone_peak_finder_t));
+}
+
+void qrtone_peak_finder_init(qrtone_peak_finder_t* this, int32_t min_increase_count, int32_t min_decrease_count) {
     this->increase = TRUE;
     this->old_val = -99999999999999999.0;
     this->old_index = 0;
@@ -557,8 +693,8 @@ void qrtone_peak_finder_init(qrtone_peak_finder_t* this) {
     this->last_peak_index = 0;
     this->increase_count = 0;
     this->decrease_count = 0;
-    this->min_increase_count = -1;
-    this->min_decrease_count = -1;
+    this->min_increase_count = min_increase_count;
+    this->min_decrease_count = min_decrease_count;
 }
 
 int8_t qrtone_peak_finder_add(qrtone_peak_finder_t* this, int64_t index, float value) {
@@ -599,7 +735,41 @@ int8_t qrtone_peak_finder_add(qrtone_peak_finder_t* this, int64_t index, float v
     return ret;
 }
 
-void qrtone_header_init(qrtone_header_t* this, uint8_t length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t crc) {
+int64_t qrtone_peak_finder_get_last_peak_index(qrtone_peak_finder_t* this) {
+    return this->last_peak_index;
+}
+
+qrtone_header_t* qrtone_header_new(void) {
+    return malloc(sizeof(qrtone_header_t));
+}
+
+uint8_t qrtone_header_get_length(qrtone_header_t* this) {
+    return this->length;
+}
+
+int8_t qrtone_header_get_crc(qrtone_header_t* this) {
+    return this->crc;
+}
+
+int8_t qrtone_header_get_ecc_level(qrtone_header_t* this) {
+    return this->ecc_level;
+}
+
+int32_t qrtone_header_get_payload_symbols_size(qrtone_header_t* this) {
+    return this->payload_symbols_size;
+}
+
+int32_t qrtone_header_get_payload_byte_size(qrtone_header_t* this) {
+    return this->payload_byte_size;
+}
+int32_t qrtone_header_get_number_of_blocks(qrtone_header_t* this) {
+    return this->number_of_blocks;
+}
+int32_t qrtone_header_get_number_of_symbols(qrtone_header_t* this) {
+    return this->number_of_symbols;
+}
+
+void qrtone_header_init(qrtone_header_t* this, uint8_t length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t crc, int8_t ecc_level) {
     this->length = length;
     int32_t crc_length = 0;
     if (crc) {
@@ -610,6 +780,7 @@ void qrtone_header_init(qrtone_header_t* this, uint8_t length, int32_t block_sym
     this->number_of_blocks = (int32_t)ceilf((((int32_t)length + crc_length) * 2) / (float)this->payload_symbols_size);
     this->number_of_symbols = this->number_of_blocks * block_ecc_symbols + (length + crc_length) * 2;
     this->crc = crc;
+    this->ecc_level = ecc_level;
 }
 
 void qrtone_header_encode(qrtone_header_t* this, int8_t* data) {
@@ -642,7 +813,7 @@ int8_t qrtone_header_init_from_data(qrtone_header_t* this, int8_t* data) {
     }
     this->ecc_level = data[1] & 0x3;
 
-    qrtone_header_init(this, data[0], ECC_SYMBOLS[this->ecc_level][0], ECC_SYMBOLS[this->ecc_level][1], (int8_t)(data[1] >> 3));
+    qrtone_header_init(this, data[0], ECC_SYMBOLS[this->ecc_level][0], ECC_SYMBOLS[this->ecc_level][1], (int8_t)(data[1] >> 3), this->ecc_level);
     return TRUE;
 }
 
@@ -673,9 +844,8 @@ void qrtone_trigger_analyzer_init(qrtone_trigger_analyzer_t* this, double sample
         qrtone_goertzel_init(&(this->frequency_analyzers_beta[i]), sample_rate, gate_frequencies[i], this->window_analyze);
         qrtone_array_init(&(this->spl_history[i]), (gate_length * 3) / this->window_offset);
     }
-    qrtone_peak_finder_init(&(this->peak_finder));
-    this->peak_finder.min_increase_count = max(1, gate_length / this->window_offset / 2 - 1);
-    this->peak_finder.min_decrease_count = this->peak_finder.min_increase_count;
+    int32_t slopeWindows = max(1, gate_length / this->window_offset / 2 - 1);
+    qrtone_peak_finder_init(&(this->peak_finder), slopeWindows, slopeWindows);
 }
 
 void qrtone_trigger_analyzer_free(qrtone_trigger_analyzer_t* this) {
@@ -688,7 +858,7 @@ void qrtone_trigger_analyzer_free(qrtone_trigger_analyzer_t* this) {
 
 void qrtone_trigger_analyzer_reset(qrtone_trigger_analyzer_t* this) {
     this->first_tone_location = -1;
-    qrtone_peak_finder_init(&(this->peak_finder));
+    qrtone_peak_finder_init(&(this->peak_finder), this->peak_finder.min_increase_count, this->peak_finder.min_decrease_count);
     this->processed_window_alpha = 0;
     this->processed_window_beta = 0;
     this->total_processed = 0;
@@ -710,7 +880,7 @@ void qrtone_trigger_analyzer_reset(qrtone_trigger_analyzer_t* this) {
 void qrtone_hann_window(float* signal, int32_t signal_length, int32_t window_length, int32_t offset) {
     int32_t i;
     for (i = 0; i < signal_length && offset + i < window_length; i++) {
-        signal[i] = (float_t)((double)signal[i] * (0.5 - 0.5 * cos((QRTONE_2PI * (i + offset)) / (window_length - 1))));
+        signal[i] = (float_t)((double)signal[i] * (0.5 - 0.5 * cos((QRTONE_2PI * ((int64_t)i + offset)) / ((int64_t)window_length - 1))));
     }
 }
 
@@ -935,7 +1105,7 @@ void qrtone_arraycopy_to32bits(int8_t* src, int32_t src_pos, int32_t* dest, int3
 
 void qrtone_payload_to_symbols(qrtone_t* this, int8_t* payload, uint8_t payload_length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t has_crc, int8_t* symbols){
     qrtone_header_t header;
-    qrtone_header_init(&header, payload_length, block_symbols_size, block_ecc_symbols, has_crc);
+    qrtone_header_init(&header, payload_length, block_symbols_size, block_ecc_symbols, has_crc, 0);
     int8_t* payload_bytes;
     if (has_crc) {
         payload_bytes = malloc((size_t)payload_length + CRC_BYTE_LENGTH);
@@ -980,8 +1150,7 @@ int32_t qrtone_set_payload_ext(qrtone_t* this, int8_t* payload, uint8_t payload_
         return 0;
     }
     qrtone_header_t header;
-    qrtone_header_init(&header, payload_length, ECC_SYMBOLS[ecc_level][0], ECC_SYMBOLS[ecc_level][1], add_crc);
-    header.ecc_level = ecc_level;
+    qrtone_header_init(&header, payload_length, ECC_SYMBOLS[ecc_level][0], ECC_SYMBOLS[ecc_level][1], add_crc, ecc_level);
     if (this->symbols_to_deliver != NULL) {
         free(this->symbols_to_deliver);
         this->symbols_to_deliver = NULL;
@@ -1047,6 +1216,11 @@ void qrtone_get_samples(qrtone_t* this, float* samples, int32_t samples_length, 
             return;
         }
     }
+}
+
+qrtone_t* qrtone_new(void) {
+    qrtone_t* this = malloc(sizeof(qrtone_t));
+    return this;
 }
 
 void qrtone_free(qrtone_t* this) {
@@ -1285,3 +1459,15 @@ int8_t qrtone_push_samples(qrtone_t* this,float* samples, int32_t samples_length
     return 0;
 }
 
+int8_t* qrtone_get_payload(qrtone_t* this) {
+    return this->payload;
+}
+
+int32_t qrtone_get_payload_length(qrtone_t* this) {
+    return this->payload_length;
+}
+
+
+int32_t qrtone_get_fixed_errors(qrtone_t* this) {
+    return this->fixed_errors;
+}
