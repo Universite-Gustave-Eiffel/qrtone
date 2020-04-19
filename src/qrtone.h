@@ -145,7 +145,7 @@ int32_t qrtone_get_fixed_errors(qrtone_t* qrtone);
  * @first_tone_level Level of first tone frequency. Expressed in dBFS.
  * @second_tone_level Level of second tone frequency. Expressed in dBFS.
  */
-typedef void (*qrtone_level_callback_t)(void *ptr, float global_level, float first_tone_level, float second_tone_level);
+typedef void (*qrtone_level_callback_t)(void *ptr, float first_tone_level, float second_tone_level);
 
 /**
  * @brief Set callback method called while awaiting a message.

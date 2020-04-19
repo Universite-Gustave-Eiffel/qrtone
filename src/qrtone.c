@@ -848,7 +848,7 @@ void qrtone_trigger_analyzer_init(qrtone_trigger_analyzer_t* self, double sample
         qrtone_goertzel_init(&(self->frequency_analyzers_beta[i]), sample_rate, gate_frequencies[i], self->window_analyze);
         qrtone_array_init(&(self->spl_history[i]), (gate_length * 3) / self->window_offset);
     }
-    int32_t slopeWindows = max(1, gate_length / self->window_offset / 2 - 1);
+    int32_t slopeWindows = -1;//max(1, gate_length / self->window_offset / 2 - 1);
     qrtone_peak_finder_init(&(self->peak_finder), slopeWindows, slopeWindows);
 }
 
@@ -968,7 +968,7 @@ void qrtone_trigger_analyzer_process(qrtone_trigger_analyzer_t* self, float* sam
                 qrtone_array_add(self->spl_history + id_freq, (float)spl_level);
             }
             if(self->level_callback != NULL) {
-                self->level_callback(self->level_callback_data, 0, (float)spl_levels[0], (float)spl_levels[1]);
+                self->level_callback(self->level_callback_data, (float)spl_levels[0], (float)spl_levels[1]);
             }
             qrtone_percentile_add(&(self->background_noise_evaluator), spl_levels[1]);
             int64_t location = self->total_processed + processed - self->window_analyze;
