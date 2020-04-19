@@ -68,6 +68,9 @@ extern "C" {
  */
 enum QRTONE_ECC_LEVEL { QRTONE_ECC_L = 0, QRTONE_ECC_M = 1, QRTONE_ECC_Q = 2, QRTONE_ECC_H = 3};
 
+/**
+ * @brief Main QRTone structure
+ */
 typedef struct _qrtone_t qrtone_t;
 
 ///////////////////////
@@ -132,8 +135,26 @@ int32_t qrtone_get_payload_length(qrtone_t* qrtone);
  * @param qrtone A pointer to the initialized qrtone structure.
  * @return Number of fixed
  */
+
 int32_t qrtone_get_fixed_errors(qrtone_t* qrtone);
 
+/**
+ * Function callback called while awaiting a message. It can be usefull in order to display if the microphone is working.
+ * @ptr Pointer provided when calling qrtone_tone_set_level_callback.
+ * @global_level Leq of signal. Expressed in dBFS (https://en.wikipedia.org/wiki/DBFS)
+ * @first_tone_level Level of first tone frequency. Expressed in dBFS.
+ * @second_tone_level Level of second tone frequency. Expressed in dBFS.
+ */
+typedef void (*qrtone_level_callback_t)(void *ptr, float global_level, float first_tone_level, float second_tone_level);
+
+/**
+ * @brief Set callback method called while awaiting a message.
+ * 
+ * @param qrtone A pointer to the initialized qrtone structure.
+ * @param data ptr to use when calling the callback method
+ * @param lvl_callback Pointer to the method to call
+ */
+void qrtone_set_level_callback(qrtone_t* self, void* data, qrtone_level_callback_t lvl_callback);
 ///////////////////////////
 // Send payload
 ///////////////////////////

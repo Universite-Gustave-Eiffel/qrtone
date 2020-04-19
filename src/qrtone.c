@@ -229,6 +229,8 @@ typedef struct _qrtone_trigger_analyzer_t {
     double sample_rate;
     double trigger_snr;
     int64_t first_tone_location;
+    qrtone_level_callback_t level_callback;
+    void* level_callback_data;
 } qrtone_trigger_analyzer_t;
 
 typedef struct _qrtone_t {
@@ -829,6 +831,8 @@ void qrtone_trigger_analyzer_init(qrtone_trigger_analyzer_t* self, double sample
     self->processed_window_alpha = 0;
     self->processed_window_beta = 0;
     self->total_processed = 0;
+    self->level_callback = NULL;
+    self->level_callback_data = NULL;
     self->first_tone_location = -1;
     self->window_analyze = gate_length / 3;
     self->sample_rate = sample_rate;
@@ -893,8 +897,8 @@ void qrtone_hann_window(float* signal, int32_t signal_length, int32_t window_len
  * @param offset Offset of the provided signal buffer (> 0)
  */
 void qrtone_tukey_window(float* signal, double alpha, int32_t signal_length, int32_t window_length, int32_t offset) {
-    int index_begin_flat = (int)(floor(alpha * ((int64_t)window_length - 1) / 2.0));
-    int index_end_flat = window_length - index_begin_flat;
+    int32_t index_begin_flat = (int)(floor(alpha * ((int64_t)window_length - 1) / 2.0));
+    int32_t index_end_flat = window_length - index_begin_flat;
     double window_value = 0;
     int32_t i;
 
@@ -962,6 +966,9 @@ void qrtone_trigger_analyzer_process(qrtone_trigger_analyzer_t* self, float* sam
                 double spl_level = 20 * log10(qrtone_goertzel_compute_rms(frequency_analyzers + id_freq));
                 spl_levels[id_freq] = spl_level;
                 qrtone_array_add(self->spl_history + id_freq, (float)spl_level);
+            }
+            if(self->level_callback != NULL) {
+                self->level_callback(self->level_callback_data, 0, (float)spl_levels[0], (float)spl_levels[1]);
             }
             qrtone_percentile_add(&(self->background_noise_evaluator), spl_levels[1]);
             int64_t location = self->total_processed + processed - self->window_analyze;
@@ -1079,6 +1086,11 @@ void qrtone_init(qrtone_t* self, double sample_rate) {
     }
     ecc_reed_solomon_encoder_init(&(self->encoder), 0x13, 16, 1);
     self->header_cache = NULL;
+}
+
+void qrtone_set_level_callback(qrtone_t* self, void* data, qrtone_level_callback_t lvl_callback) {    
+    self->trigger_analyzer.level_callback = lvl_callback;
+    self->trigger_analyzer.level_callback_data = data;
 }
 
 int32_t qrtone_get_maximum_length(qrtone_t* self) {
@@ -1471,3 +1483,7 @@ int32_t qrtone_get_payload_length(qrtone_t* self) {
 int32_t qrtone_get_fixed_errors(qrtone_t* self) {
     return self->fixed_errors;
 }
+
+
+
+

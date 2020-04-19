@@ -507,12 +507,12 @@ double gaussrand()
 
 MU_TEST(testGenerate) {
 	int writeFile = 0;
-	FILE* f;
+	FILE* f = NULL;
 	if(writeFile) {
 		f = fopen("inputsignal_44100_16bitsPCM.raw", "wb");
 	}
 	qrtone_t* qrtone = qrtone_new();
-	double sample_rate = 44100;
+	double sample_rate = 16000;
 	qrtone_init(qrtone, sample_rate);
 	double powerRMS = pow(10.0, -26.0 / 20.0);
 	double powerPeak = powerRMS * sqrt(2);
