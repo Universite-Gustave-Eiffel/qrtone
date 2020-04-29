@@ -92,13 +92,16 @@ public class Configuration {
   }
 
   public double[] computeFrequencies(int frequencyCount) {
+    return computeFrequencies(frequencyCount, 0);
+  }
+  public double[] computeFrequencies(int frequencyCount, double offset) {
     double[] frequencies = new double[frequencyCount];
     // Precompute pitch frequencies
     for(int i = 0; i < frequencyCount; i++) {
       if(frequencyIncrement != 0) {
-        frequencies[i] = firstFrequency + i * frequencyIncrement;
+        frequencies[i] = firstFrequency + (i + offset) * frequencyIncrement;
       } else {
-        frequencies[i] = firstFrequency * Math.pow(frequencyMulti, i);
+        frequencies[i] = firstFrequency * Math.pow(frequencyMulti, i + offset);
       }
     }
     return frequencies;

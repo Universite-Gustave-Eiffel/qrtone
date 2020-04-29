@@ -29,7 +29,7 @@
  * The audio sample rate used by the microphone. 
  * As tones go from 1700 Hz to 8000 Hz, a sample rate of 16 KHz is the minimum.
  */
-#define SAMPLE_RATE 16000
+#define SAMPLE_RATE 44100
 
 #define SAMPLE_SIZE 16
 
@@ -55,7 +55,7 @@ static float scaled_input_buffer[MAX_WINDOW_SIZE];
  * Display message on Oled Screen
  * Message use a special format specified by the demo android app:
  * [field type int8_t][field_length int8_t][field_content int8_t array]
- * There is currently 2 type of field username(0) and message(1)
+ * There is currently 2 type of field username(0) and message(1)à
  */
 void process_message(void) {
   char* user_name = NULL;
@@ -85,8 +85,14 @@ void process_message(void) {
     // Print message
     memset(buf, 0, 256);
     memcpy(buf, message, message_length);
-    Screen.print(1, buf, true);    
+    Screen.print(1, buf, true);
   }
+}
+
+void debug_serial(void *ptr, float first_tone_level, float second_tone_level, int32_t triggered) {
+  char buf[100];
+  sprintf(buf, "%.2f,%.2f,%d\n\r", first_tone_level, second_tone_level, triggered);
+  Serial.write(buf);
 }
 
 /**
@@ -116,6 +122,7 @@ void recordCallback(void)
     }
     cur_reader += offset;
   }
+  // Push remaining samples
   if(sample_index > 0) {
     if(qrtone_push_samples(qrtone, scaled_input_buffer, sample_index)) {
       // Got a message
@@ -126,16 +133,20 @@ void recordCallback(void)
 
 void setup(void)
 {
+  Serial.begin(115200);
   Screen.init();
   Audio.format(SAMPLE_RATE, SAMPLE_SIZE);
   // disable automatic level control
-  Audio.setPGAGain(0x1F);
+  // Audio.setPGAGain(0x3F);
 
   // Allocate struct
   qrtone = qrtone_new();
-  
+
   // Init internal state
   qrtone_init(qrtone, SAMPLE_RATE);
+
+  // Init callback method
+  qrtone_set_level_callback(qrtone, NULL, debug_serial);
 
   delay(100);
   

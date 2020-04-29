@@ -967,11 +967,9 @@ void qrtone_trigger_analyzer_process(qrtone_trigger_analyzer_t* self, float* sam
                 spl_levels[id_freq] = spl_level;
                 qrtone_array_add(self->spl_history + id_freq, (float)spl_level);
             }
-            if(self->level_callback != NULL) {
-                self->level_callback(self->level_callback_data, (float)spl_levels[0], (float)spl_levels[1]);
-            }
             qrtone_percentile_add(&(self->background_noise_evaluator), spl_levels[1]);
             int64_t location = self->total_processed + processed - self->window_analyze;
+            int32_t triggered = 0;            
             if (qrtone_peak_finder_add(&(self->peak_finder), location, (float)spl_levels[1])) {
                 // We found a peak
                 int64_t element_index = self->peak_finder.last_peak_index;
@@ -983,6 +981,7 @@ void qrtone_trigger_analyzer_process(qrtone_trigger_analyzer_t* self, float* sam
                     int32_t peak_index = qrtone_array_size(self->spl_history + 1) - 1 - (int32_t)(location / self->window_offset - element_index / self->window_offset);
                     if (peak_index >= 0 && peak_index < qrtone_array_size(self->spl_history) && qrtone_array_get(self->spl_history, peak_index) < element_value - self->trigger_snr) {
                         int32_t first_peak_index = peak_index - (self->gate_length / self->window_offset);
+                        triggered = qrtone_array_get(self->spl_history, first_peak_index) > element_value - self->trigger_snr;
                         // Check if for the first peak the level was inferior than trigger level
                         if (first_peak_index >= 0 && first_peak_index < qrtone_array_size(self->spl_history) &&
                             qrtone_array_get(self->spl_history, first_peak_index) > element_value - self->trigger_snr &&
@@ -996,6 +995,9 @@ void qrtone_trigger_analyzer_process(qrtone_trigger_analyzer_t* self, float* sam
                         }
                     }
                 }
+            }
+            if(self->level_callback != NULL) {
+                self->level_callback(self->level_callback_data, (float)spl_levels[0], (float)spl_levels[1], triggered);
             }
         }
     }
