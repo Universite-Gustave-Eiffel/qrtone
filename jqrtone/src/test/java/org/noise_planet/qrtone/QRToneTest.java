@@ -855,26 +855,19 @@ public class QRToneTest {
         double powerPeak = powerRMS * Math.sqrt(2);
         Configuration c = Configuration.getAudible(sampleRate);
         double[] freqs = c.computeFrequencies(32, 0);
-        double[] freqsLimitsminus = c.computeFrequencies(32, -0.5);
-        double[] freqsLimits = c.computeFrequencies(32, 0.5);
-        double[] testfrequencies = new double[250];
+        double[] freqsLimits = c.computeFrequencies(32, 0.65);
+        double[] testfrequencies = new double[512];
+        double limit = -32 - 15; //20 * Math.log10(powerRMS) - 15.0;
         for(int i = 0; i < testfrequencies.length; i++) {
-            testfrequencies[i] = freqsLimitsminus[0] + (freqsLimits[freqsLimits.length - 1] - freqsLimitsminus[0]) * ((double)i / testfrequencies.length);
+            testfrequencies[i] = 1500 + (8000 - 1500) * ((double)i / testfrequencies.length);
         }
         double[][] columns = new double[freqs.length][];
         for(int freq_Index = 0; freq_Index < freqs.length; freq_Index++) {
             columns[freq_Index] = new double[testfrequencies.length];
             double signalFrequency = freqs[freq_Index];
-            double closestFrequency = 0;
-            if (freq_Index > 0) {
-                closestFrequency = freqs[freq_Index - 1];
-            }
-            if (freq_Index < freqs.length - 1 && freqs[freq_Index + 1] - freqs[freq_Index] < freqs[freq_Index] - closestFrequency) {
-                closestFrequency = freqs[freq_Index + 1];
-            }
+            double closestFrequency = freqsLimits[freq_Index];
             int window_length = Configuration.computeMinimumWindowSize(sampleRate, signalFrequency, closestFrequency);
             System.out.println(String.format("Window length is %d, analyzed frequency is %f, closest frequency is %f", window_length, signalFrequency, closestFrequency));
-            double limit = -32 - 15; //20 * Math.log10(powerRMS) - 15.0;
             double last_limit = Double.NEGATIVE_INFINITY;
             int idrow = 0;
             for (double testFrequency : testfrequencies) {
@@ -895,13 +888,14 @@ public class QRToneTest {
             }
         }
         try (FileWriter fileWriter = new FileWriter("target/goertzel_test.csv")) {
-            fileWriter.write("frequency");
+            fileWriter.write("frequency, limit");
             for (double freq : freqs) {
                 fileWriter.write(String.format(Locale.ROOT, ", %.0f Hz", freq));
             }
             fileWriter.write("\n");
             for(int idrow = 0; idrow < testfrequencies.length; idrow++) {
                 fileWriter.write(String.format(Locale.ROOT, "%.0f", testfrequencies[idrow]));
+                fileWriter.write(String.format(Locale.ROOT, ",%.0f", limit));
                 for(int idfreq = 0; idfreq < freqs.length; idfreq++) {
                     fileWriter.write(String.format(Locale.ROOT, ", %.2f", columns[idfreq][idrow]));
                 }
