@@ -45,6 +45,9 @@ import java.util.concurrent.atomic.AtomicLong;
 public class QRTone {
     public static final double M2PI = Math.PI * 2;
     public static final long PERMUTATION_SEED = 3141592653589793238L;
+    // Frequency analysis window width is dependent of analyzed frequencies
+    // Tone frequency may be not the expected one, so neighbors tone frequency values are accumulated
+    private static final double WINDOW_WIDTH = 0.65;
     private enum STATE {WAITING_TRIGGER, PARSING_SYMBOLS};
     private static final double TUKEY_ALPHA  = 0.5;
     public static final int CRC_BYTE_LENGTH = 2;
@@ -421,8 +424,11 @@ public class QRTone {
             qrToneState = STATE.PARSING_SYMBOLS;
             firstToneSampleIndex = pushedSamples - (triggerAnalyzer.getTotalProcessed() - triggerAnalyzer.getFirstToneLocation());
             frequencyAnalyzers = new IterativeGeneralizedGoertzel[frequencies.length];
+            double[] frequencyLimits = configuration.computeFrequencies(NUM_FREQUENCIES, WINDOW_WIDTH);
             for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
-                frequencyAnalyzers[idfreq] = new IterativeGeneralizedGoertzel(configuration.sampleRate, frequencies[idfreq], wordLength);
+                int window_length = Configuration.computeMinimumWindowSize(configuration.sampleRate, frequencies[idfreq], frequencyLimits[idfreq]);
+                frequencyAnalyzers[idfreq] = new IterativeGeneralizedGoertzel(configuration.sampleRate, frequencies[idfreq], window_length);
+                frequencyAnalyzers[idfreq].setHannWindow(true);
             }
             symbolsCache = new byte[HEADER_SYMBOLS];
             triggerAnalyzer.reset();
@@ -440,20 +446,30 @@ public class QRTone {
     }
 
     private boolean analyzeTones(float[] samples) {
-
-        int cursor = Math.max(0, getToneIndex(samples.length));
+        // Processed samples in current tone
+        int processedSamples = (int) (pushedSamples - samples.length - getToneLocation());
+        // tone start index in provided samples array (may be negative)
+        int toneIndex = getToneIndex(samples.length);
+        // cursor keep track of tone analysis in provided samples array
+        int cursor = Math.max(0, toneIndex);
         while (cursor < samples.length) {
-            int windowLength = Math.min(samples.length - cursor, wordLength - frequencyAnalyzers[0].getProcessedSamples());
-            if(windowLength == 0) {
-                break;
-            }
-            float[] window = new float[windowLength];
-            System.arraycopy(samples, cursor, window, 0, windowLength);
-            applyHann(window, 0, windowLength, wordLength, frequencyAnalyzers[0].getProcessedSamples());
+            // Processed samples in current tone taking account of cursor position
+            int toneWindowCursor = processedSamples + cursor;
+            // do not process more than wordLength
+            int cursorIncrement = Math.min(samples.length - cursor, wordLength - toneWindowCursor);
             for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
-                frequencyAnalyzers[idfreq].processSamples(window, 0, windowLength);
+                int startWindow = wordLength / 2 - frequencyAnalyzers[idfreq].getWindowSize() / 2;
+                int endWindow = startWindow + frequencyAnalyzers[idfreq].getWindowSize();
+                if(startWindow < toneWindowCursor + cursorIncrement && toneWindowCursor < endWindow) {
+                    int startAnalyze = Math.max(0, startWindow - toneWindowCursor);
+                    int analyzeLength = Math.min(cursorIncrement - startAnalyze,
+                            frequencyAnalyzers[idfreq].getWindowSize() - frequencyAnalyzers[idfreq].getProcessedSamples());
+                    frequencyAnalyzers[idfreq].processSamples(samples, startAnalyze, startAnalyze + analyzeLength);
+                } else {
+                    break;
+                }
             }
-            if(frequencyAnalyzers[0].getProcessedSamples() == wordLength) {
+            if(toneWindowCursor + cursorIncrement == wordLength) {
                 double[] spl = new double[frequencies.length];
                 for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
                     double rmsValue = frequencyAnalyzers[idfreq].computeRMS(false).rms;
@@ -472,6 +488,9 @@ public class QRTone {
                     symbolsCache[this.symbolIndex * 2 + symbolOffset] = (byte)(maxSymbolId - symbolOffset * FREQUENCY_ROOT);
                 }
                 symbolIndex+=1;
+                processedSamples = (int) (pushedSamples - samples.length - getToneLocation());
+                toneIndex = getToneIndex(samples.length);
+                cursor = Math.max(0, toneIndex);
                 if(symbolIndex * 2 == symbolsCache.length) {
                     if(headerCache == null) {
                         try {
@@ -503,7 +522,7 @@ public class QRTone {
                     }
                 }
             }
-            cursor += windowLength;
+            cursor += cursorIncrement;
         }
         return false;
     }

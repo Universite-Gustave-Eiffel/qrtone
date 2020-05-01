@@ -234,6 +234,34 @@ public class QRToneTest {
     }
 
     @Test
+    public void testIntegratedHannWindow() {
+        double sampleRate = 44100;
+        double powerRMS = Math.pow(10, -26.0 / 20.0); // -26 dBFS
+        float signalFrequency = 1000;
+        double powerPeak = powerRMS * Math.sqrt(2);
+
+        float[] audio = new float[4410];
+        for (int s = 0; s < audio.length; s++) {
+            double t = s * (1 / sampleRate);
+            audio[s] = (float)(Math.cos(QRTone.M2PI * signalFrequency * t) * (powerPeak));
+        }
+
+        // test with goertzel with integrated hann windowing
+        IterativeGeneralizedGoertzel g = new IterativeGeneralizedGoertzel(sampleRate, signalFrequency,
+                audio.length);
+        g.setHannWindow(true);
+        g.processSamples(audio, 0, audio.length);
+        IterativeGeneralizedGoertzel.GoertzelResult res1 = g.computeRMS(true);
+
+        // test with goertzel with separated hann windowing
+        QRTone.applyHann(audio, 0, audio.length, audio.length, 0);
+        IterativeGeneralizedGoertzel.GoertzelResult res = new IterativeGeneralizedGoertzel(sampleRate, signalFrequency,
+                audio.length).processSamples(audio, 0, audio.length).computeRMS(true);
+
+        assertEquals(res1.rms, res.rms, 0.001);
+    }
+
+    @Test
     public void testTukeyWindow() {
         float[] expected = new float[]{0f,0.0157084f,0.0618467f,0.135516f,0.232087f,0.345492f,0.468605f,0.593691f,
                 0.71289f,0.818712f,0.904508f,0.964888f,0.996057f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,1f,
@@ -803,8 +831,6 @@ public class QRToneTest {
         assertArrayEquals(payload, decodedPayload);
     }
 
-
-
     @Test
     public void testToneDetectionArduino() throws IOException, UnsupportedAudioFileException {
         boolean writeCSV = true;
@@ -847,7 +873,7 @@ public class QRToneTest {
 
 
 
-    @Test
+    // Test adaptative geortzel window
     public void generalized_goertzel_width() throws Exception {
         double sampleRate = 32000;
         double powerRMS = Math.pow(10, -26.0 / 20.0); // -26 dBFS

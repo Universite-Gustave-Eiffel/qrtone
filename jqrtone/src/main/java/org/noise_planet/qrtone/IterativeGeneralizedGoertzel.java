@@ -56,6 +56,7 @@ public class IterativeGeneralizedGoertzel {
     private double sampleRate;
     private int windowSize;
     private int processedSamples = 0;
+    private boolean hannWindow = false;
 
     /**
      * @param sampleRate Sampling rate in Hz
@@ -69,6 +70,10 @@ public class IterativeGeneralizedGoertzel {
         double samplingRateFactor = windowSize / sampleRate;
         pikTerm = M2PI * (frequency * samplingRateFactor) / windowSize;
         cosPikTerm2 = Math.cos(pikTerm) * 2.0;
+    }
+
+    public void setHannWindow(boolean hannWindow) {
+        this.hannWindow = hannWindow;
     }
 
     public void reset() {
@@ -99,19 +104,27 @@ public class IterativeGeneralizedGoertzel {
         final int size;
         if(processedSamples + length == windowSize) {
             size = length - 1;
-            lastSample = samples[from + size];
+            if(hannWindow) {
+                lastSample = 0;
+            } else {
+                lastSample = samples[from + size];
+            }
         } else {
             size = length;
         }
         for(int i=0; i < size; i++) {
-            s0 = samples[i+from] + cosPikTerm2 * s1 - s2;
+            if (hannWindow) {
+                final double hann = ((0.5 - 0.5 * Math.cos((M2PI * (i + processedSamples)) / (windowSize - 1))));
+                s0 = samples[i + from] * hann + cosPikTerm2 * s1 - s2;
+            } else{
+                s0 = samples[i + from] + cosPikTerm2 * s1 - s2;
+            }
             s2 = s1;
             s1 = s0;
         }
-        processedSamples+=length;
+        processedSamples += length;
         return this;
     }
-
     public GoertzelResult computeRMS(boolean computePhase) {
         if(processedSamples != windowSize) {
             throw new IllegalStateException("Not enough processed samples");
