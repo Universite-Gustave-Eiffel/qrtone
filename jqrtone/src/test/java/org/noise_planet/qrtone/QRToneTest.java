@@ -703,7 +703,7 @@ public class QRToneTest {
         AudioDispatcher d = AudioDispatcherFactory.fromFloatArray(audio, (int)sampleRate, 1024, 0);
         d.addAudioProcessor(new DelayEffect(0.04, 0.5, sampleRate));
         d.addAudioProcessor(new LowPassFS((float)qrTone.getFrequencies()[QRTone.FREQUENCY_ROOT], (float)sampleRate));
-        d.addAudioProcessor(new GainProcessor(Math.pow(10, -3 / 20.0)));
+        d.addAudioProcessor(new GainProcessor(Math.pow(10, -1 / 20.0)));
         ArrayWriteProcessor writer = new ArrayWriteProcessor((int)sampleRate);
         d.addAudioProcessor(writer);
         d.run();
@@ -711,7 +711,7 @@ public class QRToneTest {
         for(int i = 0; i < audio.length; i++) {
             samples[i+samplesBefore] += audio[i];
         }
-        //writeFloatToFile("target/inputSignal.raw", samples);
+        writeFloatToFile("target/testToneDetectionWithNoise.raw", samples);
         long start = System.currentTimeMillis();
         int cursor = 0;
         Random random = new Random(QRTone.PERMUTATION_SEED);

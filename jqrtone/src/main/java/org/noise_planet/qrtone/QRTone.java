@@ -98,7 +98,7 @@ public class QRTone {
         if(qrToneState == STATE.WAITING_TRIGGER) {
             return triggerAnalyzer.getMaximumWindowLength();
         } else {
-            return frequencyAnalyzers[0].getWindowSize() - frequencyAnalyzers[0].getProcessedSamples();
+            return wordLength + (int) (pushedSamples - getToneLocation());
         }
     }
 
@@ -448,10 +448,8 @@ public class QRTone {
     private boolean analyzeTones(float[] samples) {
         // Processed samples in current tone
         int processedSamples = (int) (pushedSamples - samples.length - getToneLocation());
-        // tone start index in provided samples array (may be negative)
-        int toneIndex = getToneIndex(samples.length);
-        // cursor keep track of tone analysis in provided samples array
-        int cursor = Math.max(0, toneIndex);
+        // cursor keep track of tone analysis in provided samples array, cursor start with tone location
+        int cursor = Math.max(0, getToneIndex(samples.length));
         while (cursor < samples.length) {
             // Processed samples in current tone taking account of cursor position
             int toneWindowCursor = processedSamples + cursor;
@@ -489,8 +487,6 @@ public class QRTone {
                 }
                 symbolIndex+=1;
                 processedSamples = (int) (pushedSamples - samples.length - getToneLocation());
-                toneIndex = getToneIndex(samples.length);
-                cursor = Math.max(0, toneIndex);
                 if(symbolIndex * 2 == symbolsCache.length) {
                     if(headerCache == null) {
                         try {
