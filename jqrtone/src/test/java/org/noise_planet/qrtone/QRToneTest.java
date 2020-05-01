@@ -711,7 +711,7 @@ public class QRToneTest {
         for(int i = 0; i < audio.length; i++) {
             samples[i+samplesBefore] += audio[i];
         }
-        writeFloatToFile("target/testToneDetectionWithNoise.raw", samples);
+        // writeFloatToFile("target/testToneDetectionWithNoise.raw", samples);
         long start = System.currentTimeMillis();
         int cursor = 0;
         Random random = new Random(QRTone.PERMUTATION_SEED);

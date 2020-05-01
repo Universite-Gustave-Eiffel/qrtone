@@ -61,8 +61,8 @@ public class TriggerAnalyzer {
 
 
 
-    public TriggerAnalyzer(double sampleRate, int gateLength, double[] frequencies, double triggerSnr) {
-        this.windowAnalyze = gateLength / 3;
+    public TriggerAnalyzer(double sampleRate, int gateLength, double[] frequencies, int[] windowLength, double triggerSnr) {
+        this.windowAnalyze = Math.max(windowLength[0], windowLength[1]);
         this.frequencies = frequencies;
         this.sampleRate = sampleRate;
         this.triggerSnr = triggerSnr;
@@ -77,11 +77,11 @@ public class TriggerAnalyzer {
         backgroundNoiseEvaluator = new ApproximatePercentile(PERCENTILE_BACKGROUND);
         splHistory = new CircularArray[frequencies.length];
         peakFinder = new PeakFinder();
-        peakFinder.setMinIncreaseCount(Math.max(1, gateLength / windowOffset / 2 - 1));
-        peakFinder.setMinDecreaseCount(peakFinder.getMinIncreaseCount());
         for(int i=0; i<frequencies.length; i++) {
-            frequencyAnalyzersAlpha[i] = new IterativeGeneralizedGoertzel(sampleRate, frequencies[i], windowAnalyze);
-            frequencyAnalyzersBeta[i] = new IterativeGeneralizedGoertzel(sampleRate, frequencies[i], windowAnalyze);
+            frequencyAnalyzersAlpha[i] = new IterativeGeneralizedGoertzel(sampleRate, frequencies[i], windowLength[i]);
+            frequencyAnalyzersBeta[i] = new IterativeGeneralizedGoertzel(sampleRate, frequencies[i], windowLength[i]);
+            frequencyAnalyzersAlpha[i].setHannWindow(true);
+            frequencyAnalyzersBeta[i].setHannWindow(true);
             splHistory[i] = new CircularArray((gateLength * 3) / windowOffset);
         }
     }
@@ -116,9 +116,17 @@ public class TriggerAnalyzer {
         int processed = 0;
         while(firstToneLocation == -1 && processed < samples.length) {
             int toProcess = Math.min(samples.length - processed,windowAnalyze - windowProcessed.get());
-            QRTone.applyHann(samples,processed, processed + toProcess, windowAnalyze, windowProcessed.get());
             for(int idfreq = 0; idfreq < frequencyAnalyzers.length; idfreq++) {
-                frequencyAnalyzers[idfreq].processSamples(samples, processed, processed + toProcess);
+                int startWindow = windowAnalyze / 2 - frequencyAnalyzers[idfreq].getWindowSize() / 2;
+                int endWindow = startWindow + frequencyAnalyzers[idfreq].getWindowSize();
+                if(startWindow < windowProcessed.get() + toProcess && windowProcessed.get() < endWindow) {
+                    int startAnalyze = Math.max(0, startWindow - windowProcessed.get());
+                    int analyzeLength = Math.min(toProcess - startAnalyze,
+                            frequencyAnalyzers[idfreq].getWindowSize() - frequencyAnalyzers[idfreq].getProcessedSamples());
+                    frequencyAnalyzers[idfreq].processSamples(samples, startAnalyze, startAnalyze + analyzeLength);
+                } else {
+                    break;
+                }
             }
             processed += toProcess;
             windowProcessed.addAndGet(toProcess);
@@ -178,16 +186,16 @@ public class TriggerAnalyzer {
     }
 
     public void processSamples(float[] samples) {
-        doProcess(Arrays.copyOf(samples, samples.length), processedWindowAlpha, frequencyAnalyzersAlpha);
+        doProcess(samples, processedWindowAlpha, frequencyAnalyzersAlpha);
         if(totalProcessed > windowOffset) {
-            doProcess(Arrays.copyOf(samples, samples.length), processedWindowBeta, frequencyAnalyzersBeta);
+            doProcess(samples, processedWindowBeta, frequencyAnalyzersBeta);
         } else if(windowOffset - totalProcessed < samples.length){
             // Start to process on the part used by the offset window
             doProcess(Arrays.copyOfRange(samples, windowOffset - (int)totalProcessed,
                     samples.length), processedWindowBeta,
                     frequencyAnalyzersBeta);
         }
-        totalProcessed+=samples.length;
+        totalProcessed += samples.length;
     }
 
     /**

@@ -71,6 +71,7 @@ public class QRTone {
     // Column and rows of DTMF that make a char
     public final static int FREQUENCY_ROOT = 16;
     private final double[] frequencies;
+    private final double[] frequencyLimits;
     final TriggerAnalyzer triggerAnalyzer;
     byte[] symbolsToDeliver;
     byte[] symbolsCache;
@@ -86,9 +87,14 @@ public class QRTone {
         this.gateLength = (int)(configuration.sampleRate * configuration.gateTime);
         this.wordSilenceLength = (int)(configuration.sampleRate * configuration.wordSilenceTime);
         this.frequencies = configuration.computeFrequencies(NUM_FREQUENCIES);
+        this.frequencyLimits = configuration.computeFrequencies(NUM_FREQUENCIES, WINDOW_WIDTH);
         gate1Frequency = frequencies[FREQUENCY_ROOT ];
         gate2Frequency = frequencies[FREQUENCY_ROOT + 2];
-        triggerAnalyzer = new TriggerAnalyzer(configuration.sampleRate, gateLength, new double[]{gate1Frequency, gate2Frequency}, configuration.triggerSnr);
+        triggerAnalyzer = new TriggerAnalyzer(configuration.sampleRate, gateLength,
+                new double[]{gate1Frequency, gate2Frequency},new int[]{
+                        Configuration.computeMinimumWindowSize(configuration.sampleRate, gate1Frequency, frequencyLimits[FREQUENCY_ROOT]),
+                Configuration.computeMinimumWindowSize(configuration.sampleRate, gate2Frequency, frequencyLimits[FREQUENCY_ROOT + 2])},
+                configuration.triggerSnr);
     }
 
     /**
@@ -424,9 +430,8 @@ public class QRTone {
             qrToneState = STATE.PARSING_SYMBOLS;
             firstToneSampleIndex = pushedSamples - (triggerAnalyzer.getTotalProcessed() - triggerAnalyzer.getFirstToneLocation());
             frequencyAnalyzers = new IterativeGeneralizedGoertzel[frequencies.length];
-            double[] frequencyLimits = configuration.computeFrequencies(NUM_FREQUENCIES, WINDOW_WIDTH);
             for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
-                int window_length = Configuration.computeMinimumWindowSize(configuration.sampleRate, frequencies[idfreq], frequencyLimits[idfreq]);
+                int window_length = Math.min(wordLength, Configuration.computeMinimumWindowSize(configuration.sampleRate, frequencies[idfreq], frequencyLimits[idfreq]));
                 frequencyAnalyzers[idfreq] = new IterativeGeneralizedGoertzel(configuration.sampleRate, frequencies[idfreq], window_length);
                 frequencyAnalyzers[idfreq].setHannWindow(true);
             }
