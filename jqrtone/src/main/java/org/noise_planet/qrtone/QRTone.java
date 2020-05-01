@@ -47,7 +47,7 @@ public class QRTone {
     public static final long PERMUTATION_SEED = 3141592653589793238L;
     // Frequency analysis window width is dependent of analyzed frequencies
     // Tone frequency may be not the expected one, so neighbors tone frequency values are accumulated
-    private static final double WINDOW_WIDTH = 0.65;
+    public static final double WINDOW_WIDTH = 0.65;
     private enum STATE {WAITING_TRIGGER, PARSING_SYMBOLS};
     private static final double TUKEY_ALPHA  = 0.5;
     public static final int CRC_BYTE_LENGTH = 2;
@@ -91,9 +91,7 @@ public class QRTone {
         gate1Frequency = frequencies[FREQUENCY_ROOT ];
         gate2Frequency = frequencies[FREQUENCY_ROOT + 2];
         triggerAnalyzer = new TriggerAnalyzer(configuration.sampleRate, gateLength,
-                new double[]{gate1Frequency, gate2Frequency},new int[]{
-                        Configuration.computeMinimumWindowSize(configuration.sampleRate, gate1Frequency, frequencyLimits[FREQUENCY_ROOT]),
-                Configuration.computeMinimumWindowSize(configuration.sampleRate, gate2Frequency, frequencyLimits[FREQUENCY_ROOT + 2])},
+                new double[]{gate1Frequency, gate2Frequency}, Configuration.computeMinimumWindowSize(configuration.sampleRate, gate1Frequency, frequencyLimits[FREQUENCY_ROOT]),
                 configuration.triggerSnr);
     }
 

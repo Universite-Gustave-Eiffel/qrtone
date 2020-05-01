@@ -580,13 +580,12 @@ public class QRToneTest {
         for (int s = 0; s < samples.length; s++) {
             samples[s] += (float)(random.nextGaussian() * noisePeak);
         }
-        writeFloatToFile("target/toneSignal.raw", samples);
-
+        //writeFloatToFile("target/toneSignal.raw", samples);
     }
 
     @Test
     public void testToneDetection() throws IOException {
-        boolean writeCSV = true;
+        boolean writeCSV = false;
         double sampleRate = 44100;
         double timeBlankBefore = 0.35;
         double timeBlankAfter = 0.35;
@@ -874,6 +873,7 @@ public class QRToneTest {
 
 
     // Test adaptative geortzel window
+    // @Test
     public void generalized_goertzel_width() throws Exception {
         double sampleRate = 32000;
         double powerRMS = Math.pow(10, -26.0 / 20.0); // -26 dBFS
@@ -881,7 +881,7 @@ public class QRToneTest {
         double powerPeak = powerRMS * Math.sqrt(2);
         Configuration c = Configuration.getAudible(sampleRate);
         double[] freqs = c.computeFrequencies(32, 0);
-        double[] freqsLimits = c.computeFrequencies(32, 0.65);
+        double[] freqsLimits = c.computeFrequencies(32, QRTone.WINDOW_WIDTH);
         double[] testfrequencies = new double[512];
         double limit = -32 - 15; //20 * Math.log10(powerRMS) - 15.0;
         for(int i = 0; i < testfrequencies.length; i++) {
