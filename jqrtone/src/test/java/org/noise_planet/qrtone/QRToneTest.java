@@ -677,7 +677,7 @@ public class QRToneTest {
 
     @Test
     public void testToneDetectionWithNoise() throws IOException, UnsupportedAudioFileException {
-        boolean writeCSV = true;
+        boolean writeCSV = false;
         double sampleRate = 44100;
         double timeBlankBefore = 1.1333;
         double powerRMS = Math.pow(10, -26.0 / 20.0); // -26 dBFS
