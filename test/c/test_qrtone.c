@@ -566,6 +566,7 @@ MU_TEST(testGenerate) {
 	free(qrtone_decoder);
 }
 
+
 MU_TEST(testHeaderEncodeDecode) {
 	qrtone_header_t* header = qrtone_header_new();
 	qrtone_header_init(header, sizeof(IPFS_PAYLOAD), 14, 2, 1, 0);
@@ -716,6 +717,51 @@ MU_TEST(testSymbolsEncodingDecodingWithError) {
 	free(header);
 }
 
+
+
+MU_TEST(testReadArduino) {
+
+	qrtone_t* qrtone = qrtone_new();
+	double sample_rate = 16000;
+	qrtone_init(qrtone, sample_rate);
+
+
+	FILE* f = fopen("ipfs_16khz_16bits_mono.raw", "rb");
+	mu_check(f != NULL);
+
+	int16_t buffer[128];
+	const int32_t number_of_samples = sizeof(buffer) / sizeof(int16_t);
+	size_t res = number_of_samples;
+	while (res == number_of_samples) {
+		// Read short samples
+		res = fread(buffer, sizeof(int16_t), number_of_samples, f);
+		// Init float samples array
+		float* window = malloc(sizeof(float) * res);
+		memset(window, 0, sizeof(float) * res);
+		int32_t i;
+		for(i = 0; i < res; i++) {
+			window[i] = buffer[i] / 32767.0f;
+		}
+		if (qrtone_push_samples(qrtone, window, res)) {
+			// Got data
+			free(window);
+			break;
+		}
+		free(window);
+	}
+	fclose(f);
+
+	mu_assert(qrtone_get_payload(qrtone) != NULL, "no decoded message");
+	if (qrtone_get_payload(qrtone) != NULL) {
+		mu_assert_int_array_eq(IPFS_PAYLOAD, sizeof(IPFS_PAYLOAD), qrtone_get_payload(qrtone), qrtone_get_payload_length(qrtone));
+	}
+
+	qrtone_free(qrtone);
+
+	free(qrtone);
+}
+
+
 MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(testCRC8);
 	MU_RUN_TEST(testCRC16);
@@ -734,6 +780,7 @@ MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(testHeaderEncodeDecode);
 	MU_RUN_TEST(testSymbolsEncodingDecoding);
 	MU_RUN_TEST(testSymbolsEncodingDecodingWithError);
+	MU_RUN_TEST(testReadArduino);
 }
 
 int main(int argc, char** argv) {
