@@ -756,6 +756,8 @@ MU_TEST(testReadArduino) {
 		mu_assert_int_array_eq(IPFS_PAYLOAD, sizeof(IPFS_PAYLOAD), qrtone_get_payload(qrtone), qrtone_get_payload_length(qrtone));
 	}
 
+	printf("\ntestReadArduino: %d errors fixed \n", qrtone_get_fixed_errors(qrtone));
+
 	qrtone_free(qrtone);
 
 	free(qrtone);

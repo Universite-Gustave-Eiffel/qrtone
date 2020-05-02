@@ -849,14 +849,14 @@ int32_t qrtone_compute_minimum_window_size(double sampleRate, double targetFrequ
     return max(window_size, (int)ceil(sampleRate * (5.0 * (1.0 / targetFrequency))));
 }
 
-void qrtone_trigger_analyzer_init(qrtone_trigger_analyzer_t* self, double sample_rate, int32_t gate_length, double gate_frequencies[2], double trigger_snr) {
+void qrtone_trigger_analyzer_init(qrtone_trigger_analyzer_t* self, double sample_rate, int32_t gate_length,int32_t window_analyze, double gate_frequencies[2], double trigger_snr) {
     self->processed_window_alpha = 0;
     self->processed_window_beta = 0;
     self->total_processed = 0;
     self->level_callback = NULL;
     self->level_callback_data = NULL;
     self->first_tone_location = -1;
-    self->window_analyze = gate_length / 3;
+    self->window_analyze = window_analyze;
     self->sample_rate = sample_rate;
     self->trigger_snr = trigger_snr;
     self->gate_length = gate_length;
@@ -870,8 +870,8 @@ void qrtone_trigger_analyzer_init(qrtone_trigger_analyzer_t* self, double sample
         qrtone_goertzel_init(&(self->frequency_analyzers_beta[i]), sample_rate, gate_frequencies[i], self->window_analyze);
         qrtone_array_init(&(self->spl_history[i]), (gate_length * 3) / self->window_offset);
     }
-    int32_t slopeWindows = -1;//max(1, gate_length / self->window_offset / 2 - 1);
-    qrtone_peak_finder_init(&(self->peak_finder), slopeWindows, slopeWindows);
+    int32_t slopeWindows = max(1, (gate_length / 2) / self->window_offset);
+    qrtone_peak_finder_init(&(self->peak_finder), -1, slopeWindows);
 }
 
 void qrtone_trigger_analyzer_free(qrtone_trigger_analyzer_t* self) {
@@ -1103,7 +1103,6 @@ void qrtone_init(qrtone_t* self, double sample_rate) {
     double gates_freq[2];
     gates_freq[0] = self->gate1_frequency;
     gates_freq[1] = self->gate2_frequency;
-    qrtone_trigger_analyzer_init(&(self->trigger_analyzer), sample_rate, self->gate_length, gates_freq, QRTONE_DEFAULT_TRIGGER_SNR);
     int32_t idfreq;
     double close_frequencies[QRTONE_NUM_FREQUENCIES];
     qrtone_compute_frequencies(close_frequencies, QRTONE_WINDOW_WIDTH);
@@ -1112,6 +1111,7 @@ void qrtone_init(qrtone_t* self, double sample_rate) {
         qrtone_goertzel_init(&(self->frequency_analyzers[idfreq]), sample_rate, self->frequencies[idfreq], min(self->word_length, adaptative_window));
         self->frequency_analyzers[idfreq].hannWindow = 1;
     }
+    qrtone_trigger_analyzer_init(&(self->trigger_analyzer), sample_rate, self->gate_length, self->frequency_analyzers[FREQUENCY_ROOT].window_size ,gates_freq, QRTONE_DEFAULT_TRIGGER_SNR);
     ecc_reed_solomon_encoder_init(&(self->encoder), 0x13, 16, 1);
     self->header_cache = NULL;
 }
