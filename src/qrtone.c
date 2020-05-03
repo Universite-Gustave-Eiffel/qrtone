@@ -50,7 +50,8 @@
 #include "reed_solomon.h"
 #include "math.h"
 
-#define QRTONE_2PI 6.283185307179586
+#define QRTONE_2PI 6.283185307179586f
+#define QRTONE_PI 3.14159265358979323846f
 
 // Column and rows of DTMF that make a char
 #define FREQUENCY_ROOT 16
@@ -97,28 +98,28 @@
 // Low / Medium / Quality / High
 const int32_t ECC_SYMBOLS[][2] = { {14, 2}, {14, 4}, {12, 6}, {10, 6} };
 
-#define QRTONE_MULT_SEMITONE 1.0472941228206267
-#define QRTONE_WORD_TIME 0.06
-#define QRTONE_WORD_SILENCE_TIME 0.01
-#define QRTONE_GATE_TIME 0.12
+#define QRTONE_MULT_SEMITONE 1.0472941228206267f
+#define QRTONE_WORD_TIME 0.06f
+#define QRTONE_WORD_SILENCE_TIME 0.01f
+#define QRTONE_GATE_TIME 0.12f
 #define QRTONE_AUDIBLE_FIRST_FREQUENCY 1720
 #define QRTONE_DEFAULT_TRIGGER_SNR 15
 #define QRTONE_DEFAULT_ECC_LEVEL QRTONE_ECC_Q
-#define QRTONE_PERCENTILE_BACKGROUND 0.5
-#define QRTONE_TUKEY_ALPHA 0.5
+#define QRTONE_PERCENTILE_BACKGROUND 0.5f
+#define QRTONE_TUKEY_ALPHA 0.5f
 // Frequency analysis window width is dependent of analyzed frequencies
 // Tone frequency may be not the expected one, so neighbors tone frequency values are accumulated
-#define QRTONE_WINDOW_WIDTH 0.65
+#define QRTONE_WINDOW_WIDTH 0.65f
 
 enum QRTONE_STATE { QRTONE_WAITING_TRIGGER, QRTONE_PARSING_SYMBOLS };
 
 typedef struct _qrtonecomplex
 {
-    double r;
-    double i;
+    float r;
+    float i;
 } qrtonecomplex;
 
-struct _qrtonecomplex NEW_CX(double r, double i) {
+struct _qrtonecomplex NEW_CX(float r, float i) {
     qrtonecomplex ret;
     ret.r = r;
     ret.i = i;
@@ -148,8 +149,8 @@ struct _qrtonecomplex CX_MUL(const qrtonecomplex c1, const qrtonecomplex c2) {
 
 struct _qrtonecomplex CX_EXP(const qrtonecomplex c1) {
     qrtonecomplex ret;
-    ret.r = cos(c1.r);
-    ret.i = -sin(c1.r);
+    ret.r = cosf(c1.r);
+    ret.i = -sinf(c1.r);
     return ret;
 }
 
@@ -166,22 +167,22 @@ typedef struct _qrtone_crc16_t {
 } qrtone_crc16_t;
 
 typedef struct _qrtone_goertzel_t {
-    double s0;
-    double s1;
-    double s2;
-    double cos_pik_term2;
-    double pik_term;
+    float s0;
+    float s1;
+    float s2;
+    float cos_pik_term2;
+    float pik_term;
     float last_sample;
-    double sample_rate;
+    float sample_rate;
     int32_t window_size;
     int32_t processed_samples;
     int8_t hannWindow;
 } qrtone_goertzel_t;
 
 typedef struct _qrtone_percentile_t {
-    double* q;
-    double* dn;
-    double* np;
+    float* q;
+    float* dn;
+    float* np;
     int32_t* n;
     int32_t count;
     int32_t marker_count;
@@ -196,10 +197,10 @@ typedef struct _qrtone_array_t {
 
 typedef struct _qrtone_peak_finder_t {
     int8_t increase; // boolean increase state
-    double old_val;
+    float old_val;
     int64_t old_index;
     int8_t added;
-    double last_peak_value;
+    float last_peak_value;
     int64_t last_peak_index;
     int32_t increase_count;
     int32_t decrease_count;
@@ -229,9 +230,9 @@ typedef struct _qrtone_trigger_analyzer_t {
     qrtone_peak_finder_t peak_finder;
     int32_t window_analyze;
     int64_t total_processed;
-    double frequencies[2];
-    double sample_rate;
-    double trigger_snr;
+    float frequencies[2];
+    float sample_rate;
+    float trigger_snr;
     int64_t first_tone_location;
     qrtone_level_callback_t level_callback;
     void* level_callback_data;
@@ -244,10 +245,10 @@ typedef struct _qrtone_t {
     int32_t word_length;
     int32_t gate_length;
     int32_t word_silence_length;
-    double gate1_frequency;
-    double gate2_frequency;
-    double sample_rate;
-    double frequencies[QRTONE_NUM_FREQUENCIES];
+    float gate1_frequency;
+    float gate2_frequency;
+    float sample_rate;
+    float frequencies[QRTONE_NUM_FREQUENCIES];
     qrtone_trigger_analyzer_t trigger_analyzer;
     int8_t* symbols_to_deliver;
     int32_t symbols_to_deliver_length;
@@ -336,21 +337,21 @@ qrtone_goertzel_t* qrtone_goertzel_new(void) {
 }
 
 void qrtone_goertzel_reset(qrtone_goertzel_t* self) {
-    self->s0 = 0;
-    self->s1 = 0;
-    self->s2 = 0;
+    self->s0 = 0.f;
+    self->s1 = 0.f;
+    self->s2 = 0.f;
     self->processed_samples = 0;
-    self->last_sample = 0;
+    self->last_sample = 0.f;
 }
 
-void qrtone_goertzel_init(qrtone_goertzel_t* self, double sample_rate, double frequency, int32_t window_size) {
+void qrtone_goertzel_init(qrtone_goertzel_t* self, float sample_rate, float frequency, int32_t window_size) {
         self->sample_rate = sample_rate;
         self->window_size = window_size;
         self->hannWindow = 0;
         // Fix frequency using the sampleRate of the signal
-        double samplingRateFactor = window_size / sample_rate;
+        float samplingRateFactor = window_size / sample_rate;
         self->pik_term = QRTONE_2PI * (frequency * samplingRateFactor) / window_size;
-        self->cos_pik_term2 = cos(self->pik_term) * 2.0;
+        self->cos_pik_term2 = cosf(self->pik_term) * 2.0f;
         qrtone_goertzel_reset(self);
 }
 
@@ -371,7 +372,7 @@ void qrtone_goertzel_process_samples(qrtone_goertzel_t* self, float* samples,int
         int32_t i;
         for (i = 0; i < size; i++) {
             if (self->hannWindow) {
-                const double hann = (0.5 - 0.5 * cos((QRTONE_2PI * ((int64_t)i + self->processed_samples)) / ((int64_t)self->window_size - 1)));
+                const float hann = (0.5f - 0.5f * cosf((QRTONE_2PI * (i + self->processed_samples)) / (self->window_size - 1)));
                 self->s0 = samples[i] * hann + self->cos_pik_term2 * self->s1 - self->s2;
             } else {
                 self->s0 = samples[i] + self->cos_pik_term2 * self->s1 - self->s2;
@@ -383,7 +384,7 @@ void qrtone_goertzel_process_samples(qrtone_goertzel_t* self, float* samples,int
     }
 }
 
-double qrtone_goertzel_compute_rms(qrtone_goertzel_t* self) {
+float qrtone_goertzel_compute_rms(qrtone_goertzel_t* self) {
     // final computations
     self->s0 = self->last_sample + self->cos_pik_term2 * self->s1 - self->s2;
 
@@ -392,12 +393,12 @@ double qrtone_goertzel_compute_rms(qrtone_goertzel_t* self) {
     // and correcting the phase for (potentially) non - integer valued
     // frequencies at the same time
     qrtonecomplex parta = CX_SUB(NEW_CX(self->s0, 0), CX_MUL(NEW_CX(self->s1, 0), cc));
-    qrtonecomplex partb = CX_EXP(NEW_CX(self->pik_term * (self->window_size - 1.), 0));
+    qrtonecomplex partb = CX_EXP(NEW_CX(self->pik_term * (self->window_size - 1.0f), 0));
     qrtonecomplex y = CX_MUL(parta, partb);
     // phase = atan2(y.i, y.r);
     // Compute RMS
     qrtone_goertzel_reset(self);
-    return sqrt((y.r * y.r + y.i * y.i) * 2) / self->window_size;
+    return sqrtf((y.r * y.r + y.i * y.i) * 2.f) / self->window_size;
 }
 
 /**
@@ -406,8 +407,8 @@ double qrtone_goertzel_compute_rms(qrtone_goertzel_t* self) {
  *
  * @author Aaron Small
  */
-void qrtone_percentile_sort(double* q, int32_t q_length) {
-    double k;
+void qrtone_percentile_sort(float* q, int32_t q_length) {
+    float k;
     int32_t i = 0;
     int32_t j = 0;
     for (j = 1; j < q_length; j++) {
@@ -442,14 +443,14 @@ void qrtone_percentile_update_markers(qrtone_percentile_t* self) {
  */
 void qrtone_percentile_add_end_markers(qrtone_percentile_t* self) {
     self->marker_count = 2;
-    self->q = malloc(sizeof(double) * self->marker_count);
-    self->dn = malloc(sizeof(double) * self->marker_count);
-    self->np = malloc(sizeof(double) * self->marker_count);
-    self->n = malloc(sizeof(double) * self->marker_count);
-    memset(self->q, 0, sizeof(double) * self->marker_count);
-    memset(self->dn, 0, sizeof(double) * self->marker_count);
-    memset(self->np, 0, sizeof(double) * self->marker_count);
-    memset(self->n, 0, sizeof(double) * self->marker_count);
+    self->q = malloc(sizeof(float) * self->marker_count);
+    self->dn = malloc(sizeof(float) * self->marker_count);
+    self->np = malloc(sizeof(float) * self->marker_count);
+    self->n = malloc(sizeof(float) * self->marker_count);
+    memset(self->q, 0, sizeof(float) * self->marker_count);
+    memset(self->dn, 0, sizeof(float) * self->marker_count);
+    memset(self->np, 0, sizeof(float) * self->marker_count);
+    memset(self->n, 0, sizeof(float) * self->marker_count);
     self->dn[0] = 0.0;
     self->dn[1] = 1.0;
     qrtone_percentile_update_markers(self);
@@ -469,19 +470,19 @@ void qrtone_percentile_init(qrtone_percentile_t* self) {
  * @author Aaron Small
  */
 int32_t qrtone_percentile_allocate_markers(qrtone_percentile_t* self, int32_t count) {
-    double* new_q = malloc(sizeof(double) * ((int64_t)self->marker_count + (int64_t)count));
-    double* new_dn = malloc(sizeof(double) * ((int64_t)self->marker_count + (int64_t)count));
-    double* new_np = malloc(sizeof(double) * ((int64_t)self->marker_count + (int64_t)count));
+    float* new_q = malloc(sizeof(float) * ((int64_t)self->marker_count + (int64_t)count));
+    float* new_dn = malloc(sizeof(float) * ((int64_t)self->marker_count + (int64_t)count));
+    float* new_np = malloc(sizeof(float) * ((int64_t)self->marker_count + (int64_t)count));
     int32_t* new_n = malloc(sizeof(int32_t) * ((int64_t)self->marker_count + (int64_t)count));
 
-    memset(new_q + self->marker_count, 0, sizeof(double) * count);
-    memset(new_dn + self->marker_count, 0, sizeof(double) * count);
-    memset(new_np + self->marker_count, 0, sizeof(double) * count);
+    memset(new_q + self->marker_count, 0, sizeof(float) * count);
+    memset(new_dn + self->marker_count, 0, sizeof(float) * count);
+    memset(new_np + self->marker_count, 0, sizeof(float) * count);
     memset(new_n + self->marker_count, 0, sizeof(int32_t) * count);
 
-    memcpy(new_q, self->q, sizeof(double) * self->marker_count);
-    memcpy(new_dn, self->dn, sizeof(double) * self->marker_count);
-    memcpy(new_np, self->np, sizeof(double) * self->marker_count);
+    memcpy(new_q, self->q, sizeof(float) * self->marker_count);
+    memcpy(new_dn, self->dn, sizeof(float) * self->marker_count);
+    memcpy(new_np, self->np, sizeof(float) * self->marker_count);
     memcpy(new_n, self->n, sizeof(int32_t) * self->marker_count);
 
     free(self->q);
@@ -502,13 +503,13 @@ int32_t qrtone_percentile_allocate_markers(qrtone_percentile_t* self, int32_t co
 /**
  * @author Aaron Small
  */
-void qrtone_percentile_add_quantile(qrtone_percentile_t* self, double quant) {
+void qrtone_percentile_add_quantile(qrtone_percentile_t* self, float quant) {
     int32_t index = qrtone_percentile_allocate_markers(self, 3);
 
     /* Add in appropriate dn markers */
-    self->dn[index] = quant / 2.0;
+    self->dn[index] = quant / 2.0f;
     self->dn[index + 1] = quant;
-    self->dn[index + 2] = (1.0 + quant) / 2.0;
+    self->dn[index + 2] = (1.0f + quant) / 2.0f;
 
     qrtone_percentile_update_markers(self);
 }
@@ -524,7 +525,7 @@ qrtone_percentile_t* qrtone_percentile_new(void) {
  *
  * @author Aaron Small
  */
-void qrtone_percentile_init_quantile(qrtone_percentile_t* self, double quant) {
+void qrtone_percentile_init_quantile(qrtone_percentile_t* self, float quant) {
     if (quant >= 0 && quant <= 1) {
         self->count = 0;
         qrtone_percentile_add_end_markers(self);
@@ -535,26 +536,26 @@ void qrtone_percentile_init_quantile(qrtone_percentile_t* self, double quant) {
 /**
  * @author Aaron Small
  */
-double qrtone_percentile_linear(qrtone_percentile_t* self, int32_t i, int32_t d) {
+float qrtone_percentile_linear(qrtone_percentile_t* self, int32_t i, int32_t d) {
     return self->q[i] + d * (self->q[i + d] - self->q[i]) /((int64_t)self->n[i + d] - self->n[i]);
 }
 
 /**
  * @author Aaron Small
  */
-double qrtone_percentile_parabolic(qrtone_percentile_t* self, int32_t i, int32_t d) {
-    return self->q[i] + d / (double)((int64_t)self->n[i + 1] - self->n[i - 1]) * (((int64_t)self->n[i] - self->n[i - 1] + d) * (self->q[i + 1] - self->q[i]) /
+float qrtone_percentile_parabolic(qrtone_percentile_t* self, int32_t i, int32_t d) {
+    return self->q[i] + d / (float)((int64_t)self->n[i + 1] - self->n[i - 1]) * (((int64_t)self->n[i] - self->n[i - 1] + d) * (self->q[i + 1] - self->q[i]) /
         ((int64_t)self->n[i + 1] - self->n[i]) + ((int64_t)self->n[i + 1] - self->n[i] - d) * (self->q[i] - self->q[i - 1]) / ((int64_t)self->n[i] - self->n[i - 1]));
 }
 
 /**
  * @author Aaron Small
  */
-void qrtone_percentile_add(qrtone_percentile_t* self, double data) {
+void qrtone_percentile_add(qrtone_percentile_t* self, float data) {
     int32_t i;
     int32_t k = 0;
-    double d;
-    double newq;
+    float d;
+    float newq;
 
     if (self->count >= self->marker_count) {
         self->count++;
@@ -616,13 +617,13 @@ void qrtone_percentile_add(qrtone_percentile_t* self, double data) {
     }
 }
 
-double qrtone_percentile_result_quantile(qrtone_percentile_t* self, double quantile) {
+float qrtone_percentile_result_quantile(qrtone_percentile_t* self, float quantile) {
     int32_t i;
     if (self->count < self->marker_count) {
         int32_t closest = 1;
         qrtone_percentile_sort(self->q, self->count);
         for (i = 2; i < self->count; i++) {
-            if (fabs(((double)i) / self->count - quantile) < fabs(((double)closest) / self->marker_count - quantile)) {
+            if (fabsf(((float)i) / self->count - quantile) < fabsf(((float)closest) / self->marker_count - quantile)) {
                 closest = i;
             }
         }
@@ -631,7 +632,7 @@ double qrtone_percentile_result_quantile(qrtone_percentile_t* self, double quant
         // Figure out which quantile is the one we're looking for by nearest dn
         int32_t closest = 1;
         for (i = 2; i < self->marker_count - 1; i++) {
-            if (fabs(self->dn[i] - quantile) < fabs(self->dn[closest] - quantile)) {
+            if (fabsf(self->dn[i] - quantile) < fabsf(self->dn[closest] - quantile)) {
                 closest = i;
             }
         }
@@ -639,7 +640,7 @@ double qrtone_percentile_result_quantile(qrtone_percentile_t* self, double quant
     }
 }
 
-double qrtone_percentile_result(qrtone_percentile_t* self) {
+float qrtone_percentile_result(qrtone_percentile_t* self) {
     return qrtone_percentile_result_quantile(self, self->dn[(self->marker_count - 1) / 2]);
 }
 
@@ -702,7 +703,7 @@ qrtone_peak_finder_t* qrtone_peak_finder_new(void) {
 
 void qrtone_peak_finder_init(qrtone_peak_finder_t* self, int32_t min_increase_count, int32_t min_decrease_count) {
     self->increase = TRUE;
-    self->old_val = -99999999999999999.0;
+    self->old_val = -99999999999999999.0f;
     self->old_index = 0;
     self->added = FALSE;
     self->last_peak_value = 0;
@@ -715,7 +716,7 @@ void qrtone_peak_finder_init(qrtone_peak_finder_t* self, int32_t min_increase_co
 
 int8_t qrtone_peak_finder_add(qrtone_peak_finder_t* self, int64_t index, float value) {
     int8_t ret = FALSE;
-    double diff = value - self->old_val;
+    float diff = value - self->old_val;
     // Detect switch from increase to decrease/stall
     if (diff <= 0 && self->increase) {
         if (self->increase_count >= self->min_increase_count) {
@@ -833,23 +834,23 @@ int8_t qrtone_header_init_from_data(qrtone_header_t* self, int8_t* data) {
     return TRUE;
 }
 
-void qrtone_compute_frequencies(double* frequencies, double offset) {
+void qrtone_compute_frequencies(float* frequencies, float offset) {
     // Precompute pitch frequencies
     int32_t i;
     for (i = 0; i < QRTONE_NUM_FREQUENCIES; i++) {
-        frequencies[i] = QRTONE_AUDIBLE_FIRST_FREQUENCY * pow(QRTONE_MULT_SEMITONE, i + offset);
+        frequencies[i] = QRTONE_AUDIBLE_FIRST_FREQUENCY * powf(QRTONE_MULT_SEMITONE, i + offset);
     }
 }
 
-int32_t qrtone_compute_minimum_window_size(double sampleRate, double targetFrequency, double closestFrequency) {
+int32_t qrtone_compute_minimum_window_size(float sampleRate, float targetFrequency, float closestFrequency) {
     // Max bin size in Hz
-    double max_bin_size = fabs(closestFrequency - targetFrequency) / 2.0;
+    float max_bin_size = fabsf(closestFrequency - targetFrequency) / 2.0f;
     // Minimum window size without leaks
     int window_size = (int)(ceil(sampleRate / max_bin_size));
     return max(window_size, (int)ceil(sampleRate * (5.0 * (1.0 / targetFrequency))));
 }
 
-void qrtone_trigger_analyzer_init(qrtone_trigger_analyzer_t* self, double sample_rate, int32_t gate_length,int32_t window_analyze, double gate_frequencies[2], double trigger_snr) {
+void qrtone_trigger_analyzer_init(qrtone_trigger_analyzer_t* self, float sample_rate, int32_t gate_length,int32_t window_analyze, float gate_frequencies[2], float trigger_snr) {
     self->processed_window_alpha = 0;
     self->processed_window_beta = 0;
     self->total_processed = 0;
@@ -906,7 +907,7 @@ void qrtone_trigger_analyzer_reset(qrtone_trigger_analyzer_t* self) {
 void qrtone_hann_window(float* signal, int32_t signal_length, int32_t window_length, int32_t offset) {
     int32_t i;
     for (i = 0; i < signal_length && offset + i < window_length; i++) {
-        signal[i] = (float_t)((double)signal[i] * (0.5 - 0.5 * cos((QRTONE_2PI * ((int64_t)i + offset)) / ((int64_t)window_length - 1))));
+        signal[i] = (signal[i] * (0.5f - 0.5f * cosf((QRTONE_2PI * (i + offset)) / (window_length - 1))));
     }
 }
 
@@ -918,21 +919,21 @@ void qrtone_hann_window(float* signal, int32_t signal_length, int32_t window_len
  * @param windowLength full length of tukey window
  * @param offset Offset of the provided signal buffer (> 0)
  */
-void qrtone_tukey_window(float* signal, double alpha, int32_t signal_length, int32_t window_length, int32_t offset) {
-    int32_t index_begin_flat = (int)(floor(alpha * ((int64_t)window_length - 1) / 2.0));
+void qrtone_tukey_window(float* signal, float alpha, int32_t signal_length, int32_t window_length, int32_t offset) {
+    int32_t index_begin_flat = (int)(floorf(alpha * (window_length - 1) / 2.0f));
     int32_t index_end_flat = window_length - index_begin_flat;
-    double window_value = 0;
+    float window_value = 0;
     int32_t i;
 
     // begin hann part
     for (i = offset; i < index_begin_flat + 1 && i - offset < signal_length; i++) {
-        window_value = 0.5 * (1 + cos(M_PI * (-1 + 2.0 * i / alpha / ((int64_t)window_length - 1))));
+        window_value = 0.5f * (1.0f + cosf(QRTONE_PI * (-1.0f + 2.0f * i / alpha / (window_length - 1))));
         signal[i - offset] *= (float)window_value;
     }
 
     // end hann part
     for (i = max(offset, index_end_flat - 1); i < window_length && i - offset < signal_length; i++) {
-        window_value = 0.5 * (1 + cos(M_PI * (-2.0 / alpha + 1 + 2.0 * i / alpha / ((int64_t)window_length - 1))));
+        window_value = 0.5f * (1 + cosf(QRTONE_PI * (-2.0f / alpha + 1.0f + 2.0f * i / alpha / (window_length - 1))));
         signal[i - offset] *= (float)window_value;
     }
 
@@ -949,10 +950,10 @@ void qrtone_tukey_window(float* signal, double alpha, int32_t signal_length, int
  * @link https://www.dsprelated.com/freebooks/sasp/Sinusoidal_Peak_Interpolation.html
  * three points
  */
-void qrtone_quadratic_interpolation(double p0, double p1, double p2, double* location, double* height, double* half_curvature) {
-    *location = (p2 - p0) / (2.0 * (2.0 * p1 - p2 - p0));
-    *height = p1 - 0.25 * (p0 - p2) * *location;
-    *half_curvature = 0.5 * (p0 - 2.0 * p1 + p2);
+void qrtone_quadratic_interpolation(float p0, float p1, float p2, float* location, float* height, float* half_curvature) {
+    *location = (p2 - p0) / (2.0f * (2.0f * p1 - p2 - p0));
+    *height = p1 - 0.25f * (p0 - p2) * *location;
+    *half_curvature = 0.5f * (p0 - 2.0f * p1 + p2);
 }
 
 /**
@@ -964,10 +965,10 @@ void qrtone_quadratic_interpolation(double p0, double p1, double p2, double* loc
  * @param windowLength x delta between points
  * @return Peak x value
  */
-int64_t qrtone_find_peak_location(double p0, double p1, double p2, int64_t p1_location, int32_t window_length) {
-    double location, height, half_curvature;
+int64_t qrtone_find_peak_location(float p0, float p1, float p2, int64_t p1_location, int32_t window_length) {
+    float location, height, half_curvature;
     qrtone_quadratic_interpolation(p0, p1, p2, &location, &height, &half_curvature);
-    return p1_location + (int64_t)(location * window_length);
+    return p1_location + (int64_t)location * window_length;
 }
 
 void qrtone_trigger_analyzer_process(qrtone_trigger_analyzer_t* self, float* samples, int32_t samples_length, int32_t* window_processed, qrtone_goertzel_t* frequency_analyzers) {
@@ -983,9 +984,9 @@ void qrtone_trigger_analyzer_process(qrtone_trigger_analyzer_t* self, float* sam
         *window_processed += to_process;
         if (*window_processed == self->window_analyze) {
             *window_processed = 0;
-            double spl_levels[2];
+            float spl_levels[2];
             for (id_freq = 0; id_freq < 2; id_freq++) {
-                double spl_level = 20 * log10(qrtone_goertzel_compute_rms(frequency_analyzers + id_freq));
+                float spl_level = 20.0f * log10f(qrtone_goertzel_compute_rms(frequency_analyzers + id_freq));
                 spl_levels[id_freq] = spl_level;
                 qrtone_array_add(self->spl_history + id_freq, (float)spl_level);
             }
@@ -995,8 +996,8 @@ void qrtone_trigger_analyzer_process(qrtone_trigger_analyzer_t* self, float* sam
             if (qrtone_peak_finder_add(&(self->peak_finder), location, (float)spl_levels[1])) {
                 // We found a peak
                 int64_t element_index = self->peak_finder.last_peak_index;
-                double element_value = self->peak_finder.last_peak_value;
-                double background_noise_second_peak = qrtone_percentile_result(&(self->background_noise_evaluator));
+                float element_value = self->peak_finder.last_peak_value;
+                float background_noise_second_peak = qrtone_percentile_result(&(self->background_noise_evaluator));
                 // Check if peak value is greater than specified Signal Noise ratio
                 if (element_value > background_noise_second_peak + self->trigger_snr) {
                     // Check if the level on other triggering frequencies is below triggering level (at the same time)
@@ -1081,7 +1082,7 @@ void qrtone_deinterleave_symbols(int8_t* symbols, int32_t symbols_length, int32_
     free(symbols_output);
 }
 
-void qrtone_init(qrtone_t* self, double sample_rate) {
+void qrtone_init(qrtone_t* self, float sample_rate) {
     self->symbols_cache = NULL;
     self->symbols_cache_length = 0;
     self->symbols_to_deliver = NULL;
@@ -1100,11 +1101,11 @@ void qrtone_init(qrtone_t* self, double sample_rate) {
     qrtone_compute_frequencies(self->frequencies, 0);
     self->gate1_frequency = self->frequencies[FREQUENCY_ROOT];
     self->gate2_frequency = self->frequencies[FREQUENCY_ROOT + 2];
-    double gates_freq[2];
+    float gates_freq[2];
     gates_freq[0] = self->gate1_frequency;
     gates_freq[1] = self->gate2_frequency;
     int32_t idfreq;
-    double close_frequencies[QRTONE_NUM_FREQUENCIES];
+    float close_frequencies[QRTONE_NUM_FREQUENCIES];
     qrtone_compute_frequencies(close_frequencies, QRTONE_WINDOW_WIDTH);
     for (idfreq = 0; idfreq < QRTONE_NUM_FREQUENCIES; idfreq++) {        
         int32_t adaptative_window = qrtone_compute_minimum_window_size(sample_rate, self->frequencies[idfreq], close_frequencies[idfreq]);
@@ -1218,11 +1219,11 @@ int32_t qrtone_set_payload(qrtone_t* self, int8_t* payload, uint8_t payload_leng
     return qrtone_set_payload_ext(self, payload, payload_length, QRTONE_DEFAULT_ECC_LEVEL, 1);
 }
 
-void qrtone_generate_pitch(float* samples, int32_t samples_length, int32_t offset, double sample_rate, float frequency, double power_peak) {
-    const double t_step = 1 / sample_rate;
+void qrtone_generate_pitch(float* samples, int32_t samples_length, int32_t offset, float sample_rate, float frequency, float power_peak) {
+    const float t_step = 1.0f / sample_rate;
     int32_t i;
     for (i = 0; i < samples_length; i++) {
-        samples[i] += (float_t)(sin(((int64_t)i + offset) * t_step * QRTONE_2PI * frequency) * power_peak);
+        samples[i] += sinf((i + offset) * t_step * QRTONE_2PI * frequency) * power_peak;
     }
 }
 
@@ -1315,7 +1316,7 @@ int8_t* qrtone_symbols_to_payload(qrtone_t* self, int8_t* symbols, int32_t symbo
     int32_t payload_symbols_size = block_symbols_size - block_ecc_symbols;
     int32_t payload_byte_size = payload_symbols_size / 2;
     int32_t payload_length = ((symbols_length / block_symbols_size) * payload_symbols_size + max(0, symbols_length % block_symbols_size - block_ecc_symbols)) / 2;
-    int32_t number_of_blocks = (int32_t)ceil(symbols_length / (double)block_symbols_size);
+    int32_t number_of_blocks = (int32_t)ceil(symbols_length / (float)block_symbols_size);
 
     // Cancel permutation of symbols
     qrtone_deinterleave_symbols(symbols, symbols_length, block_symbols_size);
@@ -1449,17 +1450,17 @@ int8_t qrtone_analyze_tones(qrtone_t* self, float* samples, int32_t samples_leng
             }
         }
         if (tone_window_cursor + cursor_increment == self->word_length) {
-            double spl[QRTONE_NUM_FREQUENCIES];
+            float spl[QRTONE_NUM_FREQUENCIES];
             for (idfreq = 0; idfreq < QRTONE_NUM_FREQUENCIES; idfreq++) {
-                double rmsValue = qrtone_goertzel_compute_rms(&(self->frequency_analyzers[idfreq]));
-                spl[idfreq] = 20 * log10(rmsValue);
+                float rmsValue = qrtone_goertzel_compute_rms(&(self->frequency_analyzers[idfreq]));
+                spl[idfreq] = 20.0f * log10f(rmsValue);
             }
             int32_t symbol_offset;
             for (symbol_offset = 0; symbol_offset < 2; symbol_offset++) {
                 int32_t max_symbol_id = -1;
-                double max_symbol_gain = -99999999999999.9;
+                float max_symbol_gain = -99999999999999.9f;
                 for (idfreq = symbol_offset * FREQUENCY_ROOT; idfreq < (symbol_offset + 1) * FREQUENCY_ROOT; idfreq++) {
-                    double gain = spl[idfreq];
+                    float gain = spl[idfreq];
                     if (gain > max_symbol_gain) {
                         max_symbol_gain = gain;
                         max_symbol_id = idfreq;

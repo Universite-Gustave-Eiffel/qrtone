@@ -88,7 +88,7 @@ qrtone_t* qrtone_new(void);
  * @param qrtone A pointer to the qrtone structure.
  * @param sample_rate Sample rate in Hz.
  */
-void qrtone_init(qrtone_t* qrtone, double sample_rate);
+void qrtone_init(qrtone_t* qrtone, float sample_rate);
 
 /**
  * Free allocated memory for a qrtone_t instance.

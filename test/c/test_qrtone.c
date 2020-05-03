@@ -62,9 +62,9 @@
 
 #define SAMPLES 2205
 
-// sunspot data
+ // sunspot data
 static const int32_t years[] = { 1701,1702,1703,1704,1705,1706,1707,1708,1709,1710,1711,1712,1713,1714,1715,1716,1717,1718,1719,1720,1721,1722,1723,1724,1725,1726,1727,1728,1729,1730,1731,1732,1733,1734,1735,1736,1737,1738,1739,1740,1741,1742,1743,1744,1745,1746,1747,1748,1749,1750,1751,1752,1753,1754,1755,1756,1757,1758,1759,1760,1761,1762,1763,1764,1765,1766,1767,1768,1769,1770,1771,1772,1773,1774,1775,1776,1777,1778,1779,1780,1781,1782,1783,1784,1785,1786,1787,1788,1789,1790,1791,1792,1793,1794,1795,1796,1797,1798,1799,1800,1801,1802,1803,1804,1805,1806,1807,1808,1809,1810,1811,1812,1813,1814,1815,1816,1817,1818,1819,1820,1821,1822,1823,1824,1825,1826,1827,1828,1829,1830,1831,1832,1833,1834,1835,1836,1837,1838,1839,1840,1841,1842,1843,1844,1845,1846,1847,1848,1849,1850,1851,1852,1853,1854,1855,1856,1857,1858,1859,1860,1861,1862,1863,1864,1865,1866,1867,1868,1869,1870,1871,1872,1873,1874,1875,1876,1877,1878,1879,1880,1881,1882,1883,1884,1885,1886,1887,1888,1889,1890,1891,1892,1893,1894,1895,1896,1897,1898,1899,1900,1901,1902,1903,1904,1905,1906,1907,1908,1909,1910,1911,1912,1913,1914,1915,1916,1917,1918,1919,1920,1921,1922,1923,1924,1925,1926,1927,1928,1929,1930,1931,1932,1933,1934,1935,1936,1937,1938,1939,1940,1941,1942,1943,1944,1945,1946,1947,1948,1949,1950,1951,1952,1953,1954,1955,1956,1957,1958,1959,1960,1961,1962,1963,1964,1965,1966,1967,1968,1969,1970,1971,1972,1973,1974,1975,1976,1977,1978,1979,1980,1981,1982,1983,1984,1985,1986,1987,1988,1989,1990,1991,1992,1993,1994,1995,1996,1997,1998,1999,2000 };
-static const double values[] = { 11.0,16.0,23.0,36.0,58.0,29.0,20.0,10.0,8.0,3.0,0.0,0.0,2.0,11.0,27.0,47.0,63.0,60.0,39.0,28.0,26.0,22.0,11.0,21.0,40.0,78.0,122.0,103.0,73.0,47.0,35.0,11.0,5.0,16.0,34.0,70.0,81.0,111.0,101.0,73.0,40.0,20.0,16.0,5.0,11.0,22.0,40.0,60.0,80.9,83.4,47.7,47.8,30.7,12.2,9.6,10.2,32.4,47.6,54.0,62.9,85.9,61.2,45.1,36.4,20.9,11.4,37.8,69.8,106.1,100.8,81.6,66.5,34.8,30.6,7.0,19.8,92.5,154.4,125.9,84.8,68.1,38.5,22.8,10.2,24.1,82.9,132.0,130.9,118.1,89.9,66.6,60.0,46.9,41.0,21.3,16.0,6.4,4.1,6.8,14.5,34.0,45.0,43.1,47.5,42.2,28.1,10.1,8.1,2.5,0.0,1.4,5.0,12.2,13.9,35.4,45.8,41.1,30.1,23.9,15.6,6.6,4.0,1.8,8.5,16.6,36.3,49.6,64.2,67.0,70.9,47.8,27.5,8.5,13.2,56.9,121.5,138.3,103.2,85.7,64.6,36.7,24.2,10.7,15.0,40.1,61.5,98.5,124.7,96.3,66.6,64.5,54.1,39.0,20.6,6.7,4.3,22.7,54.8,93.8,95.8,77.2,59.1,44.0,47.0,30.5,16.3,7.3,37.6,74.0,139.0,111.2,101.6,66.2,44.7,17.0,11.3,12.4,3.4,6.0,32.3,54.3,59.7,63.7,63.5,52.2,25.4,13.1,6.8,6.3,7.1,35.6,73.0,85.1,78.0,64.0,41.8,26.2,26.7,12.1,9.5,2.7,5.0,24.4,42.0,63.5,53.8,62.0,48.5,43.9,18.6,5.7,3.6,1.4,9.6,47.4,57.1,103.9,80.6,63.6,37.6,26.1,14.2,5.8,16.7,44.3,63.9,69.0,77.8,64.9,35.7,21.2,11.1,5.7,8.7,36.1,79.7,114.4,109.6,88.8,67.8,47.5,30.6,16.3,9.6,33.2,92.6,151.6,136.3,134.7,83.9,69.4,31.5,13.9,4.4,38.0,141.7,190.2,184.8,159.0,112.3,53.9,37.5,27.9,10.2,15.1,47.0,93.8,105.9,105.5,104.5,66.6,68.9,38.0,34.5,15.5,12.6,27.5,92.5,155.4,154.6,140.4,115.9,66.6,45.9,17.9,13.4,29.3,91.9,149.2,153.6,135.9,114.2,70.1,50.2,20.5,14.3,31.3,89.9,151.5,149.3 };
+static const float values[] = { 11.0f,16.0f,23.0f,36.0f,58.0f,29.0f,20.0f,10.0f,8.0f,3.0f,0.0f,0.0f,2.0f,11.0f,27.0f,47.0f,63.0f,60.0f,39.0f,28.0f,26.0f,22.0f,11.0f,21.0f,40.0f,78.0f,122.0f,103.0f,73.0f,47.0f,35.0f,11.0f,5.0f,16.0f,34.0f,70.0f,81.0f,111.0f,101.0f,73.0f,40.0f,20.0f,16.0f,5.0f,11.0f,22.0f,40.0f,60.0f,80.9f,83.4f,47.7f,47.8f,30.7f,12.2f,9.6f,10.2f,32.4f,47.6f,54.0f,62.9f,85.9f,61.2f,45.1f,36.4f,20.9f,11.4f,37.8f,69.8f,106.1f,100.8f,81.6f,66.5f,34.8f,30.6f,7.0f,19.8f,92.5f,154.4f,125.9f,84.8f,68.1f,38.5f,22.8f,10.2f,24.1f,82.9f,132.0f,130.9f,118.1f,89.9f,66.6f,60.0f,46.9f,41.0f,21.3f,16.0f,6.4f,4.1f,6.8f,14.5f,34.0f,45.0f,43.1f,47.5f,42.2f,28.1f,10.1f,8.1f,2.5f,0.0f,1.4f,5.0f,12.2f,13.9f,35.4f,45.8f,41.1f,30.1f,23.9f,15.6f,6.6f,4.0f,1.8f,8.5f,16.6f,36.3f,49.6f,64.2f,67.0f,70.9f,47.8f,27.5f,8.5f,13.2f,56.9f,121.5f,138.3f,103.2f,85.7f,64.6f,36.7f,24.2f,10.7f,15.0f,40.1f,61.5f,98.5f,124.7f,96.3f,66.6f,64.5f,54.1f,39.0f,20.6f,6.7f,4.3f,22.7f,54.8f,93.8f,95.8f,77.2f,59.1f,44.0f,47.0f,30.5f,16.3f,7.3f,37.6f,74.0f,139.0f,111.2f,101.6f,66.2f,44.7f,17.0f,11.3f,12.4f,3.4f,6.0f,32.3f,54.3f,59.7f,63.7f,63.5f,52.2f,25.4f,13.1f,6.8f,6.3f,7.1f,35.6f,73.0f,85.1f,78.0f,64.0f,41.8f,26.2f,26.7f,12.1f,9.5f,2.7f,5.0f,24.4f,42.0f,63.5f,53.8f,62.0f,48.5f,43.9f,18.6f,5.7f,3.6f,1.4f,9.6f,47.4f,57.1f,103.9f,80.6f,63.6f,37.6f,26.1f,14.2f,5.8f,16.7f,44.3f,63.9f,69.0f,77.8f,64.9f,35.7f,21.2f,11.1f,5.7f,8.7f,36.1f,79.7f,114.4f,109.6f,88.8f,67.8f,47.5f,30.6f,16.3f,9.6f,33.2f,92.6f,151.6f,136.3f,134.7f,83.9f,69.4f,31.5f,13.9f,4.4f,38.0f,141.7f,190.2f,184.8f,159.0f,112.3f,53.9f,37.5f,27.9f,10.2f,15.1f,47.0f,93.8f,105.9f,105.5f,104.5f,66.6f,68.9f,38.0f,34.5f,15.5f,12.6f,27.5f,92.5f,155.4f,154.6f,140.4f,115.9f,66.6f,45.9f,17.9f,13.4f,29.3f,91.9f,149.2f,153.6f,135.9f,114.2f,70.1f,50.2f,20.5f,14.3f,31.3f,89.9f,151.5f,149.3f };
 
 // Send Ipfs address
 // Python code:
@@ -112,21 +112,21 @@ qrtone_goertzel_t* qrtone_goertzel_new(void);
 
 void qrtone_goertzel_reset(qrtone_goertzel_t * this);
 
-void qrtone_goertzel_init(qrtone_goertzel_t * this, double sample_rate, double frequency, int32_t window_size);
+void qrtone_goertzel_init(qrtone_goertzel_t * this, float sample_rate, float frequency, int32_t window_size);
 
 void qrtone_goertzel_process_samples(qrtone_goertzel_t * this, float* samples, int32_t samples_len);
 
-double qrtone_goertzel_compute_rms(qrtone_goertzel_t * this);
+float qrtone_goertzel_compute_rms(qrtone_goertzel_t * this);
 
 qrtone_percentile_t* qrtone_percentile_new(void);
 
 void qrtone_percentile_free(qrtone_percentile_t * this);
 
-double qrtone_percentile_result(qrtone_percentile_t * this);
+float qrtone_percentile_result(qrtone_percentile_t * this);
 
-void qrtone_percentile_add(qrtone_percentile_t * this, double data);
+void qrtone_percentile_add(qrtone_percentile_t * this, float data);
 
-void qrtone_percentile_init_quantile(qrtone_percentile_t * this, double quant);
+void qrtone_percentile_init_quantile(qrtone_percentile_t * this, float quant);
 
 qrtone_array_t* qrtone_array_new(void);
 
@@ -154,15 +154,15 @@ int8_t qrtone_peak_finder_add(qrtone_peak_finder_t * this, int64_t index, float 
 
 void qrtone_hann_window(float* signal, int32_t signal_length, int32_t window_length, int32_t offset);
 
-int64_t qrtone_find_peak_location(double p0, double p1, double p2, int64_t p1_location, int32_t window_length);
+int64_t qrtone_find_peak_location(float p0, float p1, float p2, int64_t p1_location, int32_t window_length);
 
-void qrtone_quadratic_interpolation(double p0, double p1, double p2, double* location, double* height, double* half_curvature);
+void qrtone_quadratic_interpolation(float p0, float p1, float p2, float* location, float* height, float* half_curvature);
 
 void qrtone_interleave_symbols(int8_t * symbols, int32_t symbols_length, int32_t block_size);
 
 void qrtone_deinterleave_symbols(int8_t * symbols, int32_t symbols_length, int32_t block_size);
 
-void qrtone_generate_pitch(float* samples, int32_t samples_length, int32_t offset, double sample_rate, float frequency, double power_peak);
+void qrtone_generate_pitch(float* samples, int32_t samples_length, int32_t offset, float sample_rate, float frequency, float power_peak);
 
 qrtone_header_t* qrtone_header_new(void);
 
@@ -220,15 +220,15 @@ MU_TEST(testCRC16) {
 }
 
 MU_TEST(test1khz) {
-	const double sample_rate = 44100;
-	double powerRMS = pow(10.0, -26.0 / 20.0); // -26 dBFS
+	const float sample_rate = 44100;
+	float powerRMS = pow(10.0, -26.0 / 20.0); // -26 dBFS
 	float signal_frequency = 1000;
-	double powerPeak = powerRMS * sqrt(2);
+	float powerPeak = powerRMS * sqrt(2);
 
 	float audio[SAMPLES];
 	int s;
 	for (s = 0; s < SAMPLES; s++) {
-		double t = s * (1 / (double)sample_rate);
+		float t = s * (1 / (float)sample_rate);
 		audio[s] = (float)(sin(2 * M_PI * signal_frequency * t) * (powerPeak));
 	}
 
@@ -238,7 +238,7 @@ MU_TEST(test1khz) {
 
 	qrtone_goertzel_process_samples(goertzel, audio, SAMPLES);
 
-	double signal_rms = qrtone_goertzel_compute_rms(goertzel);
+	float signal_rms = qrtone_goertzel_compute_rms(goertzel);
 
 	mu_assert_double_eq(20 * log10(powerRMS), 20 * log10(signal_rms), 0.01);
 
@@ -246,15 +246,15 @@ MU_TEST(test1khz) {
 }
 
 MU_TEST(test1khzIterative) {
-	const double sample_rate = 44100;
-	double powerRMS = pow(10.0, -26.0 / 20.0); // -26 dBFS
+	const float sample_rate = 44100;
+	float powerRMS = pow(10.0, -26.0 / 20.0); // -26 dBFS
 	float signal_frequency = 1000;
-	double powerPeak = powerRMS * sqrt(2);
+	float powerPeak = powerRMS * sqrt(2);
 
 	float audio[SAMPLES];
 	int s;
 	for (s = 0; s < SAMPLES; s++) {
-		double t = s * (1 / (double)sample_rate);
+		float t = s * (1 / (float)sample_rate);
 		audio[s] = (float)(sin(2 * M_PI * signal_frequency * t) * (powerPeak));
 	}
 
@@ -270,7 +270,7 @@ MU_TEST(test1khzIterative) {
 		cursor += window_size;
 	}
 
-	double signal_rms = qrtone_goertzel_compute_rms(goertzel);
+	float signal_rms = qrtone_goertzel_compute_rms(goertzel);
 
 	mu_assert_double_eq(20 * log10(powerRMS), 20 * log10(signal_rms), 0.01);
 
@@ -287,7 +287,7 @@ MU_TEST(testPercentile) {
 		qrtone_percentile_add(percentile, values[i]);
 	}
 
-	mu_assert_double_eq(41.360847658017306, qrtone_percentile_result(percentile), 0.0000001);
+	mu_assert_double_eq(41.36084, qrtone_percentile_result(percentile), 0.00001);
 
 	qrtone_percentile_free(percentile);
 
@@ -368,10 +368,10 @@ MU_TEST(findPeaksIncreaseCondition) {
 
 	int32_t expected[] = { 3, 12 };
 
-	double testVals[] = { 4, 5, 7, 13, 10, 9, 9, 10, 4, 6, 7, 8, 11 , 3, 2, 2 };
+	float testVals[] = { 4, 5, 7, 13, 10, 9, 9, 10, 4, 6, 7, 8, 11 , 3, 2, 2 };
 
 	int32_t cursor = 0;
-	for (i = 0; i < sizeof(testVals) / sizeof(double); i++) {
+	for (i = 0; i < sizeof(testVals) / sizeof(float); i++) {
 		if (qrtone_peak_finder_add(p, i, (float)testVals[i])) {
 			mu_assert_int_eq(expected[cursor++], (int32_t)qrtone_peak_finder_get_last_peak_index(p));
 		}
@@ -394,10 +394,10 @@ MU_TEST(findPeaksDecreaseCondition) {
 
 	int32_t expected[] = { 3, 12 };
 
-	double testVals[] = { 4, 5, 7, 13, 10, 9, 9, 10, 4, 6, 7, 8, 11 , 3, 2, 2 };
+	float testVals[] = { 4, 5, 7, 13, 10, 9, 9, 10, 4, 6, 7, 8, 11 , 3, 2, 2 };
 
 	int32_t cursor = 0;
-	for (i = 0; i < sizeof(testVals) / sizeof(double); i++) {
+	for (i = 0; i < sizeof(testVals) / sizeof(float); i++) {
 		if (qrtone_peak_finder_add(p, i , (float)testVals[i])) {
 			mu_assert_int_eq(expected[cursor++], (int32_t)qrtone_peak_finder_get_last_peak_index(p));
 		}
@@ -430,17 +430,17 @@ MU_TEST(testHannWindow) {
 	free(signal);
 }
 
-#define GAUSSIAN_SAMPLES 521
+#define GAUSSIAN_SAMPLES 141
 
 MU_TEST(testPeakFinding) {
 	float samples[GAUSSIAN_SAMPLES];
-	double sigma = 0.5;
+	float sigma = 0.5;
 	// Create gaussian
 	float maxVal = 0;
 	int32_t max_index = 0;
 	int32_t i;
 	for (i = 0; i < GAUSSIAN_SAMPLES; i++) {
-		samples[i] = (float)exp(-1.0 / 2.0 * pow((i - GAUSSIAN_SAMPLES / 2.) / (sigma * GAUSSIAN_SAMPLES / 2.), 2));
+		samples[i] = expf(-1.0f / 2.0f * powf((i - GAUSSIAN_SAMPLES / 2.f) / (sigma * GAUSSIAN_SAMPLES / 2.f), 2.0f));
 		if (maxVal < samples[i]) {
 			maxVal = samples[i];
 			max_index = i;
@@ -461,7 +461,7 @@ MU_TEST(testPeakFinding) {
 	mu_assert_int_eq(max_index, (int32_t)location_est);
 
 	// Estimation of peak height, should be 1.0
-	double location, height, half_curvature;
+	float location, height, half_curvature;
 	qrtone_quadratic_interpolation(samples[window_index - window], samples[window_index], samples[window_index + window], &location, &height, &half_curvature);
 	mu_assert_double_eq(1.0, height, 0.001);
 }
@@ -479,16 +479,16 @@ MU_TEST(testSymbolsInterleaving) {
 }
 
 // Marsaglia and Bray, ``A Convenient Method for Generating Normal Variables'' 
-double gaussrand()
+float gaussrand()
 {
-	static double V1, V2, S;
+	static float V1, V2, S;
 	static int phase = 0;
-	double X;
+	float X;
 
 	if (phase == 0) {
 		do {
-			double U1 = (double)rand() / RAND_MAX;
-			double U2 = (double)rand() / RAND_MAX;
+			float U1 = (float)rand() / RAND_MAX;
+			float U2 = (float)rand() / RAND_MAX;
 
 			V1 = 2 * U1 - 1;
 			V2 = 2 * U2 - 1;
@@ -512,11 +512,11 @@ MU_TEST(testGenerate) {
 		f = fopen("inputsignal_44100_16bitsPCM.raw", "wb");
 	}
 	qrtone_t* qrtone = qrtone_new();
-	double sample_rate = 16000;
+	float sample_rate = 16000;
 	qrtone_init(qrtone, sample_rate);
-	double powerRMS = pow(10.0, -26.0 / 20.0);
-	double powerPeak = powerRMS * sqrt(2);
-	double noise_peak = pow(10.0, -50.0 / 20.0);
+	float powerRMS = pow(10.0, -26.0 / 20.0);
+	float powerPeak = powerRMS * sqrt(2);
+	float noise_peak = pow(10.0, -50.0 / 20.0);
 
 	int32_t samples_length = qrtone_set_payload(qrtone, IPFS_PAYLOAD, sizeof(IPFS_PAYLOAD));
 
@@ -540,7 +540,7 @@ MU_TEST(testGenerate) {
 		int32_t i;
 		for(i=0; i < window_size; i++) {
 			if(writeFile) {
-				int16_t sample = (int16_t)(window[i] * 32768);
+				int16_t sample = (int16_t)(window[i] * 32768.0f);
 				fwrite(&sample, sizeof(int16_t), 1, f);
 			}
 		}
@@ -596,7 +596,7 @@ MU_TEST(testWriteSignal) {
 	}
 
 	qrtone_t* qrtone = qrtone_new();
-	double sample_rate = 44100;
+	float sample_rate = 44100;
 	qrtone_init(qrtone, sample_rate);
 
 	float power_peak = powf(10.0f, -16.0f / 20.0f);
@@ -634,7 +634,7 @@ MU_TEST(testWriteSignal) {
 
 MU_TEST(testSymbolsEncodingDecoding) {
 	qrtone_t* qrtone = qrtone_new();
-	double sample_rate = 44100;
+	float sample_rate = 44100;
 	qrtone_init(qrtone, sample_rate);
 
 	int8_t payload[] = { 0x00, 0x04, 'n', 'i' , 'c' , 'o', 0x01, 0x05, 'h', 'e', 'l', 'l', 'o' };
@@ -675,7 +675,7 @@ MU_TEST(testSymbolsEncodingDecoding) {
 
 MU_TEST(testSymbolsEncodingDecodingWithError) {
 	qrtone_t* qrtone = qrtone_new();
-	double sample_rate = 44100;
+	float sample_rate = 44100;
 	qrtone_init(qrtone, sample_rate);
 
 	int8_t payload[] = { 0x00, 0x04, 'n', 'i' , 'c' , 'o', 0x01, 0x05, 'h', 'e', 'l', 'l', 'o' };
@@ -722,7 +722,7 @@ MU_TEST(testSymbolsEncodingDecodingWithError) {
 MU_TEST(testReadArduino) {
 
 	qrtone_t* qrtone = qrtone_new();
-	double sample_rate = 16000;
+	float sample_rate = 16000;
 	qrtone_init(qrtone, sample_rate);
 
 
