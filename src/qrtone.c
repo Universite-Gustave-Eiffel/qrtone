@@ -176,7 +176,9 @@ typedef struct _qrtone_goertzel_t {
     float sample_rate;
     int32_t window_size;
     int32_t processed_samples;
-    int8_t hannWindow;
+    int8_t hann_window;
+    float* window_cache;
+    int32_t window_cache_length;
 } qrtone_goertzel_t;
 
 typedef struct _qrtone_percentile_t {
@@ -345,10 +347,37 @@ void qrtone_goertzel_reset(qrtone_goertzel_t* self) {
     self->last_sample = 0.f;
 }
 
-void qrtone_goertzel_init(qrtone_goertzel_t* self, float sample_rate, float frequency, int32_t window_size) {
+/**
+ * Apply hann window on provided signal
+ * @param signal Signal to update
+ * @param signal_length Signal length to update
+ * @param windowLength hann window length
+ * @param offset If the signal length is inferior than windowLength, give the offset of the hann window
+ */
+void qrtone_hann_window(float* signal, int32_t signal_length, int32_t window_length, int32_t offset) {
+    int32_t i;
+    for (i = 0; i < signal_length && offset + i < window_length; i++) {
+        signal[i] = (signal[i] * (0.5f - 0.5f * cosf((QRTONE_2PI * (i + offset)) / (window_length - 1))));
+    }
+}
+
+void qrtone_goertzel_init(qrtone_goertzel_t* self, float sample_rate, float frequency, int32_t window_size, int8_t hann_window) {
         self->sample_rate = sample_rate;
         self->window_size = window_size;
-        self->hannWindow = 0;
+        self->hann_window = hann_window;
+        if(hann_window) {
+            // cache window
+            self->window_cache_length = window_size / 2 + 1;
+            self->window_cache = malloc(sizeof(float) * self->window_cache_length);
+            int32_t i;
+            for (i = 0; i < self->window_cache_length; i++) {
+                self->window_cache[i] = 1.0f;
+            }
+            qrtone_hann_window(self->window_cache, self->window_cache_length, window_size, 0);
+        } else {
+            self->window_cache = NULL;
+            self->window_cache_length = 0;
+        }
         // Fix frequency using the sampleRate of the signal
         float samplingRateFactor = window_size / sample_rate;
         self->pik_term = QRTONE_2PI * (frequency * samplingRateFactor) / window_size;
@@ -356,13 +385,18 @@ void qrtone_goertzel_init(qrtone_goertzel_t* self, float sample_rate, float freq
         qrtone_goertzel_reset(self);
 }
 
+void qrtone_goertzel_free(qrtone_goertzel_t* self) {
+    if(self->hann_window) {
+        free(self->window_cache);
+    }
+}
 
 void qrtone_goertzel_process_samples(qrtone_goertzel_t* self, float* samples,int32_t samples_len) {
     if (self->processed_samples + samples_len <= self->window_size) {
         int32_t size;
         if (self->processed_samples + samples_len == self->window_size) {
             size = samples_len - 1;
-            if(!self->hannWindow) {
+            if(!self->hann_window) {
                 self->last_sample = samples[size];
             } else {
                 self->last_sample = 0;
@@ -372,8 +406,8 @@ void qrtone_goertzel_process_samples(qrtone_goertzel_t* self, float* samples,int
         }
         int32_t i;
         for (i = 0; i < size; i++) {
-            if (self->hannWindow) {
-                const float hann = (0.5f - 0.5f * cosf((QRTONE_2PI * (i + self->processed_samples)) / (self->window_size - 1)));
+            if (self->hann_window) {
+                const float hann = i + self->processed_samples < self->window_cache_length ? self->window_cache[i + self->processed_samples] : self->window_cache[(self->window_size - 1) - (i + self->processed_samples)];
                 self->s0 = samples[i] * hann + self->cos_pik_term2 * self->s1 - self->s2;
             } else {
                 self->s0 = samples[i] + self->cos_pik_term2 * self->s1 - self->s2;
@@ -851,20 +885,6 @@ int32_t qrtone_compute_minimum_window_size(float sampleRate, float targetFrequen
     return max(window_size, (int)ceil(sampleRate * (5.0 * (1.0 / targetFrequency))));
 }
 
-/**
- * Apply hann window on provided signal
- * @param signal Signal to update
- * @param signal_length Signal length to update
- * @param windowLength hann window length
- * @param offset If the signal length is inferior than windowLength, give the offset of the hann window
- */
-void qrtone_hann_window(float* signal, int32_t signal_length, int32_t window_length, int32_t offset) {
-    int32_t i;
-    for (i = 0; i < signal_length && offset + i < window_length; i++) {
-        signal[i] = (signal[i] * (0.5f - 0.5f * cosf((QRTONE_2PI * (i + offset)) / (window_length - 1))));
-    }
-}
-
 void qrtone_trigger_analyzer_init(qrtone_trigger_analyzer_t* self, float sample_rate, int32_t gate_length,int32_t window_analyze, float gate_frequencies[2], float trigger_snr) {
     self->processed_window_alpha = 0;
     self->processed_window_beta = 0;
@@ -881,8 +901,8 @@ void qrtone_trigger_analyzer_init(qrtone_trigger_analyzer_t* self, float sample_
     int32_t i;
     for (i = 0; i < 2; i++) {
         self->frequencies[i] = gate_frequencies[i];
-        qrtone_goertzel_init(&(self->frequency_analyzers_alpha[i]), sample_rate, gate_frequencies[i], self->window_analyze);
-        qrtone_goertzel_init(&(self->frequency_analyzers_beta[i]), sample_rate, gate_frequencies[i], self->window_analyze);
+        qrtone_goertzel_init(&(self->frequency_analyzers_alpha[i]), sample_rate, gate_frequencies[i], self->window_analyze, 0);
+        qrtone_goertzel_init(&(self->frequency_analyzers_beta[i]), sample_rate, gate_frequencies[i], self->window_analyze, 0);
         qrtone_array_init(&(self->spl_history[i]), (gate_length * 3) / self->window_offset);
     }
     int32_t slopeWindows = max(1, (gate_length / 2) / self->window_offset);
@@ -1120,8 +1140,7 @@ void qrtone_init(qrtone_t* self, float sample_rate) {
     qrtone_compute_frequencies(close_frequencies, QRTONE_WINDOW_WIDTH);
     for (idfreq = 0; idfreq < QRTONE_NUM_FREQUENCIES; idfreq++) {        
         int32_t adaptative_window = qrtone_compute_minimum_window_size(sample_rate, self->frequencies[idfreq], close_frequencies[idfreq]);
-        qrtone_goertzel_init(&(self->frequency_analyzers[idfreq]), sample_rate, self->frequencies[idfreq], min(self->word_length, adaptative_window));
-        self->frequency_analyzers[idfreq].hannWindow = 1;
+        qrtone_goertzel_init(&(self->frequency_analyzers[idfreq]), sample_rate, self->frequencies[idfreq], min(self->word_length, adaptative_window), 1);
     }
     qrtone_trigger_analyzer_init(&(self->trigger_analyzer), sample_rate, self->gate_length, self->frequency_analyzers[FREQUENCY_ROOT].window_size ,gates_freq, QRTONE_DEFAULT_TRIGGER_SNR);
     ecc_reed_solomon_encoder_init(&(self->encoder), 0x13, 16, 1);
@@ -1293,6 +1312,10 @@ void qrtone_free(qrtone_t* self) {
     }
     if(self->header_cache != NULL) {
         free(self->header_cache);
+    }
+    int32_t idfreq;
+    for (idfreq = 0; idfreq < QRTONE_NUM_FREQUENCIES; idfreq++) {
+        qrtone_goertzel_free(self->frequency_analyzers + idfreq);
     }
     ecc_reed_solomon_encoder_free(&(self->encoder));
     qrtone_trigger_analyzer_free(&(self->trigger_analyzer));

@@ -112,7 +112,7 @@ qrtone_goertzel_t* qrtone_goertzel_new(void);
 
 void qrtone_goertzel_reset(qrtone_goertzel_t * this);
 
-void qrtone_goertzel_init(qrtone_goertzel_t * this, float sample_rate, float frequency, int32_t window_size);
+void qrtone_goertzel_init(qrtone_goertzel_t * this, float sample_rate, float frequency, int32_t window_size, int8_t hann_window);
 
 void qrtone_goertzel_process_samples(qrtone_goertzel_t * this, float* samples, int32_t samples_len);
 
@@ -234,7 +234,7 @@ MU_TEST(test1khz) {
 
 	qrtone_goertzel_t* goertzel = qrtone_goertzel_new();
 
-	qrtone_goertzel_init(goertzel, sample_rate, signal_frequency, SAMPLES);
+	qrtone_goertzel_init(goertzel, sample_rate, signal_frequency, SAMPLES, 0);
 
 	qrtone_goertzel_process_samples(goertzel, audio, SAMPLES);
 
@@ -260,7 +260,7 @@ MU_TEST(test1khzIterative) {
 
 	qrtone_goertzel_t* goertzel = qrtone_goertzel_new();
 
-	qrtone_goertzel_init(goertzel, sample_rate, signal_frequency, SAMPLES);
+	qrtone_goertzel_init(goertzel, sample_rate, signal_frequency, SAMPLES, 0);
 
 	int32_t cursor = 0;
 
