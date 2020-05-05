@@ -45,6 +45,9 @@ import java.util.concurrent.atomic.AtomicLong;
 public class QRTone {
     public static final double M2PI = Math.PI * 2;
     public static final long PERMUTATION_SEED = 3141592653589793238L;
+    // Frequency analysis window width is dependent of analyzed frequencies
+    // Tone frequency may be not the expected one, so neighbors tone frequency values are accumulated
+    public static final double WINDOW_WIDTH = 0.65;
     private enum STATE {WAITING_TRIGGER, PARSING_SYMBOLS};
     private static final double TUKEY_ALPHA  = 0.5;
     public static final int CRC_BYTE_LENGTH = 2;
@@ -68,6 +71,7 @@ public class QRTone {
     // Column and rows of DTMF that make a char
     public final static int FREQUENCY_ROOT = 16;
     private final double[] frequencies;
+    private final double[] frequencyLimits;
     final TriggerAnalyzer triggerAnalyzer;
     byte[] symbolsToDeliver;
     byte[] symbolsCache;
@@ -83,9 +87,12 @@ public class QRTone {
         this.gateLength = (int)(configuration.sampleRate * configuration.gateTime);
         this.wordSilenceLength = (int)(configuration.sampleRate * configuration.wordSilenceTime);
         this.frequencies = configuration.computeFrequencies(NUM_FREQUENCIES);
+        this.frequencyLimits = configuration.computeFrequencies(NUM_FREQUENCIES, WINDOW_WIDTH);
         gate1Frequency = frequencies[FREQUENCY_ROOT ];
         gate2Frequency = frequencies[FREQUENCY_ROOT + 2];
-        triggerAnalyzer = new TriggerAnalyzer(configuration.sampleRate, gateLength, new double[]{gate1Frequency, gate2Frequency}, configuration.triggerSnr);
+        triggerAnalyzer = new TriggerAnalyzer(configuration.sampleRate, gateLength,
+                new double[]{gate1Frequency, gate2Frequency}, Configuration.computeMinimumWindowSize(configuration.sampleRate, gate1Frequency, frequencyLimits[FREQUENCY_ROOT]),
+                configuration.triggerSnr);
     }
 
     /**
@@ -95,7 +102,7 @@ public class QRTone {
         if(qrToneState == STATE.WAITING_TRIGGER) {
             return triggerAnalyzer.getMaximumWindowLength();
         } else {
-            return frequencyAnalyzers[0].getWindowSize() - frequencyAnalyzers[0].getProcessedSamples();
+            return wordLength + (int) (pushedSamples - getToneLocation());
         }
     }
 
@@ -422,7 +429,8 @@ public class QRTone {
             firstToneSampleIndex = pushedSamples - (triggerAnalyzer.getTotalProcessed() - triggerAnalyzer.getFirstToneLocation());
             frequencyAnalyzers = new IterativeGeneralizedGoertzel[frequencies.length];
             for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
-                frequencyAnalyzers[idfreq] = new IterativeGeneralizedGoertzel(configuration.sampleRate, frequencies[idfreq], wordLength);
+                int window_length = Math.min(wordLength, Configuration.computeMinimumWindowSize(configuration.sampleRate, frequencies[idfreq], frequencyLimits[idfreq]));
+                frequencyAnalyzers[idfreq] = new IterativeGeneralizedGoertzel(configuration.sampleRate, frequencies[idfreq], window_length, true);
             }
             symbolsCache = new byte[HEADER_SYMBOLS];
             triggerAnalyzer.reset();
@@ -440,20 +448,27 @@ public class QRTone {
     }
 
     private boolean analyzeTones(float[] samples) {
-
+        // Processed samples in current tone
+        int processedSamples = (int) (pushedSamples - samples.length - getToneLocation());
+        // cursor keep track of tone analysis in provided samples array, cursor start with tone location
         int cursor = Math.max(0, getToneIndex(samples.length));
         while (cursor < samples.length) {
-            int windowLength = Math.min(samples.length - cursor, wordLength - frequencyAnalyzers[0].getProcessedSamples());
-            if(windowLength == 0) {
-                break;
-            }
-            float[] window = new float[windowLength];
-            System.arraycopy(samples, cursor, window, 0, windowLength);
-            applyHann(window, 0, windowLength, wordLength, frequencyAnalyzers[0].getProcessedSamples());
+            // Processed samples in current tone taking account of cursor position
+            int toneWindowCursor = processedSamples + cursor;
+            // do not process more than wordLength
+            int cursorIncrement = Math.min(samples.length - cursor, wordLength - toneWindowCursor);
             for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
-                frequencyAnalyzers[idfreq].processSamples(window, 0, windowLength);
+                int startWindow = wordLength / 2 - frequencyAnalyzers[idfreq].getWindowSize() / 2;
+                int startAnalyze = Math.max(0, startWindow - toneWindowCursor) + cursor;
+                int analyzeLength = Math.min(samples.length - startAnalyze,
+                        frequencyAnalyzers[idfreq].getWindowSize() - frequencyAnalyzers[idfreq].getProcessedSamples());
+                if(analyzeLength > 0 && startAnalyze < samples.length) {
+                    frequencyAnalyzers[idfreq].processSamples(samples, startAnalyze, startAnalyze + analyzeLength);
+                } else {
+                    break;
+                }
             }
-            if(frequencyAnalyzers[0].getProcessedSamples() == wordLength) {
+            if(toneWindowCursor + cursorIncrement == wordLength) {
                 double[] spl = new double[frequencies.length];
                 for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
                     double rmsValue = frequencyAnalyzers[idfreq].computeRMS(false).rms;
@@ -471,7 +486,9 @@ public class QRTone {
                     }
                     symbolsCache[this.symbolIndex * 2 + symbolOffset] = (byte)(maxSymbolId - symbolOffset * FREQUENCY_ROOT);
                 }
-                symbolIndex+=1;
+                symbolIndex += 1;
+                processedSamples = (int) (pushedSamples - samples.length - getToneLocation());
+                cursor = Math.max(cursor, getToneIndex(samples.length));
                 if(symbolIndex * 2 == symbolsCache.length) {
                     if(headerCache == null) {
                         try {
@@ -502,8 +519,9 @@ public class QRTone {
                         }
                     }
                 }
+            } else {
+                cursor += cursorIncrement;
             }
-            cursor += windowLength;
         }
         return false;
     }

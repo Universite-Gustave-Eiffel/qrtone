@@ -46,7 +46,7 @@ package org.noise_planet.qrtone;
  */
 public class IterativeGeneralizedGoertzel {
     public static final double M2PI = Math.PI * 2;
-
+    private float[] hannWindowCache;
     private double s0 = 0;
     private double s1 = 0.;
     private double s2 = 0.;
@@ -56,19 +56,27 @@ public class IterativeGeneralizedGoertzel {
     private double sampleRate;
     private int windowSize;
     private int processedSamples = 0;
+    private boolean hannWindow = false;
 
     /**
      * @param sampleRate Sampling rate in Hz
      * @param frequency Array of frequency search in Hz
      * @param windowSize Number of samples to analyse
      */
-    public IterativeGeneralizedGoertzel(double sampleRate, double frequency, int windowSize) {
+    public IterativeGeneralizedGoertzel(double sampleRate, double frequency, int windowSize, boolean hannWindow) {
         this.sampleRate = sampleRate;
         this.windowSize = windowSize;
+        this.hannWindow = hannWindow;
         // Fix frequency using the sampleRate of the signal
         double samplingRateFactor = windowSize / sampleRate;
         pikTerm = M2PI * (frequency * samplingRateFactor) / windowSize;
         cosPikTerm2 = Math.cos(pikTerm) * 2.0;
+        if(hannWindow) {
+            hannWindowCache = new float[windowSize / 2 + 1];
+            for(int i=0; i < hannWindowCache.length; i++) {
+                hannWindowCache[i] = (float)(0.5 - 0.5 * Math.cos((M2PI * i) / (windowSize - 1)));
+            }
+        }
     }
 
     public void reset() {
@@ -99,19 +107,27 @@ public class IterativeGeneralizedGoertzel {
         final int size;
         if(processedSamples + length == windowSize) {
             size = length - 1;
-            lastSample = samples[from + size];
+            if(hannWindow) {
+                lastSample = 0;
+            } else {
+                lastSample = samples[from + size];
+            }
         } else {
             size = length;
         }
         for(int i=0; i < size; i++) {
-            s0 = samples[i+from] + cosPikTerm2 * s1 - s2;
+            if (hannWindow) {
+                final float hann = i + processedSamples < hannWindowCache.length ? hannWindowCache[i + processedSamples] : hannWindowCache[(windowSize - 1) - (i + processedSamples)];
+                s0 = samples[i + from] * hann + cosPikTerm2 * s1 - s2;
+            } else{
+                s0 = samples[i + from] + cosPikTerm2 * s1 - s2;
+            }
             s2 = s1;
             s1 = s0;
         }
-        processedSamples+=length;
+        processedSamples += length;
         return this;
     }
-
     public GoertzelResult computeRMS(boolean computePhase) {
         if(processedSamples != windowSize) {
             throw new IllegalStateException("Not enough processed samples");

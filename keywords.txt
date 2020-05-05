@@ -1,0 +1,28 @@
+#######################################
+# Syntax Coloring Map For QRTone
+#######################################
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+qrtone_new					KEYWORD2
+qrtone_init					KEYWORD2
+qrtone_free					KEYWORD2
+qrtone_get_maximum_length	KEYWORD2
+qrtone_push_samples			KEYWORD2
+qrtone_get_payload			KEYWORD2
+qrtone_get_payload_length	KEYWORD2
+qrtone_get_fixed_errors		KEYWORD2
+qrtone_set_payload			KEYWORD2
+qrtone_set_payload_ext		KEYWORD2
+qrtone_get_samples			KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+
+QRTONE_ECC_L				LITERAL1
+QRTONE_ECC_M				LITERAL1
+QRTONE_ECC_Q				LITERAL1
+QRTONE_ECC_H				LITERAL1

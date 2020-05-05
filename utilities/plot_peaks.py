@@ -3,7 +3,9 @@ import csv
 import numpy as np
 
 data = None
-with open("../jqrtone/target/spectrum.csv", 'r') as f:
+# path = "../jqrtone/target/spectrum.csv"
+path = "../out/build/x64-Debug/spectrum.csv"
+with open(path, 'r') as f:
     data = list(csv.reader(f))
 
 spectrum = np.array(data[1:], dtype=np.float)

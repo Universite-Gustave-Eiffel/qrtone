@@ -55,10 +55,10 @@
  * Reference algorithm is the ZXing QR-Code Apache License source code.
  */
 
-void ecc_generic_gf_poly_copy(ecc_generic_gf_poly_t* this, ecc_generic_gf_poly_t* other) {
-    this->coefficients = malloc(sizeof(int32_t) * other->coefficients_length);
-    memcpy(this->coefficients, other->coefficients, other->coefficients_length * sizeof(int32_t));
-    this->coefficients_length = other->coefficients_length;
+void ecc_generic_gf_poly_copy(ecc_generic_gf_poly_t* self, ecc_generic_gf_poly_t* other) {
+    self->coefficients = malloc(sizeof(int32_t) * other->coefficients_length);
+    memcpy(self->coefficients, other->coefficients, other->coefficients_length * sizeof(int32_t));
+    self->coefficients_length = other->coefficients_length;
 }
 
 /**
@@ -67,33 +67,33 @@ void ecc_generic_gf_poly_copy(ecc_generic_gf_poly_t* this, ecc_generic_gf_poly_t
  * @author Sean Owen (java version)
  * @author David Olivier (java version)
  */
- void ecc_generic_gf_poly_init(ecc_generic_gf_poly_t* this, int* coefficients, int coefficients_length) {
+ void ecc_generic_gf_poly_init(ecc_generic_gf_poly_t* self, int32_t* coefficients, int32_t coefficients_length) {
     if (coefficients_length == 0) {
       return;
     }
     if (coefficients_length > 1 && coefficients[0] == 0) {
       // Leading term must be non-zero for anything except the constant polynomial "0"
-      int firstNonZero = 1;
+      int32_t firstNonZero = 1;
       while (firstNonZero < coefficients_length && coefficients[firstNonZero] == 0) {
         firstNonZero++;
       }
       if (firstNonZero == coefficients_length) {
-          this->coefficients = malloc(sizeof(int32_t) * 1);
-          this->coefficients_length = 1;
-          this->coefficients[0] = 0;
+          self->coefficients = malloc(sizeof(int32_t) * 1);
+          self->coefficients_length = 1;
+          self->coefficients[0] = 0;
       } else {
-        this->coefficients_length = coefficients_length - firstNonZero;
-        this->coefficients = malloc(sizeof(int32_t) * this->coefficients_length);
-        memcpy(this->coefficients, coefficients + firstNonZero, sizeof(int32_t) * this->coefficients_length);
+        self->coefficients_length = coefficients_length - firstNonZero;
+        self->coefficients = malloc(sizeof(int32_t) * self->coefficients_length);
+        memcpy(self->coefficients, coefficients + firstNonZero, sizeof(int32_t) * self->coefficients_length);
       }
     } else {
-        this->coefficients = malloc(sizeof(int32_t) * coefficients_length);
-        this->coefficients_length = coefficients_length;
-        memcpy(this->coefficients, coefficients, sizeof(int32_t) * coefficients_length);
+        self->coefficients = malloc(sizeof(int32_t) * coefficients_length);
+        self->coefficients_length = coefficients_length;
+        memcpy(self->coefficients, coefficients, sizeof(int32_t) * coefficients_length);
     }	 
  }
 
- int ecc_generic_gf_poly_multiply_by_monomial(ecc_generic_gf_poly_t* this, ecc_generic_gf_t* field, int32_t degree, int32_t coefficient, ecc_generic_gf_poly_t* result) {
+ int32_t ecc_generic_gf_poly_multiply_by_monomial(ecc_generic_gf_poly_t* self, ecc_generic_gf_t* field, int32_t degree, int32_t coefficient, ecc_generic_gf_poly_t* result) {
      if (degree < 0) {
          return ECC_ILLEGAL_ARGUMENT;
      }
@@ -102,24 +102,24 @@ void ecc_generic_gf_poly_copy(ecc_generic_gf_poly_t* this, ecc_generic_gf_poly_t
          ecc_generic_gf_poly_init(result, zero, 1);
          return ECC_NO_ERRORS;
      }
-     int32_t product_length = this->coefficients_length + degree;
+     int32_t product_length = self->coefficients_length + degree;
      int32_t* product = malloc(sizeof(int32_t) * product_length);
      memset(product, 0, sizeof(int32_t) * product_length);
      int32_t i;
-     for (i = 0; i < this->coefficients_length; i++) {
-         product[i] = ecc_generic_gf_multiply(field, this->coefficients[i], coefficient);
+     for (i = 0; i < self->coefficients_length; i++) {
+         product[i] = ecc_generic_gf_multiply(field, self->coefficients[i], coefficient);
      }
      ecc_generic_gf_poly_init(result, product, product_length);
      free(product);
      return ECC_NO_ERRORS;
  }
 
- int ecc_generic_gf_poly_divide(ecc_generic_gf_poly_t* this, ecc_generic_gf_t* field, ecc_generic_gf_poly_t* other, ecc_generic_gf_poly_t* result) {
+ int32_t ecc_generic_gf_poly_divide(ecc_generic_gf_poly_t* self, ecc_generic_gf_t* field, ecc_generic_gf_poly_t* other, ecc_generic_gf_poly_t* result) {
     if (ecc_generic_gf_poly_is_zero(other)) {
          return ECC_DIVIDE_BY_ZERO;
     }
     ecc_generic_gf_poly_t remainder;
-    ecc_generic_gf_poly_copy(&remainder, this);
+    ecc_generic_gf_poly_copy(&remainder, self);
     
     int32_t denominatorLeadingTerm = ecc_generic_gf_poly_get_coefficient(other, ecc_generic_gf_poly_get_degree(other));
     int32_t inverseDenominatorLeadingTerm = ecc_generic_gf_inverse(field, denominatorLeadingTerm);
@@ -144,21 +144,21 @@ void ecc_generic_gf_poly_copy(ecc_generic_gf_poly_t* this, ecc_generic_gf_poly_t
     return ECC_NO_ERRORS;
  }
 
- void ecc_generic_gf_poly_free(ecc_generic_gf_poly_t* this) {
-     free(this->coefficients);
+ void ecc_generic_gf_poly_free(ecc_generic_gf_poly_t* self) {
+     free(self->coefficients);
  }
 
- void ecc_generic_gf_init(ecc_generic_gf_t* this, int32_t primitive, int32_t size, int32_t b) {
-     this->primitive = primitive;
-     this->size = size;
-     this->generator_base = b;
-     this->exp_table = malloc(sizeof(int32_t) * size);
-     this->log_table = malloc(sizeof(int32_t) * size);
-     memset(this->log_table, 0, sizeof(int32_t) * size);
+ void ecc_generic_gf_init(ecc_generic_gf_t* self, int32_t primitive, int32_t size, int32_t b) {
+     self->primitive = primitive;
+     self->size = size;
+     self->generator_base = b;
+     self->exp_table = malloc(sizeof(int32_t) * size);
+     self->log_table = malloc(sizeof(int32_t) * size);
+     memset(self->log_table, 0, sizeof(int32_t) * size);
      int32_t x = 1;
      int32_t i;
      for (i = 0; i < size; i++) {
-         this->exp_table[i] = x;
+         self->exp_table[i] = x;
          x *= 2; // we're assuming the generator alpha is 2
          if (x >= size) {
              x ^= primitive;
@@ -166,23 +166,23 @@ void ecc_generic_gf_poly_copy(ecc_generic_gf_poly_t* this, ecc_generic_gf_poly_t
          }
      }
      for (i = 0; i < size - 1; i++) {
-         this->log_table[this->exp_table[i]] = i;
+         self->log_table[self->exp_table[i]] = i;
      }
-     // logTable[0] == 0 but this should never be used
-     int zero[1] = { 0 };
-     ecc_generic_gf_poly_init(&(this->zero), zero, 1);
-     int one[1] = { 1 };
-     ecc_generic_gf_poly_init(&(this->one), one, 1);
+     // logTable[0] == 0 but self should never be used
+     int32_t zero[1] = { 0 };
+     ecc_generic_gf_poly_init(&(self->zero), zero, 1);
+     int32_t one[1] = { 1 };
+     ecc_generic_gf_poly_init(&(self->one), one, 1);
  }
 
- void ecc_generic_gf_free(ecc_generic_gf_t* this) {
-     free(this->exp_table);
-     free(this->log_table);
-     ecc_generic_gf_poly_free(&(this->zero));
-     ecc_generic_gf_poly_free(&(this->one));
+ void ecc_generic_gf_free(ecc_generic_gf_t* self) {
+     free(self->exp_table);
+     free(self->log_table);
+     ecc_generic_gf_poly_free(&(self->zero));
+     ecc_generic_gf_poly_free(&(self->one));
  }
 
- int ecc_generic_gf_build_monomial(ecc_generic_gf_poly_t* poly, int32_t degree, int32_t coefficient) {
+ int32_t ecc_generic_gf_build_monomial(ecc_generic_gf_poly_t* poly, int32_t degree, int32_t coefficient) {
      if (degree < 0) {
          return ECC_ILLEGAL_ARGUMENT;
      }
@@ -199,63 +199,63 @@ void ecc_generic_gf_poly_copy(ecc_generic_gf_poly_t* this, ecc_generic_gf_poly_t
      return ECC_NO_ERRORS;
  }
 
- void ecc_generic_gf_poly_multiply(ecc_generic_gf_poly_t* this, ecc_generic_gf_t* field, int32_t scalar, ecc_generic_gf_poly_t* result) {
+ void ecc_generic_gf_poly_multiply(ecc_generic_gf_poly_t* self, ecc_generic_gf_t* field, int32_t scalar, ecc_generic_gf_poly_t* result) {
      if (scalar == 0) {
          int32_t zero[1] = { 0 };
          ecc_generic_gf_poly_init(result, zero, 1);
          return;
      }
      if (scalar == 1) {
-         ecc_generic_gf_poly_copy(result, this);
+         ecc_generic_gf_poly_copy(result, self);
          return;
      }
      int32_t i;
-     int32_t* product = malloc(sizeof(int32_t) * this->coefficients_length);
-     for (i = 0; i < this->coefficients_length; i++) {
-         product[i] = ecc_generic_gf_multiply(field, this->coefficients[i], scalar);
+     int32_t* product = malloc(sizeof(int32_t) * self->coefficients_length);
+     for (i = 0; i < self->coefficients_length; i++) {
+         product[i] = ecc_generic_gf_multiply(field, self->coefficients[i], scalar);
      }
-     ecc_generic_gf_poly_init(result, product, this->coefficients_length);
+     ecc_generic_gf_poly_init(result, product, self->coefficients_length);
      free(product);
  }
 
- int ecc_generic_gf_multiply(ecc_generic_gf_t* this, int32_t a, int32_t b) {
+ int32_t ecc_generic_gf_multiply(ecc_generic_gf_t* self, int32_t a, int32_t b) {
      if (a == 0 || b == 0) {
          return 0;
      }
-     return this->exp_table[(this->log_table[a] + this->log_table[b]) % (this->size - 1)];
+     return self->exp_table[(self->log_table[a] + self->log_table[b]) % (self->size - 1)];
  }
 
- int32_t ecc_generic_gf_poly_get_coefficient(ecc_generic_gf_poly_t* this, int32_t degree) {
-     return this->coefficients[this->coefficients_length - 1 - degree];
+ int32_t ecc_generic_gf_poly_get_coefficient(ecc_generic_gf_poly_t* self, int32_t degree) {
+     return self->coefficients[self->coefficients_length - 1 - degree];
  }
 
- int32_t ecc_generic_gf_poly_get_degree(ecc_generic_gf_poly_t* this) {
-     return this->coefficients_length - 1;
+ int32_t ecc_generic_gf_poly_get_degree(ecc_generic_gf_poly_t* self) {
+     return self->coefficients_length - 1;
  }
 
  int32_t ecc_generic_gf_add_or_substract(int32_t a, int32_t b) {
      return a ^ b;
  }
 
- void ecc_generic_gf_poly_add_or_substract(ecc_generic_gf_poly_t* this, ecc_generic_gf_poly_t* other, ecc_generic_gf_poly_t* result) {
-     if (ecc_generic_gf_poly_is_zero(this)) {
+ void ecc_generic_gf_poly_add_or_substract(ecc_generic_gf_poly_t* self, ecc_generic_gf_poly_t* other, ecc_generic_gf_poly_t* result) {
+     if (ecc_generic_gf_poly_is_zero(self)) {
          ecc_generic_gf_poly_copy(result, other);
          return;
      }
      if (ecc_generic_gf_poly_is_zero(other)) {
-         ecc_generic_gf_poly_copy(result, this);
+         ecc_generic_gf_poly_copy(result, self);
          return;
      }
 
-     int32_t* smaller_coefficients = this->coefficients;
-     int32_t smaller_coefficients_length = this->coefficients_length;
+     int32_t* smaller_coefficients = self->coefficients;
+     int32_t smaller_coefficients_length = self->coefficients_length;
      int32_t* larger_coefficients = other->coefficients;
      int32_t larger_coefficients_length = other->coefficients_length;
-     if (this->coefficients_length > other->coefficients_length) {
+     if (self->coefficients_length > other->coefficients_length) {
          smaller_coefficients = other->coefficients;
-         larger_coefficients = this->coefficients;
+         larger_coefficients = self->coefficients;
          smaller_coefficients_length = other->coefficients_length;
-         larger_coefficients_length = this->coefficients_length;
+         larger_coefficients_length = self->coefficients_length;
      }
 
      int32_t* sum_diff = malloc(sizeof(int32_t) * larger_coefficients_length);
@@ -274,67 +274,67 @@ void ecc_generic_gf_poly_copy(ecc_generic_gf_poly_t* this, ecc_generic_gf_poly_t
      free(sum_diff);
  }
 
- int ecc_generic_gf_poly_is_zero(ecc_generic_gf_poly_t* this) {
-     return this->coefficients[0] == 0;
+ int32_t ecc_generic_gf_poly_is_zero(ecc_generic_gf_poly_t* self) {
+     return self->coefficients[0] == 0;
  }
 
- void ecc_generic_gf_poly_multiply_other(ecc_generic_gf_poly_t* this, ecc_generic_gf_t* field, ecc_generic_gf_poly_t* other, ecc_generic_gf_poly_t* result) {
-    if (ecc_generic_gf_poly_is_zero(this) || ecc_generic_gf_poly_is_zero(other)) {
+ void ecc_generic_gf_poly_multiply_other(ecc_generic_gf_poly_t* self, ecc_generic_gf_t* field, ecc_generic_gf_poly_t* other, ecc_generic_gf_poly_t* result) {
+    if (ecc_generic_gf_poly_is_zero(self) || ecc_generic_gf_poly_is_zero(other)) {
         int32_t zero[1] = { 0 };
         ecc_generic_gf_poly_init(result, zero, 1);
         return;
     }
-    int32_t product_length = this->coefficients_length + other->coefficients_length - 1;
+    int32_t product_length = self->coefficients_length + other->coefficients_length - 1;
     int32_t* product = malloc(sizeof(int32_t) * product_length);
     memset(product, 0, sizeof(int32_t) * product_length);
     int32_t i;
     int32_t j;
-    for (i = 0; i < this->coefficients_length; i++) {
+    for (i = 0; i < self->coefficients_length; i++) {
         for (j = 0; j < other->coefficients_length; j++) {
-            product[i + j] = ecc_generic_gf_add_or_substract(product[i + j], ecc_generic_gf_multiply(field, this->coefficients[i], other->coefficients[j]));
+            product[i + j] = ecc_generic_gf_add_or_substract(product[i + j], ecc_generic_gf_multiply(field, self->coefficients[i], other->coefficients[j]));
         }
     }
     ecc_generic_gf_poly_init(result, product, product_length);
     free(product);
  }
 
- int32_t ecc_generic_gf_inverse(ecc_generic_gf_t* this, int32_t a) {
-     return this->exp_table[this->size - this->log_table[a] - 1];
+ int32_t ecc_generic_gf_inverse(ecc_generic_gf_t* self, int32_t a) {
+     return self->exp_table[self->size - self->log_table[a] - 1];
  }
 
- int32_t ecc_generic_gf_poly_evaluate_at(ecc_generic_gf_poly_t* this, ecc_generic_gf_t* field, int32_t a) {
+ int32_t ecc_generic_gf_poly_evaluate_at(ecc_generic_gf_poly_t* self, ecc_generic_gf_t* field, int32_t a) {
      if (a == 0) {
          // Just return the x^0 coefficient
-         return ecc_generic_gf_poly_get_coefficient(this, 0);
+         return ecc_generic_gf_poly_get_coefficient(self, 0);
      }
      if (a == 1) {
          // Just the sum of the coefficients
          int32_t result = 0;
          int32_t i;
-         for (i = 0; i < this->coefficients_length; i++) {
-             result = ecc_generic_gf_add_or_substract(result, this->coefficients[i]);
+         for (i = 0; i < self->coefficients_length; i++) {
+             result = ecc_generic_gf_add_or_substract(result, self->coefficients[i]);
          }
          return result;
      }
-     int32_t result = this->coefficients[0];
+     int32_t result = self->coefficients[0];
      int32_t i;
-     for (i = 1; i < this->coefficients_length; i++) {
-         result = ecc_generic_gf_add_or_substract(ecc_generic_gf_multiply(field, a, result), this->coefficients[i]);
+     for (i = 1; i < self->coefficients_length; i++) {
+         result = ecc_generic_gf_add_or_substract(ecc_generic_gf_multiply(field, a, result), self->coefficients[i]);
      }
      return result;
  }
 
- void ecc_reed_solomon_encoder_add(ecc_reed_solomon_encoder_t* this, ecc_generic_gf_poly_t* el) {
-     ecc_reed_solomon_cached_generator_t* last = this->cached_generators;
-     this->cached_generators = malloc(sizeof(ecc_reed_solomon_cached_generator_t));
-     this->cached_generators->index = last->index + 1;
-     this->cached_generators->value = el;
-     this->cached_generators->previous = last;
+ void ecc_reed_solomon_encoder_add(ecc_reed_solomon_encoder_t* self, ecc_generic_gf_poly_t* el) {
+     ecc_reed_solomon_cached_generator_t* last = self->cached_generators;
+     self->cached_generators = malloc(sizeof(ecc_reed_solomon_cached_generator_t));
+     self->cached_generators->index = last->index + 1;
+     self->cached_generators->value = el;
+     self->cached_generators->previous = last;
  }
 
- void ecc_reed_solomon_encoder_free(ecc_reed_solomon_encoder_t* this) {
-     ecc_generic_gf_free(&(this->field));
-     ecc_reed_solomon_cached_generator_t* previous = this->cached_generators;
+ void ecc_reed_solomon_encoder_free(ecc_reed_solomon_encoder_t* self) {
+     ecc_generic_gf_free(&(self->field));
+     ecc_reed_solomon_cached_generator_t* previous = self->cached_generators;
      while (previous != NULL) {
          ecc_generic_gf_poly_free(previous->value);
          free(previous->value);
@@ -344,8 +344,8 @@ void ecc_generic_gf_poly_copy(ecc_generic_gf_poly_t* this, ecc_generic_gf_poly_t
      }
  }
 
- ecc_generic_gf_poly_t* ecc_reed_solomon_encoder_get(ecc_reed_solomon_encoder_t* this, int32_t index) {
-     ecc_reed_solomon_cached_generator_t* previous = this->cached_generators;
+ ecc_generic_gf_poly_t* ecc_reed_solomon_encoder_get(ecc_reed_solomon_encoder_t* self, int32_t index) {
+     ecc_reed_solomon_cached_generator_t* previous = self->cached_generators;
      while (previous != NULL) {
          if (previous->index == index) {
              return previous->value;
@@ -356,50 +356,50 @@ void ecc_generic_gf_poly_copy(ecc_generic_gf_poly_t* this, ecc_generic_gf_poly_t
      return NULL;
  }
 
- void ecc_reed_solomon_encoder_init(ecc_reed_solomon_encoder_t* this, int32_t primitive, int32_t size, int32_t b) {
-     ecc_generic_gf_init(&(this->field), primitive, size, b);
-     this->cached_generators = malloc(sizeof(ecc_reed_solomon_cached_generator_t));
-     this->cached_generators->index = 0;
-     this->cached_generators->previous = NULL;
-     int one[1] = { 1 };
-     this->cached_generators->value = malloc(sizeof(ecc_generic_gf_poly_t));
-     ecc_generic_gf_poly_init(this->cached_generators->value, one, 1);
+ void ecc_reed_solomon_encoder_init(ecc_reed_solomon_encoder_t* self, int32_t primitive, int32_t size, int32_t b) {
+     ecc_generic_gf_init(&(self->field), primitive, size, b);
+     self->cached_generators = malloc(sizeof(ecc_reed_solomon_cached_generator_t));
+     self->cached_generators->index = 0;
+     self->cached_generators->previous = NULL;
+     int32_t one[1] = { 1 };
+     self->cached_generators->value = malloc(sizeof(ecc_generic_gf_poly_t));
+     ecc_generic_gf_poly_init(self->cached_generators->value, one, 1);
  }
 
- ecc_generic_gf_poly_t* ecc_reed_solomon_encoder_build_generator(ecc_reed_solomon_encoder_t* this, int32_t degree) {
-    if (degree >= this->cached_generators->index + 1) {
-        ecc_generic_gf_poly_t* last_generator = this->cached_generators->value;
+ ecc_generic_gf_poly_t* ecc_reed_solomon_encoder_build_generator(ecc_reed_solomon_encoder_t* self, int32_t degree) {
+    if (degree >= self->cached_generators->index + 1) {
+        ecc_generic_gf_poly_t* last_generator = self->cached_generators->value;
         int32_t d;
-        for (d = this->cached_generators->index + 1; d <= degree; d++) {
+        for (d = self->cached_generators->index + 1; d <= degree; d++) {
             ecc_generic_gf_poly_t* next_generator = malloc(sizeof(ecc_generic_gf_poly_t));
             ecc_generic_gf_poly_t gen;
             int32_t* data = malloc(sizeof(int32_t) * 2);
             data[0] = 1;
-            data[1] = this->field.exp_table[d - 1 + this->field.generator_base];
+            data[1] = self->field.exp_table[d - 1 + self->field.generator_base];
             ecc_generic_gf_poly_init(&gen, data, 2);
             free(data);
-            ecc_generic_gf_poly_multiply_other(last_generator, &(this->field), &gen, next_generator);
+            ecc_generic_gf_poly_multiply_other(last_generator, &(self->field), &gen, next_generator);
             ecc_generic_gf_poly_free(&gen);
-            ecc_reed_solomon_encoder_add(this, next_generator);
+            ecc_reed_solomon_encoder_add(self, next_generator);
             last_generator = next_generator;
         }
     }
-    return ecc_reed_solomon_encoder_get(this, degree);
+    return ecc_reed_solomon_encoder_get(self, degree);
  }
 
- void ecc_reed_solomon_encoder_encode(ecc_reed_solomon_encoder_t* this, int32_t* to_encode, int32_t to_encode_length, int32_t ec_bytes) {
+ void ecc_reed_solomon_encoder_encode(ecc_reed_solomon_encoder_t* self, int32_t* to_encode, int32_t to_encode_length, int32_t ec_bytes) {
      int32_t data_bytes = to_encode_length - ec_bytes;
-     ecc_generic_gf_poly_t* generator = ecc_reed_solomon_encoder_build_generator(this, ec_bytes);
+     ecc_generic_gf_poly_t* generator = ecc_reed_solomon_encoder_build_generator(self, ec_bytes);
      int32_t* info_coefficients = malloc(sizeof(int32_t) * data_bytes);
      memcpy(info_coefficients, to_encode, data_bytes * sizeof(int32_t));
      ecc_generic_gf_poly_t info;
      ecc_generic_gf_poly_init(&info, info_coefficients, data_bytes);
      free(info_coefficients);
      ecc_generic_gf_poly_t monomial_result;
-     ecc_generic_gf_poly_multiply_by_monomial(&info,&(this->field), ec_bytes, 1, &monomial_result);
+     ecc_generic_gf_poly_multiply_by_monomial(&info,&(self->field), ec_bytes, 1, &monomial_result);
      ecc_generic_gf_poly_free(&info);
      ecc_generic_gf_poly_t remainder;
-     ecc_generic_gf_poly_divide(&monomial_result, &(this->field), generator, &remainder);
+     ecc_generic_gf_poly_divide(&monomial_result, &(self->field), generator, &remainder);
      ecc_generic_gf_poly_free(&monomial_result);
      int32_t num_zero_coefficients = ec_bytes - remainder.coefficients_length;
      int32_t i;
@@ -412,7 +412,7 @@ void ecc_generic_gf_poly_copy(ecc_generic_gf_poly_t* this, ecc_generic_gf_poly_t
 
 
 
- int ecc_reed_solomon_decoder_run_euclidean_algorithm(ecc_generic_gf_t* field, ecc_generic_gf_poly_t* a, ecc_generic_gf_poly_t* b, int32_t r_degree,
+ int32_t ecc_reed_solomon_decoder_run_euclidean_algorithm(ecc_generic_gf_t* field, ecc_generic_gf_poly_t* a, ecc_generic_gf_poly_t* b, int32_t r_degree,
      ecc_generic_gf_poly_t* sigma, ecc_generic_gf_poly_t* omega) {
      int32_t ret = ECC_NO_ERRORS;
      // Assume a's degree is >= b's
@@ -508,9 +508,9 @@ void ecc_generic_gf_poly_copy(ecc_generic_gf_poly_t* this, ecc_generic_gf_poly_t
      return ret;
  }
 
- int ecc_reed_solomon_decoder_find_error_locations(ecc_generic_gf_poly_t* error_locator, ecc_generic_gf_t* field, int32_t* result) {
+ int32_t ecc_reed_solomon_decoder_find_error_locations(ecc_generic_gf_poly_t* error_locator, ecc_generic_gf_t* field, int32_t* result) {
      int32_t ret = ECC_NO_ERRORS;
-     int num_errors = ecc_generic_gf_poly_get_degree(error_locator);
+     int32_t num_errors = ecc_generic_gf_poly_get_degree(error_locator);
      if (num_errors == 1) { //Shortcut
          result[0] = ecc_generic_gf_poly_get_coefficient(error_locator, 1);
          ret = ECC_NO_ERRORS;

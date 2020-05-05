@@ -64,8 +64,8 @@ add_test( NAME ecc_test1
 #    TEST 2
 #------------#
 
-#file(COPY test/resources/c/audioTest_44100_16bitsPCM_0.0872s_1760.raw
-#    DESTINATION ${TEST_DATA_DIR})
+file(COPY jqrtone/src/test/resources/org/noise_planet/qrtone/ipfs_16khz_16bits_mono.raw
+    DESTINATION ${TEST_DATA_DIR})
 
 # Test executable and folder
 set(QRTONE_TESTS
