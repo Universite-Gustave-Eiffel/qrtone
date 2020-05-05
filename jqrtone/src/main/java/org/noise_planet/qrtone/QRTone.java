@@ -430,8 +430,7 @@ public class QRTone {
             frequencyAnalyzers = new IterativeGeneralizedGoertzel[frequencies.length];
             for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
                 int window_length = Math.min(wordLength, Configuration.computeMinimumWindowSize(configuration.sampleRate, frequencies[idfreq], frequencyLimits[idfreq]));
-                frequencyAnalyzers[idfreq] = new IterativeGeneralizedGoertzel(configuration.sampleRate, frequencies[idfreq], window_length);
-                frequencyAnalyzers[idfreq].setHannWindow(true);
+                frequencyAnalyzers[idfreq] = new IterativeGeneralizedGoertzel(configuration.sampleRate, frequencies[idfreq], window_length, true);
             }
             symbolsCache = new byte[HEADER_SYMBOLS];
             triggerAnalyzer.reset();

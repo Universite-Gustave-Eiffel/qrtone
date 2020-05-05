@@ -103,7 +103,7 @@ public class QRToneTest {
         }
 
         IterativeGeneralizedGoertzel.GoertzelResult res = new IterativeGeneralizedGoertzel(sampleRate, signalFrequency,
-                audio.length).processSamples(audio, 0, audio.length).computeRMS(true);
+                audio.length, false).processSamples(audio, 0, audio.length).computeRMS(true);
 
 
         double signal_rms = QRTone.computeRms(audio);
@@ -112,6 +112,29 @@ public class QRToneTest {
         assertEquals(0, res.phase, 1e-8);
     }
 
+    @Test
+    public void generalized_goertzelHann() throws Exception {
+        double sampleRate = 44100;
+        double powerRMS = Math.pow(10, -26.0 / 20.0); // -26 dBFS
+        float signalFrequency = 1000;
+        double powerPeak = powerRMS * Math.sqrt(2);
+
+        float[] audio = new float[24];
+        for (int s = 0; s < audio.length; s++) {
+            double t = s * (1 / sampleRate);
+            audio[s] = (float)(Math.cos(QRTone.M2PI * signalFrequency * t) * (powerPeak));
+        }
+
+        IterativeGeneralizedGoertzel.GoertzelResult res = new IterativeGeneralizedGoertzel(sampleRate, signalFrequency,
+                audio.length, true).processSamples(audio, 0, audio.length).computeRMS(true);
+
+        QRTone.applyHann(audio, 0, audio.length, audio.length, 0);
+
+        IterativeGeneralizedGoertzel.GoertzelResult res2 = new IterativeGeneralizedGoertzel(sampleRate, signalFrequency,
+                audio.length, false).processSamples(audio, 0, audio.length).computeRMS(true);
+
+        assertEquals(res.rms, res2.rms, 1e-6);
+    }
     @Test
     public void generalized_goertzelIterativeTest() throws Exception {
         double sampleRate = 44100;
@@ -128,7 +151,7 @@ public class QRToneTest {
         int cursor = 0;
         Random random = new Random(1337);
         IterativeGeneralizedGoertzel goertzel = new IterativeGeneralizedGoertzel(sampleRate, signalFrequency,
-                audio.length);
+                audio.length, false);
         while (cursor < audio.length) {
             int windowSize = Math.min(random.nextInt(115) + 20, audio.length - cursor);
             goertzel.processSamples(audio, cursor, cursor + windowSize);
@@ -184,7 +207,7 @@ public class QRToneTest {
         double rms[] = new double[QRTone.NUM_FREQUENCIES];
         IterativeGeneralizedGoertzel[] goertzel = new IterativeGeneralizedGoertzel[QRTone.NUM_FREQUENCIES];
         for (int idfreq = 0; idfreq < QRTone.NUM_FREQUENCIES; idfreq++) {
-            goertzel[idfreq] = new IterativeGeneralizedGoertzel(sampleRate,frequencies[idfreq], windowSize);
+            goertzel[idfreq] = new IterativeGeneralizedGoertzel(sampleRate,frequencies[idfreq], windowSize, false);
         }
         int pushed = 0;
         while (s < audio.length - (windowSize + windowSize / 2)) {
@@ -248,15 +271,14 @@ public class QRToneTest {
 
         // test with goertzel with integrated hann windowing
         IterativeGeneralizedGoertzel g = new IterativeGeneralizedGoertzel(sampleRate, signalFrequency,
-                audio.length);
-        g.setHannWindow(true);
+                audio.length, true);
         g.processSamples(audio, 0, audio.length);
         IterativeGeneralizedGoertzel.GoertzelResult res1 = g.computeRMS(true);
 
         // test with goertzel with separated hann windowing
         QRTone.applyHann(audio, 0, audio.length, audio.length, 0);
         IterativeGeneralizedGoertzel.GoertzelResult res = new IterativeGeneralizedGoertzel(sampleRate, signalFrequency,
-                audio.length).processSamples(audio, 0, audio.length).computeRMS(true);
+                audio.length, false).processSamples(audio, 0, audio.length).computeRMS(true);
 
         assertEquals(res1.rms, res.rms, 0.001);
     }
@@ -873,11 +895,11 @@ public class QRToneTest {
 
 
     // Test adaptative geortzel window
-    // @Test
+    @Test
     public void generalized_goertzel_width() throws Exception {
         double sampleRate = 32000;
         double powerRMS = Math.pow(10, -26.0 / 20.0); // -26 dBFS
-
+        long totalTime = 0;
         double powerPeak = powerRMS * Math.sqrt(2);
         Configuration c = Configuration.getAudible(sampleRate);
         double[] freqs = c.computeFrequencies(32, 0);
@@ -904,7 +926,7 @@ public class QRToneTest {
                 }
                 QRTone.applyHann(audio, 0, audio.length, audio.length, 0);
                 IterativeGeneralizedGoertzel.GoertzelResult res = new IterativeGeneralizedGoertzel(sampleRate, signalFrequency,
-                        audio.length).processSamples(audio, 0, audio.length).computeRMS(true);
+                        audio.length, false).processSamples(audio, 0, audio.length).computeRMS(true);
                 double new_limit = 20 * Math.log10(res.rms) - limit;
                 if (last_limit < 0 && new_limit > 0 || last_limit > 0 && new_limit < 0) {
                     System.out.println(testFrequency);

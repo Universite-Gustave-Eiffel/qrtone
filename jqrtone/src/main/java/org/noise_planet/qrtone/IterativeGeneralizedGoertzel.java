@@ -46,7 +46,7 @@ package org.noise_planet.qrtone;
  */
 public class IterativeGeneralizedGoertzel {
     public static final double M2PI = Math.PI * 2;
-
+    private double[] hannWindowCache;
     private double s0 = 0;
     private double s1 = 0.;
     private double s2 = 0.;
@@ -63,17 +63,20 @@ public class IterativeGeneralizedGoertzel {
      * @param frequency Array of frequency search in Hz
      * @param windowSize Number of samples to analyse
      */
-    public IterativeGeneralizedGoertzel(double sampleRate, double frequency, int windowSize) {
+    public IterativeGeneralizedGoertzel(double sampleRate, double frequency, int windowSize, boolean hannWindow) {
         this.sampleRate = sampleRate;
         this.windowSize = windowSize;
+        this.hannWindow = hannWindow;
         // Fix frequency using the sampleRate of the signal
         double samplingRateFactor = windowSize / sampleRate;
         pikTerm = M2PI * (frequency * samplingRateFactor) / windowSize;
         cosPikTerm2 = Math.cos(pikTerm) * 2.0;
-    }
-
-    public void setHannWindow(boolean hannWindow) {
-        this.hannWindow = hannWindow;
+        if(hannWindow) {
+            hannWindowCache = new double[windowSize / 2 + 1];
+            for(int i=0; i < hannWindowCache.length; i++) {
+                hannWindowCache[i] = 0.5 - 0.5 * Math.cos((M2PI * i) / (windowSize - 1));
+            }
+        }
     }
 
     public void reset() {
@@ -114,7 +117,7 @@ public class IterativeGeneralizedGoertzel {
         }
         for(int i=0; i < size; i++) {
             if (hannWindow) {
-                final double hann = ((0.5 - 0.5 * Math.cos((M2PI * (i + processedSamples)) / (windowSize - 1))));
+                final double hann = i + processedSamples < hannWindowCache.length ? hannWindowCache[i + processedSamples] : hannWindowCache[(windowSize - 1) - (i + processedSamples)];
                 s0 = samples[i + from] * hann + cosPikTerm2 * s1 - s2;
             } else{
                 s0 = samples[i + from] + cosPikTerm2 * s1 - s2;

@@ -41,6 +41,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Evaluate the exact position of the first tone
  */
 public class TriggerAnalyzer {
+    public static final double M2PI = Math.PI * 2;
     public static final double PERCENTILE_BACKGROUND = 0.5;
     private AtomicInteger processedWindowAlpha = new AtomicInteger(0);
     private AtomicInteger processedWindowBeta = new AtomicInteger(0);
@@ -50,6 +51,7 @@ public class TriggerAnalyzer {
     private IterativeGeneralizedGoertzel[] frequencyAnalyzersBeta;
     final ApproximatePercentile backgroundNoiseEvaluator;
     final CircularArray[] splHistory;
+    private double[] hannWindowCache;
     final PeakFinder peakFinder;
     private final int windowAnalyze;
     private long totalProcessed = 0;
@@ -78,9 +80,13 @@ public class TriggerAnalyzer {
         splHistory = new CircularArray[frequencies.length];
         peakFinder = new PeakFinder();
         peakFinder.setMinDecreaseCount((gateLength / 2) / windowOffset);
+        hannWindowCache = new double[windowLength / 2 + 1];
+        for(int i=0; i < hannWindowCache.length; i++) {
+            hannWindowCache[i] = 0.5 - 0.5 * Math.cos((M2PI * i) / (windowLength - 1));
+        }
         for(int i=0; i<frequencies.length; i++) {
-            frequencyAnalyzersAlpha[i] = new IterativeGeneralizedGoertzel(sampleRate, frequencies[i], windowLength);
-            frequencyAnalyzersBeta[i] = new IterativeGeneralizedGoertzel(sampleRate, frequencies[i], windowLength);
+            frequencyAnalyzersAlpha[i] = new IterativeGeneralizedGoertzel(sampleRate, frequencies[i], windowLength, false);
+            frequencyAnalyzersBeta[i] = new IterativeGeneralizedGoertzel(sampleRate, frequencies[i], windowLength, false);
             splHistory[i] = new CircularArray((gateLength * 3) / windowOffset);
         }
     }
@@ -115,7 +121,11 @@ public class TriggerAnalyzer {
         int processed = 0;
         while(firstToneLocation == -1 && processed < samples.length) {
             int toProcess = Math.min(samples.length - processed,windowAnalyze - windowProcessed.get());
-            QRTone.applyHann(samples,processed, processed + toProcess, windowAnalyze, windowProcessed.get());
+            // Apply Hann window
+            for(int i=0; i < toProcess; i++) {
+                final double hann = i + windowProcessed.get() < hannWindowCache.length ? hannWindowCache[i + windowProcessed.get()] : hannWindowCache[(windowAnalyze - 1) - (i + windowProcessed.get())];
+                samples[i+processed] *= hann;
+            }
             for(int idfreq = 0; idfreq < frequencyAnalyzers.length; idfreq++) {
                 frequencyAnalyzers[idfreq].processSamples(samples, processed, processed + toProcess);
             }
