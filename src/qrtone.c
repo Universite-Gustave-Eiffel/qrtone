@@ -229,7 +229,6 @@ typedef struct _qrtone_trigger_analyzer_t {
     qrtone_array_t spl_history[2];
     qrtone_peak_finder_t peak_finder;
     int32_t window_analyze;
-    int64_t total_processed;
     float frequencies[2];
     float sample_rate;
     float trigger_snr;
@@ -853,7 +852,6 @@ int32_t qrtone_compute_minimum_window_size(float sampleRate, float targetFrequen
 void qrtone_trigger_analyzer_init(qrtone_trigger_analyzer_t* self, float sample_rate, int32_t gate_length,int32_t window_analyze, float gate_frequencies[2], float trigger_snr) {
     self->processed_window_alpha = 0;
     self->processed_window_beta = 0;
-    self->total_processed = 0;
     self->level_callback = NULL;
     self->level_callback_data = NULL;
     self->first_tone_location = -1;
@@ -888,7 +886,6 @@ void qrtone_trigger_analyzer_reset(qrtone_trigger_analyzer_t* self) {
     qrtone_peak_finder_init(&(self->peak_finder), self->peak_finder.min_increase_count, self->peak_finder.min_decrease_count);
     self->processed_window_alpha = 0;
     self->processed_window_beta = 0;
-    self->total_processed = 0;
     int32_t i;
     for (i = 0; i < 2; i++) {
         qrtone_goertzel_reset(&(self->frequency_analyzers_alpha[i]));
@@ -971,7 +968,7 @@ int64_t qrtone_find_peak_location(float p0, float p1, float p2, int64_t p1_locat
     return p1_location + (int64_t)location * window_length;
 }
 
-void qrtone_trigger_analyzer_process(qrtone_trigger_analyzer_t* self, float* samples, int32_t samples_length, int32_t* window_processed, qrtone_goertzel_t* frequency_analyzers) {
+void qrtone_trigger_analyzer_process(qrtone_trigger_analyzer_t* self, int64_t total_processed, float* samples, int32_t samples_length, int32_t* window_processed, qrtone_goertzel_t* frequency_analyzers) {
     int32_t processed = 0;
     while (self->first_tone_location == -1 && processed < samples_length) {
         int32_t to_process = min(samples_length - processed, self->window_analyze - *window_processed);
@@ -991,7 +988,7 @@ void qrtone_trigger_analyzer_process(qrtone_trigger_analyzer_t* self, float* sam
                 qrtone_array_add(self->spl_history + id_freq, (float)spl_level);
             }
             qrtone_percentile_add(&(self->background_noise_evaluator), spl_levels[1]);
-            int64_t location = self->total_processed + processed - self->window_analyze;
+            int64_t location = total_processed + processed - self->window_analyze;
             int32_t triggered = 0;            
             if (qrtone_peak_finder_add(&(self->peak_finder), location, (float)spl_levels[1])) {
                 // We found a peak
@@ -1020,32 +1017,31 @@ void qrtone_trigger_analyzer_process(qrtone_trigger_analyzer_t* self, float* sam
                 }
             }
             if(self->level_callback != NULL) {
-                self->level_callback(self->level_callback_data, (float)spl_levels[0], (float)spl_levels[1], triggered);
+                self->level_callback(self->level_callback_data, total_processed, (float)spl_levels[0], (float)spl_levels[1], triggered);
             }
         }
     }
 }
 
-void qrtone_trigger_analyzer_process_samples(qrtone_trigger_analyzer_t* self, float* samples, int32_t samples_length) {
+void qrtone_trigger_analyzer_process_samples(qrtone_trigger_analyzer_t* self, int64_t total_processed, float* samples, int32_t samples_length) {
     float* samples_alpha = malloc(sizeof(float) * samples_length);
     memcpy(samples_alpha, samples, sizeof(float) * samples_length);
-    qrtone_trigger_analyzer_process(self, samples_alpha, samples_length, &(self->processed_window_alpha), self->frequency_analyzers_alpha);
+    qrtone_trigger_analyzer_process(self, total_processed, samples_alpha, samples_length, &(self->processed_window_alpha), self->frequency_analyzers_alpha);
     free(samples_alpha);
-    if (self->total_processed > self->window_offset) {
+    if (total_processed > self->window_offset) {
         float* samples_beta = malloc(sizeof(float) * samples_length);
         memcpy(samples_beta, samples, sizeof(float) * samples_length);
-        qrtone_trigger_analyzer_process(self, samples_beta, samples_length, &(self->processed_window_beta), self->frequency_analyzers_beta);
+        qrtone_trigger_analyzer_process(self, total_processed, samples_beta, samples_length, &(self->processed_window_beta), self->frequency_analyzers_beta);
         free(samples_beta);
-    } else if (self->window_offset - self->total_processed < samples_length) {
+    } else if (self->window_offset - total_processed < samples_length) {
         // Start to process on the part used by the offset window
-        int32_t from = (int32_t)(self->window_offset - self->total_processed);
+        int32_t from = (int32_t)(self->window_offset - total_processed);
         int32_t length = samples_length - from;
         float* samples_beta = malloc(sizeof(float) * length);
         memcpy(samples_beta, samples + from, sizeof(float) * length);
-        qrtone_trigger_analyzer_process(self, samples_beta, length, &(self->processed_window_beta), self->frequency_analyzers_beta);
+        qrtone_trigger_analyzer_process(self, total_processed, samples_beta, length, &(self->processed_window_beta), self->frequency_analyzers_beta);
         free(samples_beta);
     }
-    self->total_processed += samples_length;
 }
 
 int32_t qrtone_trigger_maximum_window_length(qrtone_trigger_analyzer_t * self) {
@@ -1376,8 +1372,8 @@ int8_t* qrtone_symbols_to_payload(qrtone_t* self, int8_t* symbols, int32_t symbo
 }
 
 
-void qrtone_feed_trigger_analyzer(qrtone_t* self, float* samples, int32_t samples_length) {
-    qrtone_trigger_analyzer_process_samples(&(self->trigger_analyzer), samples, samples_length);
+void qrtone_feed_trigger_analyzer(qrtone_t* self, int64_t total_processed, float* samples, int32_t samples_length) {
+    qrtone_trigger_analyzer_process_samples(&(self->trigger_analyzer), total_processed, samples, samples_length);
     if(self->trigger_analyzer.first_tone_location != -1) {
         self->qr_tone_state = QRTONE_PARSING_SYMBOLS;
         if(self->payload != NULL) {
@@ -1385,7 +1381,7 @@ void qrtone_feed_trigger_analyzer(qrtone_t* self, float* samples, int32_t sample
         }
         self->payload = NULL;
         self->payload_length = 0;
-        self->first_tone_sample_index = self->pushed_samples - (self->trigger_analyzer.total_processed - self->trigger_analyzer.first_tone_location);
+        self->first_tone_sample_index = self->trigger_analyzer.first_tone_location;
         int32_t idfreq;
         for (idfreq = 0; idfreq < QRTONE_NUM_FREQUENCIES; idfreq++) {
             qrtone_goertzel_reset(&(self->frequency_analyzers[idfreq]));
@@ -1441,11 +1437,10 @@ int8_t qrtone_analyze_tones(qrtone_t* self, float* samples, int32_t samples_leng
         int32_t idfreq;
         for (idfreq = 0; idfreq < QRTONE_NUM_FREQUENCIES; idfreq++) {
             int32_t start_window = self->word_length / 2 - self->frequency_analyzers[idfreq].window_size / 2;
-            int32_t end_window = start_window + self->frequency_analyzers[idfreq].window_size;
-            if (start_window < tone_window_cursor + cursor_increment && tone_window_cursor < end_window) {
-                int32_t start_analyze = max(0, start_window - tone_window_cursor);
-                int32_t analyze_length = min(cursor_increment - start_analyze,
+            int32_t start_analyze = max(0, start_window - tone_window_cursor) + cursor;
+            int32_t analyze_length = min(samples_length - start_analyze,
                     self->frequency_analyzers[idfreq].window_size - self->frequency_analyzers[idfreq].processed_samples);
+            if(analyze_length > 0 && start_analyze < samples_length) {
                 qrtone_goertzel_process_samples((&self->frequency_analyzers[idfreq]), samples + start_analyze, analyze_length);
             }
         }
@@ -1469,7 +1464,9 @@ int8_t qrtone_analyze_tones(qrtone_t* self, float* samples, int32_t samples_leng
                 self->symbols_cache[self->symbol_index * 2 + symbol_offset] = (int8_t)(max_symbol_id - symbol_offset * FREQUENCY_ROOT);
             }
             self->symbol_index += 1;
+            // jump to next tone samples
             processed_samples = (int32_t)(self->pushed_samples - samples_length - qrtone_get_tone_location(self));
+            cursor = max(cursor, qrtone_get_tone_index(self, samples_length));
             if (self->symbol_index * 2 == self->symbols_cache_length) {
                 if (self->header_cache == NULL) {
                     // Decoding of HEADER complete
@@ -1481,6 +1478,7 @@ int8_t qrtone_analyze_tones(qrtone_t* self, float* samples, int32_t samples_leng
                     }
                     free(self->symbols_cache);
                     self->symbols_cache = malloc(self->header_cache->number_of_symbols);
+                    memset(self->symbols_cache, 0, self->header_cache->number_of_symbols);
                     self->symbols_cache_length = self->header_cache->number_of_symbols;
                     self->symbol_index = 0;
                     self->first_tone_sample_index += ((int64_t)(HEADER_SYMBOLS) / 2) * ((int64_t)self->word_length + self->word_silence_length);
@@ -1488,7 +1486,7 @@ int8_t qrtone_analyze_tones(qrtone_t* self, float* samples, int32_t samples_leng
                     // Decoding complete
                     qrtone_cached_symbols_to_payload(self);
                     qrtone_reset(self);
-                    return 1;
+                    return self->payload != NULL;
                 }
             }
         }
@@ -1500,7 +1498,7 @@ int8_t qrtone_analyze_tones(qrtone_t* self, float* samples, int32_t samples_leng
 int8_t qrtone_push_samples(qrtone_t* self,float* samples, int32_t samples_length) {
     self->pushed_samples += samples_length;
     if(self->qr_tone_state == QRTONE_WAITING_TRIGGER) {
-        qrtone_feed_trigger_analyzer(self, samples, samples_length);
+        qrtone_feed_trigger_analyzer(self,self->pushed_samples - samples_length, samples, samples_length);
     }
     if(self->qr_tone_state == QRTONE_PARSING_SYMBOLS && self->first_tone_sample_index + self->word_silence_length < self->pushed_samples) {
         return qrtone_analyze_tones(self, samples, samples_length);

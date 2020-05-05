@@ -505,11 +505,24 @@ float gaussrand()
 	return X;
 }
 
+void lvl_callback(void* ptr, int64_t location,  float first_tone_level, float second_tone_level, int32_t triggered) {
+	char buffer[100];
+	float time = location / 16000.0;
+	int32_t size = sprintf(buffer, "%.3f, %.2f,%.2f,%d\n", time, first_tone_level, second_tone_level, triggered);
+	fwrite(buffer, 1, size, (FILE*) ptr);
+}
+
+
 MU_TEST(testGenerate) {
-	int writeFile = 0;
+	int writeFile = 1;
 	FILE* f = NULL;
+	FILE* fcsv = NULL;
 	if(writeFile) {
-		f = fopen("inputsignal_44100_16bitsPCM.raw", "wb");
+		f = fopen("testGenerate_16000HZ_16bitsPCM.raw", "wb");
+		fcsv = fopen("spectrum.csv", "w");
+		char buffer[100];
+		int32_t size = sprintf(buffer, "t,3603Hz,3952Hz,trigger\n");
+		fwrite(buffer, 1, size, fcsv);
 	}
 	qrtone_t* qrtone = qrtone_new();
 	float sample_rate = 16000;
@@ -527,6 +540,7 @@ MU_TEST(testGenerate) {
 	int32_t cursor = 0;
 	qrtone_t* qrtone_decoder = qrtone_new();
 	qrtone_init(qrtone_decoder, sample_rate);
+	qrtone_set_level_callback(qrtone_decoder, fcsv, lvl_callback);
 	while (cursor < total_length) {
 		int32_t window_size = MIN(qrtone_get_maximum_length(qrtone_decoder), total_length - cursor);
 		float* window = malloc(sizeof(float) * window_size);
@@ -554,6 +568,7 @@ MU_TEST(testGenerate) {
 	}
 	if(writeFile) {
 		fclose(f);
+		fclose(fcsv);
 	}
 	mu_assert(qrtone_get_payload(qrtone_decoder) != NULL, "no decoded message");
 	if(qrtone_get_payload(qrtone_decoder) != NULL) {
@@ -777,7 +792,7 @@ MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(testHannWindow);
 	MU_RUN_TEST(testPeakFinding);
 	MU_RUN_TEST(testSymbolsInterleaving);
-	MU_RUN_TEST(testGenerate);
+    MU_RUN_TEST(testGenerate);
 	//MU_RUN_TEST(testWriteSignal);
 	MU_RUN_TEST(testHeaderEncodeDecode);
 	MU_RUN_TEST(testSymbolsEncodingDecoding);

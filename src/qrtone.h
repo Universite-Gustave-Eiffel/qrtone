@@ -141,11 +141,12 @@ int32_t qrtone_get_fixed_errors(qrtone_t* qrtone);
 /**
  * Function callback called while awaiting a message. It can be usefull in order to display if the microphone is working.
  * @ptr Pointer provided when calling qrtone_tone_set_level_callback.
+ * @processed_samples Number of processed samples
  * @global_level Leq of signal. Expressed in dBFS (https://en.wikipedia.org/wiki/DBFS)
  * @first_tone_level Level of first tone frequency. Expressed in dBFS.
  * @second_tone_level Level of second tone frequency. Expressed in dBFS.
  */
-typedef void (*qrtone_level_callback_t)(void *ptr, float first_tone_level, float second_tone_level, int32_t triggered);
+typedef void (*qrtone_level_callback_t)(void *ptr, int64_t processed_samples, float first_tone_level, float second_tone_level, int32_t triggered);
 
 /**
  * @brief Set callback method called while awaiting a message.
