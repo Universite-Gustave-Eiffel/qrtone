@@ -46,7 +46,7 @@ package org.noise_planet.qrtone;
  */
 public class IterativeGeneralizedGoertzel {
     public static final double M2PI = Math.PI * 2;
-    private double[] hannWindowCache;
+    private float[] hannWindowCache;
     private double s0 = 0;
     private double s1 = 0.;
     private double s2 = 0.;
@@ -72,9 +72,9 @@ public class IterativeGeneralizedGoertzel {
         pikTerm = M2PI * (frequency * samplingRateFactor) / windowSize;
         cosPikTerm2 = Math.cos(pikTerm) * 2.0;
         if(hannWindow) {
-            hannWindowCache = new double[windowSize / 2 + 1];
+            hannWindowCache = new float[windowSize / 2 + 1];
             for(int i=0; i < hannWindowCache.length; i++) {
-                hannWindowCache[i] = 0.5 - 0.5 * Math.cos((M2PI * i) / (windowSize - 1));
+                hannWindowCache[i] = (float)(0.5 - 0.5 * Math.cos((M2PI * i) / (windowSize - 1)));
             }
         }
     }
@@ -117,7 +117,7 @@ public class IterativeGeneralizedGoertzel {
         }
         for(int i=0; i < size; i++) {
             if (hannWindow) {
-                final double hann = i + processedSamples < hannWindowCache.length ? hannWindowCache[i + processedSamples] : hannWindowCache[(windowSize - 1) - (i + processedSamples)];
+                final float hann = i + processedSamples < hannWindowCache.length ? hannWindowCache[i + processedSamples] : hannWindowCache[(windowSize - 1) - (i + processedSamples)];
                 s0 = samples[i + from] * hann + cosPikTerm2 * s1 - s2;
             } else{
                 s0 = samples[i + from] + cosPikTerm2 * s1 - s2;

@@ -51,7 +51,7 @@ public class TriggerAnalyzer {
     private IterativeGeneralizedGoertzel[] frequencyAnalyzersBeta;
     final ApproximatePercentile backgroundNoiseEvaluator;
     final CircularArray[] splHistory;
-    private double[] hannWindowCache;
+    private float[] hannWindowCache;
     final PeakFinder peakFinder;
     private final int windowAnalyze;
     private long totalProcessed = 0;
@@ -80,9 +80,9 @@ public class TriggerAnalyzer {
         splHistory = new CircularArray[frequencies.length];
         peakFinder = new PeakFinder();
         peakFinder.setMinDecreaseCount((gateLength / 2) / windowOffset);
-        hannWindowCache = new double[windowLength / 2 + 1];
+        hannWindowCache = new float[windowLength / 2 + 1];
         for(int i=0; i < hannWindowCache.length; i++) {
-            hannWindowCache[i] = 0.5 - 0.5 * Math.cos((M2PI * i) / (windowLength - 1));
+            hannWindowCache[i] = (float)(0.5 - 0.5 * Math.cos((M2PI * i) / (windowLength - 1)));
         }
         for(int i=0; i<frequencies.length; i++) {
             frequencyAnalyzersAlpha[i] = new IterativeGeneralizedGoertzel(sampleRate, frequencies[i], windowLength, false);
@@ -123,7 +123,7 @@ public class TriggerAnalyzer {
             int toProcess = Math.min(samples.length - processed,windowAnalyze - windowProcessed.get());
             // Apply Hann window
             for(int i=0; i < toProcess; i++) {
-                final double hann = i + windowProcessed.get() < hannWindowCache.length ? hannWindowCache[i + windowProcessed.get()] : hannWindowCache[(windowAnalyze - 1) - (i + windowProcessed.get())];
+                final float hann = i + windowProcessed.get() < hannWindowCache.length ? hannWindowCache[i + windowProcessed.get()] : hannWindowCache[(windowAnalyze - 1) - (i + windowProcessed.get())];
                 samples[i+processed] *= hann;
             }
             for(int idfreq = 0; idfreq < frequencyAnalyzers.length; idfreq++) {

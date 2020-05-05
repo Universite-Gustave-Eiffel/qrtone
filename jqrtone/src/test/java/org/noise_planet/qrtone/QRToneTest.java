@@ -895,7 +895,7 @@ public class QRToneTest {
 
 
     // Test adaptative geortzel window
-    @Test
+    // @Test
     public void generalized_goertzel_width() throws Exception {
         double sampleRate = 32000;
         double powerRMS = Math.pow(10, -26.0 / 20.0); // -26 dBFS
