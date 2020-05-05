@@ -459,11 +459,10 @@ public class QRTone {
             int cursorIncrement = Math.min(samples.length - cursor, wordLength - toneWindowCursor);
             for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
                 int startWindow = wordLength / 2 - frequencyAnalyzers[idfreq].getWindowSize() / 2;
-                int endWindow = startWindow + frequencyAnalyzers[idfreq].getWindowSize();
-                if(startWindow < toneWindowCursor + cursorIncrement && toneWindowCursor < endWindow) {
-                    int startAnalyze = Math.max(0, startWindow - toneWindowCursor);
-                    int analyzeLength = Math.min(cursorIncrement - startAnalyze,
-                            frequencyAnalyzers[idfreq].getWindowSize() - frequencyAnalyzers[idfreq].getProcessedSamples());
+                int startAnalyze = Math.max(0, startWindow - toneWindowCursor) + cursor;
+                int analyzeLength = Math.min(samples.length - startAnalyze,
+                        frequencyAnalyzers[idfreq].getWindowSize() - frequencyAnalyzers[idfreq].getProcessedSamples());
+                if(analyzeLength > 0 && startAnalyze < samples.length) {
                     frequencyAnalyzers[idfreq].processSamples(samples, startAnalyze, startAnalyze + analyzeLength);
                 } else {
                     break;
@@ -487,8 +486,9 @@ public class QRTone {
                     }
                     symbolsCache[this.symbolIndex * 2 + symbolOffset] = (byte)(maxSymbolId - symbolOffset * FREQUENCY_ROOT);
                 }
-                symbolIndex+=1;
+                symbolIndex += 1;
                 processedSamples = (int) (pushedSamples - samples.length - getToneLocation());
+                cursor = Math.max(cursor, getToneIndex(samples.length));
                 if(symbolIndex * 2 == symbolsCache.length) {
                     if(headerCache == null) {
                         try {
@@ -519,8 +519,9 @@ public class QRTone {
                         }
                     }
                 }
+            } else {
+                cursor += cursorIncrement;
             }
-            cursor += cursorIncrement;
         }
         return false;
     }

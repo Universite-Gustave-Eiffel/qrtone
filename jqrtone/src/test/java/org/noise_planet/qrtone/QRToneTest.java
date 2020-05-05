@@ -608,7 +608,7 @@ public class QRToneTest {
     @Test
     public void testToneDetection() throws IOException {
         boolean writeCSV = false;
-        double sampleRate = 44100;
+        double sampleRate = 16000;
         double timeBlankBefore = 0.35;
         double timeBlankAfter = 0.35;
         double powerRMS = Math.pow(10, -26.0 / 20.0); // -26 dBFS
