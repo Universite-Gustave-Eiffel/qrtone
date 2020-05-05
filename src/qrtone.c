@@ -231,6 +231,8 @@ typedef struct _qrtone_trigger_analyzer_t {
     int32_t window_analyze;
     float frequencies[2];
     float sample_rate;
+    float* window_cache;
+    int32_t window_cache_length;
     float trigger_snr;
     int64_t first_tone_location;
     qrtone_level_callback_t level_callback;
@@ -849,6 +851,20 @@ int32_t qrtone_compute_minimum_window_size(float sampleRate, float targetFrequen
     return max(window_size, (int)ceil(sampleRate * (5.0 * (1.0 / targetFrequency))));
 }
 
+/**
+ * Apply hann window on provided signal
+ * @param signal Signal to update
+ * @param signal_length Signal length to update
+ * @param windowLength hann window length
+ * @param offset If the signal length is inferior than windowLength, give the offset of the hann window
+ */
+void qrtone_hann_window(float* signal, int32_t signal_length, int32_t window_length, int32_t offset) {
+    int32_t i;
+    for (i = 0; i < signal_length && offset + i < window_length; i++) {
+        signal[i] = (signal[i] * (0.5f - 0.5f * cosf((QRTONE_2PI * (i + offset)) / (window_length - 1))));
+    }
+}
+
 void qrtone_trigger_analyzer_init(qrtone_trigger_analyzer_t* self, float sample_rate, int32_t gate_length,int32_t window_analyze, float gate_frequencies[2], float trigger_snr) {
     self->processed_window_alpha = 0;
     self->processed_window_beta = 0;
@@ -871,6 +887,13 @@ void qrtone_trigger_analyzer_init(qrtone_trigger_analyzer_t* self, float sample_
     }
     int32_t slopeWindows = max(1, (gate_length / 2) / self->window_offset);
     qrtone_peak_finder_init(&(self->peak_finder), -1, slopeWindows);
+    // cache hann window values
+    self->window_cache_length = self->window_analyze / 2 + 1;
+    self->window_cache = malloc(sizeof(float) * self->window_cache_length);
+    for(i = 0; i < self->window_cache_length; i++) {
+        self->window_cache[i] = 1.0f;
+    }
+    qrtone_hann_window(self->window_cache, self->window_cache_length, self->window_analyze, 0);
 }
 
 void qrtone_trigger_analyzer_free(qrtone_trigger_analyzer_t* self) {
@@ -879,6 +902,7 @@ void qrtone_trigger_analyzer_free(qrtone_trigger_analyzer_t* self) {
     for (i = 0; i < 2; i++) {
         qrtone_array_free(&(self->spl_history[i]));
     }
+    free(self->window_cache);
 }
 
 void qrtone_trigger_analyzer_reset(qrtone_trigger_analyzer_t* self) {
@@ -891,20 +915,6 @@ void qrtone_trigger_analyzer_reset(qrtone_trigger_analyzer_t* self) {
         qrtone_goertzel_reset(&(self->frequency_analyzers_alpha[i]));
         qrtone_goertzel_reset(&(self->frequency_analyzers_beta[i]));
         qrtone_array_clear(&(self->spl_history[i]));
-    }
-}
-
-/**
- * Apply hann window on provided signal
- * @param signal Signal to update
- * @param signal_length Signal length to update
- * @param windowLength hann window length
- * @param offset If the signal length is inferior than windowLength, give the offset of the hann window
- */
-void qrtone_hann_window(float* signal, int32_t signal_length, int32_t window_length, int32_t offset) {
-    int32_t i;
-    for (i = 0; i < signal_length && offset + i < window_length; i++) {
-        signal[i] = (signal[i] * (0.5f - 0.5f * cosf((QRTONE_2PI * (i + offset)) / (window_length - 1))));
     }
 }
 
@@ -972,7 +982,12 @@ void qrtone_trigger_analyzer_process(qrtone_trigger_analyzer_t* self, int64_t to
     int32_t processed = 0;
     while (self->first_tone_location == -1 && processed < samples_length) {
         int32_t to_process = min(samples_length - processed, self->window_analyze - *window_processed);
-        qrtone_hann_window(samples + processed, to_process, self->window_analyze, *window_processed);
+        // Apply Hann window
+        int32_t i;
+        for (i = 0; i < to_process; i++) {
+            const float hann = i + *window_processed < self->window_cache_length ? self->window_cache[i + *window_processed] : self->window_cache[(self->window_analyze - 1) - (i + *window_processed)];
+            samples[i + processed] *= hann;
+        }
         int32_t id_freq;
         for (id_freq = 0; id_freq < 2; id_freq++) {
             qrtone_goertzel_process_samples(frequency_analyzers + id_freq, samples + processed, to_process);
