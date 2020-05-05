@@ -21,7 +21,7 @@ RGB_LED rgbLed;
 
 #define AUDIO_SAMPLE_SIZE 16
 
-#define MAX_AUDIO_WINDOW_SIZE 16000
+#define MAX_AUDIO_WINDOW_SIZE 512
 
 // QRTone instance
 qrtone_t* qrtone = NULL;
@@ -69,7 +69,7 @@ void recordCallback(void)
     }
 }
 
-void debug_serial(void *ptr, float first_tone_level, float second_tone_level, int32_t triggered) {
+void debug_serial(void *ptr, int64_t location, float first_tone_level, float second_tone_level, int32_t triggered) {
   char buf[100];
   sprintf(buf, "%.2f,%.2f,%d\n\r", first_tone_level, second_tone_level, triggered);
   Serial.write(buf);
@@ -88,7 +88,7 @@ void setup(void)
   qrtone_init(qrtone, SAMPLE_RATE);
 
   // Init callback method
-  qrtone_set_level_callback(qrtone, NULL, debug_serial);
+  // qrtone_set_level_callback(qrtone, NULL, debug_serial);
 
   // Start recording.
   int res = Audio.startRecord(recordCallback); 
