@@ -131,6 +131,14 @@ int8_t* qrtone_get_payload(qrtone_t* qrtone);
 int32_t qrtone_get_payload_length(qrtone_t* qrtone);
 
 /**
+ * Gives the exact index of the audio sample corresponding to the beginning of the last received message.
+ * This information can be used for synchronization purposes.
+ * @param self A pointer to the initialized qrtone structure.
+ * @return int64_t Audio sample index
+ */
+int64_t qrtone_get_payload_sample_index(qrtone_t* self);
+
+/**
  * When there is not enough signal/noise ratio, some bytes could be error corrected by Reed-Solomon code.
  * @param qrtone A pointer to the initialized qrtone structure.
  * @return Number of fixed

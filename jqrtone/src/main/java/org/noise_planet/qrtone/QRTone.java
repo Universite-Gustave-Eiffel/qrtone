@@ -422,11 +422,11 @@ public class QRTone {
         return Math.sqrt(sum / signal.length);
     }
 
-    private void feedTriggerAnalyzer(float[] samples) {
-        triggerAnalyzer.processSamples(samples);
+    private void feedTriggerAnalyzer(float[] samples, long totalProcessed) {
+        triggerAnalyzer.processSamples(samples, totalProcessed);
         if(triggerAnalyzer.getFirstToneLocation() != -1) {
             qrToneState = STATE.PARSING_SYMBOLS;
-            firstToneSampleIndex = pushedSamples - (triggerAnalyzer.getTotalProcessed() - triggerAnalyzer.getFirstToneLocation());
+            firstToneSampleIndex = triggerAnalyzer.getFirstToneLocation();
             frequencyAnalyzers = new IterativeGeneralizedGoertzel[frequencies.length];
             for(int idfreq = 0; idfreq < frequencies.length; idfreq++) {
                 int window_length = Math.min(wordLength, Configuration.computeMinimumWindowSize(configuration.sampleRate, frequencies[idfreq], frequencyLimits[idfreq]));
@@ -547,9 +547,9 @@ public class QRTone {
     public boolean pushSamples(float[] samples) {
         pushedSamples += samples.length;
         if(qrToneState == STATE.WAITING_TRIGGER) {
-            feedTriggerAnalyzer(samples);
+            feedTriggerAnalyzer(samples, pushedSamples - samples.length);
         }
-        if(qrToneState == STATE.PARSING_SYMBOLS && firstToneSampleIndex + wordSilenceLength < pushedSamples) {
+        if(qrToneState == STATE.PARSING_SYMBOLS) {
             return analyzeTones(samples);
         }
         return false;
@@ -559,7 +559,6 @@ public class QRTone {
         symbolsCache = null;
         symbolIndex = 0;
         headerCache = null;
-        firstToneSampleIndex = -1;
         qrToneState = STATE.WAITING_TRIGGER;
         symbolsToDeliver = null;
         frequencyAnalyzers = null;
@@ -580,4 +579,7 @@ public class QRTone {
         return (int)(bufferLength - (pushedSamples - getToneLocation()));
     }
 
+    public long gePayloadSampleIndex() {
+        return firstToneSampleIndex - (HEADER_SYMBOLS / 2) * (wordLength+wordSilenceLength) - gateLength * 2;
+    }
 }

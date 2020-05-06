@@ -648,6 +648,7 @@ public class QRToneTest {
             csvWriter.close();
         }
         assertArrayEquals(IPFS_PAYLOAD, qrTone.getPayload());
+        assertEquals(timeBlankBefore, qrTone.gePayloadSampleIndex() / sampleRate, 0.001);
     }
 
     @Test
@@ -722,7 +723,7 @@ public class QRToneTest {
         qrTone.getSamples(audio, 0, powerPeak);
         // Add audio effects
         AudioDispatcher d = AudioDispatcherFactory.fromFloatArray(audio, (int)sampleRate, 1024, 0);
-        d.addAudioProcessor(new DelayEffect(0.04, 0.5, sampleRate));
+        d.addAudioProcessor(new DelayEffect(0.04, 0.1, sampleRate));
         d.addAudioProcessor(new LowPassFS((float)qrTone.getFrequencies()[QRTone.FREQUENCY_ROOT], (float)sampleRate));
         d.addAudioProcessor(new GainProcessor(Math.pow(10, -1 / 20.0)));
         ArrayWriteProcessor writer = new ArrayWriteProcessor((int)sampleRate);
@@ -773,13 +774,13 @@ public class QRToneTest {
 
         @Override
         public void onTrigger(TriggerAnalyzer triggerAnalyzer, long messageStartLocation) {
-            long firstTone = qrTone.getPushedSamples() - (triggerAnalyzer.getTotalProcessed() - messageStartLocation);
+            long firstTone = messageStartLocation;
             System.out.println(String.format(Locale.ROOT, "Found trigger at %.3f",firstTone / triggerAnalyzer.sampleRate));
         }
 
         @Override
         public void onNewLevels(TriggerAnalyzer triggerAnalyzer, long location, double[] spl) {
-            long realLocation = qrTone.getPushedSamples() - (triggerAnalyzer.getTotalProcessed() - location);
+            long realLocation = location;
             if(writer != null) {
                 try {
                     if (frequencies == null) {
