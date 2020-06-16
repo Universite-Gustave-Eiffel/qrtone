@@ -54,7 +54,6 @@ public class TriggerAnalyzer {
     private float[] hannWindowCache;
     final PeakFinder peakFinder;
     private final int windowAnalyze;
-    private long totalProcessed = 0;
     private TriggerCallback triggerCallback = null;
     final double[] frequencies;
     final double sampleRate;
@@ -94,7 +93,6 @@ public class TriggerAnalyzer {
     public void reset() {
         firstToneLocation = -1;
         peakFinder.reset();
-        totalProcessed = 0;
         processedWindowAlpha.set(0);
         processedWindowBeta.set(0);
         for(int i=0; i<frequencies.length; i++) {
@@ -108,15 +106,11 @@ public class TriggerAnalyzer {
         this.triggerCallback = triggerCallback;
     }
 
-    public long getTotalProcessed() {
-        return totalProcessed;
-    }
-
     public long getFirstToneLocation() {
         return firstToneLocation;
     }
 
-    private void doProcess(float[] samples, AtomicInteger windowProcessed,
+    private void doProcess(float[] samples, long totalProcessed, AtomicInteger windowProcessed,
                            IterativeGeneralizedGoertzel[] frequencyAnalyzers) {
         int processed = 0;
         while(firstToneLocation == -1 && processed < samples.length) {
@@ -166,7 +160,7 @@ public class TriggerAnalyzer {
                                         ,element.value,splHistory[frequencies.length - 1].get(peakIndex+1),element.index,windowOffset);
                                 firstToneLocation = peakLocation + gateLength / 2 + windowOffset;
                                 if(triggerCallback != null) {
-                                    triggerCallback.onTrigger(this, peakLocation - gateLength / 2 - gateLength + windowOffset);
+                                    triggerCallback.onTrigger(this, firstToneLocation);
                                 }
                             }
                         }
@@ -186,17 +180,16 @@ public class TriggerAnalyzer {
         return Math.min(windowAnalyze - processedWindowAlpha.get(), windowAnalyze - processedWindowBeta.get());
     }
 
-    public void processSamples(float[] samples) {
-        doProcess(Arrays.copyOf(samples, samples.length), processedWindowAlpha, frequencyAnalyzersAlpha);
+    public void processSamples(float[] samples, long totalProcessed) {
+        doProcess(Arrays.copyOf(samples, samples.length), totalProcessed, processedWindowAlpha, frequencyAnalyzersAlpha);
         if(totalProcessed > windowOffset) {
-            doProcess(Arrays.copyOf(samples, samples.length), processedWindowBeta, frequencyAnalyzersBeta);
+            doProcess(Arrays.copyOf(samples, samples.length), totalProcessed, processedWindowBeta, frequencyAnalyzersBeta);
         } else if(windowOffset - totalProcessed < samples.length){
             // Start to process on the part used by the offset window
-            doProcess(Arrays.copyOfRange(samples, windowOffset - (int)totalProcessed,
-                    samples.length), processedWindowBeta,
+            doProcess(Arrays.copyOfRange(samples, (int)(windowOffset - totalProcessed),
+                    samples.length), totalProcessed + (int)(windowOffset - totalProcessed), processedWindowBeta,
                     frequencyAnalyzersBeta);
         }
-        totalProcessed += samples.length;
     }
 
     /**

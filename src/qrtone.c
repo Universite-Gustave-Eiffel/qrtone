@@ -1052,7 +1052,7 @@ void qrtone_trigger_analyzer_process(qrtone_trigger_analyzer_t* self, int64_t to
                 }
             }
             if(self->level_callback != NULL) {
-                self->level_callback(self->level_callback_data, total_processed, (float)spl_levels[0], (float)spl_levels[1], triggered);
+                self->level_callback(self->level_callback_data, total_processed + processed - self->window_analyze, (float)spl_levels[0], (float)spl_levels[1], triggered);
             }
         }
     }
@@ -1074,7 +1074,7 @@ void qrtone_trigger_analyzer_process_samples(qrtone_trigger_analyzer_t* self, in
         int32_t length = samples_length - from;
         float* samples_beta = malloc(sizeof(float) * length);
         memcpy(samples_beta, samples + from, sizeof(float) * length);
-        qrtone_trigger_analyzer_process(self, total_processed, samples_beta, length, &(self->processed_window_beta), self->frequency_analyzers_beta);
+        qrtone_trigger_analyzer_process(self, total_processed + (int32_t)(self->window_offset - total_processed), samples_beta, length, &(self->processed_window_beta), self->frequency_analyzers_beta);
         free(samples_beta);
     }
 }
@@ -1343,7 +1343,6 @@ void qrtone_reset(qrtone_t* self) {
     }
     self->qr_tone_state = QRTONE_WAITING_TRIGGER;
     self->symbol_index = 0;
-    self->first_tone_sample_index = -1;
 }
 
 int8_t* qrtone_symbols_to_payload(qrtone_t* self, int8_t* symbols, int32_t symbols_length, int32_t block_symbols_size, int32_t block_ecc_symbols, int8_t has_crc) {
@@ -1538,7 +1537,7 @@ int8_t qrtone_push_samples(qrtone_t* self,float* samples, int32_t samples_length
     if(self->qr_tone_state == QRTONE_WAITING_TRIGGER) {
         qrtone_feed_trigger_analyzer(self,self->pushed_samples - samples_length, samples, samples_length);
     }
-    if(self->qr_tone_state == QRTONE_PARSING_SYMBOLS && self->first_tone_sample_index + self->word_silence_length < self->pushed_samples) {
+    if(self->qr_tone_state == QRTONE_PARSING_SYMBOLS) {
         return qrtone_analyze_tones(self, samples, samples_length);
     }
     return 0;
@@ -1557,6 +1556,9 @@ int32_t qrtone_get_fixed_errors(qrtone_t* self) {
     return self->fixed_errors;
 }
 
+int64_t qrtone_get_payload_sample_index(qrtone_t* self) {
+    return self->first_tone_sample_index - ((int64_t)(HEADER_SYMBOLS) / 2) * ((int64_t)self->word_length + self->word_silence_length) - self->gate_length * 2;
+}
 
 
 

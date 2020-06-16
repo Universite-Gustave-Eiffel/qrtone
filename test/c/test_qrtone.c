@@ -571,9 +571,12 @@ MU_TEST(testGenerate) {
 		fclose(fcsv);
 	}
 	mu_assert(qrtone_get_payload(qrtone_decoder) != NULL, "no decoded message");
+
 	if(qrtone_get_payload(qrtone_decoder) != NULL) {
 		mu_assert_int_array_eq(IPFS_PAYLOAD, sizeof(IPFS_PAYLOAD), qrtone_get_payload(qrtone_decoder), qrtone_get_payload_length(qrtone_decoder));
 	}
+
+	mu_assert_double_eq(offset_before / sample_rate, qrtone_get_payload_sample_index(qrtone_decoder) / sample_rate, 0.001);
 
 	qrtone_free(qrtone);
 	qrtone_free(qrtone_decoder);
