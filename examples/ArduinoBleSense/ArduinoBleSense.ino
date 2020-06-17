@@ -1,9 +1,11 @@
 #include <PDM.h>
+#include <string.h>
 
 /*
  * QRTone header
  */
 #include "qrtone.h"
+
 
 // QRTone instance
 qrtone_t* qrtone = NULL;
@@ -25,11 +27,13 @@ static float scaled_input_buffer[MAX_AUDIO_WINDOW_SIZE];
 volatile int samplesRead;
 
 void setup() {
+  Serial.begin(9600);
+
+  // Uncomment to wait for serial comm to begin setup
+  // while (!Serial);
+
   // initialize digital pin LED_BUILTIN as an output.
   pinMode(LED_BUILTIN, OUTPUT);
-
-  Serial.begin(9600);
-  while (!Serial);
 
   // Allocate struct
   qrtone = qrtone_new();
@@ -92,6 +96,12 @@ void process_message(void) {
     memset(buf, 0, 256);
     memcpy(buf, data + message, message_length);
     Serial.println(buf);
+    // Special commands
+    if(strcmp( buf, "off" ) == 0) {
+      digitalWrite(LED_BUILTIN, LOW);
+    } else if(strcmp( buf, "on" ) == 0) {
+      digitalWrite(LED_BUILTIN, HIGH);
+    }
   }
 }
 
@@ -107,9 +117,7 @@ void loop() {
   {
     if(scaled_input_buffer_feed_cursor - scaled_input_buffer_consume_cursor > MAX_AUDIO_WINDOW_SIZE) {
       // overflow
-      digitalWrite(LED_BUILTIN, HIGH);
-    } else {
-      digitalWrite(LED_BUILTIN, LOW);
+      Serial.println("Buffer overflow");
     }
     int sample_to_read = scaled_input_buffer_feed_cursor - scaled_input_buffer_consume_cursor;
     int max_window_length = qrtone_get_maximum_length(qrtone);
