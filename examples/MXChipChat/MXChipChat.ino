@@ -44,17 +44,28 @@ AudioClass& Audio = AudioClass::getInstance();
 
 // Audio buffer used by MXChip audio controler
 static char raw_audio_buffer[AUDIO_CHUNK_SIZE];
+static char raw_output_audio_buffer[AUDIO_CHUNK_SIZE];
+static int raw_output_audio_buffer_length = 0;
+static int audio_to_play = 0; // how many samples to play
+static int cursor_audio_to_play = 0; // Total played samples
 
 // Audio circular buffer provided to QRTone.
 static int64_t scaled_input_buffer_feed_cursor = 0;
 static int64_t scaled_input_buffer_consume_cursor = 0;
 static float scaled_input_buffer[MAX_AUDIO_WINDOW_SIZE];
+static float scaled_output_buffer[MAX_AUDIO_WINDOW_SIZE];
+
+// Buttons state vars
+int lastButtonAState;
+int buttonAState;
+int lastButtonBState;
+int buttonBState;
 
 /**
  * Display message on Oled Screen
  * Message use a special format specified by the demo android app:
  * [field type int8_t][field_length int8_t][field_content int8_t array]
- * There is currently 2 type of field username(0) and message(1)à
+ * There is currently 2 type of field username(0) and message(1)
  */
 void process_message(void) {
   int32_t user_name = 0;
@@ -112,7 +123,12 @@ void recordCallback(void)
 
 void setup(void)
 {
-  Serial.begin(115200);
+  // initialize the button pin as a input
+  pinMode(USER_BUTTON_A, INPUT);
+  lastButtonAState = digitalRead(USER_BUTTON_A);
+  pinMode(USER_BUTTON_B, INPUT);
+  lastButtonBState = digitalRead(USER_BUTTON_B);
+
   Screen.init();
   Audio.format(SAMPLE_RATE, SAMPLE_SIZE);
   // disable automatic level control
@@ -137,6 +153,10 @@ void setup(void)
 
 void loop(void)
 {
+  buttonAState = digitalRead(USER_BUTTON_A);
+  buttonBState = digitalRead(USER_BUTTON_B);
+
+  // Processing of audio input
   // Once the recording buffer is full, we process it.
   if (scaled_input_buffer_feed_cursor > scaled_input_buffer_consume_cursor)
   {
@@ -155,6 +175,47 @@ void loop(void)
     }
     scaled_input_buffer_consume_cursor += sample_index;
   }
+
+  // Check button actions
+  boolean doPlay = false;
+  if (buttonAState == LOW && lastButtonAState == HIGH)
+  {
+    // Send off
+    int8_t msg[] = {0, 6,'M', 'X', 'C', 'h', 'i', 'p', 1, 3, 'o', 'f', 'f'};
+    audio_to_play = qrtone_set_payload(qrtone, msg, sizeof(msg));
+    cursor_audio_to_play = 0;
+    doPlay = true;
+  }
+  if (buttonBState == LOW && lastButtonBState == HIGH)
+  {
+    // Send on
+    int8_t msg[] = {0, 6,'M', 'X', 'C', 'h', 'i', 'p', 1, 2, 'o', 'n'};
+    audio_to_play = qrtone_set_payload(qrtone, msg, sizeof(msg));
+    cursor_audio_to_play = 0;
+    doPlay = true;
+  }
+  if(audio_to_play > cursor_audio_to_play && raw_output_audio_buffer_length == 0) {
+    // Push audio data to output buffer
+    qrtone_get_samples(qrtone, scaled_output_buffer, MAX_AUDIO_WINDOW_SIZE, cursor_audio_to_play, 1.0f);
+    memset(scaled_output_buffer, 0, sizeof(float) * MAX_AUDIO_WINDOW_SIZE);
+    for(int c=0; c < MAX_AUDIO_WINDOW_SIZE; c++) {
+      raw_output_audio_buffer[c] = scaled_output_buffer[c] * 32767.f;
+    }
+    raw_output_audio_buffer_length = MAX_AUDIO_WINDOW_SIZE;
+    cursor_audio_to_play += MAX_AUDIO_WINDOW_SIZE;
+  }
+  if(doPlay) {    
+    Audio.format(16000, 16);
+    Audio.startPlay(playCallback);
+  }
+  lastButtonAState = buttonAState;
+  lastButtonBState = buttonBState;
+}
+
+void playCallback(void)
+{
+  Audio.writeToPlayBuffer(raw_output_audio_buffer, raw_output_audio_buffer_length);
+  raw_output_audio_buffer_length = 0;
 }
 
 void printIdleMessage()
