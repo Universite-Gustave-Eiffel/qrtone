@@ -36,6 +36,8 @@
 // audio circular buffer size
 #define MAX_AUDIO_WINDOW_SIZE 512
 
+#define AUDIO_SAMPLE_SIZE 256 // AUDIO_CHUNK_SIZE / 2
+
 // QRTone instance
 qrtone_t* qrtone = NULL;
 
@@ -43,8 +45,11 @@ qrtone_t* qrtone = NULL;
 AudioClass& Audio = AudioClass::getInstance();
 
 // Audio buffer used by MXChip audio controler
+static char emptyAudio[AUDIO_CHUNK_SIZE];
 static char raw_audio_buffer[AUDIO_CHUNK_SIZE];
-static char raw_output_audio_buffer[AUDIO_CHUNK_SIZE];
+static short raw_output_audio_buffer[AUDIO_SAMPLE_SIZE];
+static float scaled_input_buffer[MAX_AUDIO_WINDOW_SIZE];
+static float scaled_output_buffer[AUDIO_SAMPLE_SIZE];
 static int raw_output_audio_buffer_length = 0;
 static int audio_to_play = 0; // how many samples to play
 static int cursor_audio_to_play = 0; // Total played samples
@@ -52,8 +57,6 @@ static int cursor_audio_to_play = 0; // Total played samples
 // Audio circular buffer provided to QRTone.
 static int64_t scaled_input_buffer_feed_cursor = 0;
 static int64_t scaled_input_buffer_consume_cursor = 0;
-static float scaled_input_buffer[MAX_AUDIO_WINDOW_SIZE];
-static float scaled_output_buffer[MAX_AUDIO_WINDOW_SIZE];
 
 // Buttons state vars
 int lastButtonAState;
@@ -123,13 +126,19 @@ void recordCallback(void)
 
 void setup(void)
 {
+  Serial.begin(115200);
+
   // initialize the button pin as a input
   pinMode(USER_BUTTON_A, INPUT);
   lastButtonAState = digitalRead(USER_BUTTON_A);
   pinMode(USER_BUTTON_B, INPUT);
   lastButtonBState = digitalRead(USER_BUTTON_B);
 
+
+  memset(emptyAudio, 0x0, AUDIO_CHUNK_SIZE);
+
   Screen.init();
+
   Audio.format(SAMPLE_RATE, SAMPLE_SIZE);
   // disable automatic level control
   // Audio.setPGAGain(0x3F);
@@ -158,7 +167,7 @@ void loop(void)
 
   // Processing of audio input
   // Once the recording buffer is full, we process it.
-  if (scaled_input_buffer_feed_cursor > scaled_input_buffer_consume_cursor)
+  if (audio_to_play == 0 && scaled_input_buffer_feed_cursor > scaled_input_buffer_consume_cursor)
   {
     int sample_to_read = scaled_input_buffer_feed_cursor - scaled_input_buffer_consume_cursor;
     int max_window_length = qrtone_get_maximum_length(qrtone);
@@ -178,7 +187,7 @@ void loop(void)
 
   // Check button actions
   boolean doPlay = false;
-  if (buttonAState == LOW && lastButtonAState == HIGH)
+  if (buttonAState == HIGH && lastButtonAState == LOW)
   {
     // Send off
     int8_t msg[] = {0, 6,'M', 'X', 'C', 'h', 'i', 'p', 1, 3, 'o', 'f', 'f'};
@@ -186,7 +195,7 @@ void loop(void)
     cursor_audio_to_play = 0;
     doPlay = true;
   }
-  if (buttonBState == LOW && lastButtonBState == HIGH)
+  if (buttonBState == HIGH && lastButtonBState == LOW)
   {
     // Send on
     int8_t msg[] = {0, 6,'M', 'X', 'C', 'h', 'i', 'p', 1, 2, 'o', 'n'};
@@ -194,19 +203,29 @@ void loop(void)
     cursor_audio_to_play = 0;
     doPlay = true;
   }
-  if(audio_to_play > cursor_audio_to_play && raw_output_audio_buffer_length == 0) {
-    // Push audio data to output buffer
-    qrtone_get_samples(qrtone, scaled_output_buffer, MAX_AUDIO_WINDOW_SIZE, cursor_audio_to_play, 1.0f);
-    memset(scaled_output_buffer, 0, sizeof(float) * MAX_AUDIO_WINDOW_SIZE);
-    for(int c=0; c < MAX_AUDIO_WINDOW_SIZE; c++) {
-      raw_output_audio_buffer[c] = scaled_output_buffer[c] * 32767.f;
-    }
-    raw_output_audio_buffer_length = MAX_AUDIO_WINDOW_SIZE;
-    cursor_audio_to_play += MAX_AUDIO_WINDOW_SIZE;
-  }
   if(doPlay) {    
-    Audio.format(16000, 16);
+    // Push audio data to output buffer
     Audio.startPlay(playCallback);
+    while(cursor_audio_to_play < audio_to_play) {
+      if(raw_output_audio_buffer_length == 0) {
+        qrtone_get_samples(qrtone, scaled_output_buffer, AUDIO_SAMPLE_SIZE, cursor_audio_to_play, 1.0f);
+        memset(scaled_output_buffer, 0, sizeof(float) * AUDIO_SAMPLE_SIZE);
+        memset(raw_output_audio_buffer, 0, AUDIO_CHUNK_SIZE);
+        for(int c=0; c < AUDIO_SAMPLE_SIZE; c++) {
+          raw_output_audio_buffer[c] = (short) (scaled_output_buffer[c] * 32767.f);
+        }
+        raw_output_audio_buffer_length = AUDIO_SAMPLE_SIZE;
+        cursor_audio_to_play += AUDIO_SAMPLE_SIZE;
+      } else {
+        delay(10);
+      }
+    }
+    Audio.stop();
+    audio_to_play = 0;
+    // Start to record audio data
+    delay(10);
+    Audio.format(SAMPLE_RATE, SAMPLE_SIZE);
+    Audio.startRecord(recordCallback);
   }
   lastButtonAState = buttonAState;
   lastButtonBState = buttonBState;
@@ -214,8 +233,13 @@ void loop(void)
 
 void playCallback(void)
 {
-  Audio.writeToPlayBuffer(raw_output_audio_buffer, raw_output_audio_buffer_length);
-  raw_output_audio_buffer_length = 0;
+  if(raw_output_audio_buffer_length == 0) {
+    Audio.writeToPlayBuffer(emptyAudio, AUDIO_CHUNK_SIZE);
+    Serial.println("Play empty audio..");
+  } else {
+    Audio.writeToPlayBuffer((char *)raw_output_audio_buffer, AUDIO_CHUNK_SIZE);
+    raw_output_audio_buffer_length = 0;
+  }
 }
 
 void printIdleMessage()
