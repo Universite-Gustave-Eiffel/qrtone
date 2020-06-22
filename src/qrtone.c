@@ -1145,6 +1145,9 @@ void qrtone_init(qrtone_t* self, float sample_rate) {
     qrtone_trigger_analyzer_init(&(self->trigger_analyzer), sample_rate, self->gate_length, self->frequency_analyzers[FREQUENCY_ROOT].window_size ,gates_freq, QRTONE_DEFAULT_TRIGGER_SNR);
     ecc_reed_solomon_encoder_init(&(self->encoder), 0x13, 16, 1);
     self->header_cache = NULL;
+    // TODO cache sin wave of all frequencies
+    // TODO cache gate hann window
+    // TODO replace tukey by ramp on off
 }
 
 void qrtone_set_level_callback(qrtone_t* self, void* data, qrtone_level_callback_t lvl_callback) {    

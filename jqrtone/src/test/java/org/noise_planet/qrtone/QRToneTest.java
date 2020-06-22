@@ -952,4 +952,32 @@ public class QRToneTest {
             }
         }
     }
+
+    /**
+     * Magic method to generate a tone using only one call to cos and sin
+     * @ref http://ww1.microchip.com/downloads/en/appnotes/00543c.pdf https://ipfs.io/ipfs/QmdfpU2ziBrEg1WgzBXFqvrgRNse7btHoyVCfw8cEv5qgU
+     *
+     */
+    @Test
+    public void testFastTone() {
+        double sampleRate = 16000;
+        Configuration configuration = Configuration.getAudible(sampleRate);
+        QRTone qrTone = new QRTone(configuration);
+        for(int idFreq=0; idFreq < QRTone.NUM_FREQUENCIES; idFreq++) {
+            double freq = qrTone.getFrequencies()[idFreq];
+            float[] expected = new float[16000];
+            QRTone.generatePitch(expected, 0, expected.length, 0, sampleRate, freq, 1);
+            float[] got = new float[expected.length];
+            double ffs = freq / sampleRate;
+            double k1 = Math.cos(QRTone.M2PI * ffs);
+            double k2 = Math.sin(QRTone.M2PI * ffs);
+            double k3 = 0;
+            got[0] = (float)k3;
+            got[1] = (float)k2;
+            for(int i=2; i < expected.length; i++) {
+                got[i] = (float)(2 * k1 * got[i-1] - got[i-2]);
+            }
+            assertArrayEquals(expected, got, 0.001f);
+        }
+    }
 }
