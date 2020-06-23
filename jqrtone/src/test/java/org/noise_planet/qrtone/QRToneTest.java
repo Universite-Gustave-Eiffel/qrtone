@@ -965,19 +965,29 @@ public class QRToneTest {
         QRTone qrTone = new QRTone(configuration);
         for(int idFreq=0; idFreq < QRTone.NUM_FREQUENCIES; idFreq++) {
             double freq = qrTone.getFrequencies()[idFreq];
-            float[] expected = new float[16000];
+            IterativeTone it = new IterativeTone(freq, sampleRate);
+            float[] expected = new float[1600];
             QRTone.generatePitch(expected, 0, expected.length, 0, sampleRate, freq, 1);
             float[] got = new float[expected.length];
-            double ffs = freq / sampleRate;
-            double k1 = Math.cos(QRTone.M2PI * ffs);
-            double k2 = Math.sin(QRTone.M2PI * ffs);
-            double k3 = 0;
-            got[0] = (float)k3;
-            got[1] = (float)k2;
-            for(int i=2; i < expected.length; i++) {
-                got[i] = (float)(2 * k1 * got[i-1] - got[i-2]);
+            for(int i=0; i < expected.length; i++) {
+                got[i] = (float)(it.next());
             }
             assertArrayEquals(expected, got, 0.001f);
         }
+    }
+
+
+    @Test
+    public void testHann() {
+        float[] expected = new float[61];
+        float[] got = new float[expected.length];
+
+        Arrays.fill(expected, 1.0f);
+        QRTone.applyHann(expected, 0, expected.length, expected.length, 0);
+        IterativeHann it = new IterativeHann(expected.length);
+        for(int i=0; i < expected.length; i++) {
+            got[i] = (float)(it.next());
+        }
+        assertArrayEquals(expected, got, 0.0001f);
     }
 }
