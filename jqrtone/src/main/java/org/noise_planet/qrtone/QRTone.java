@@ -330,14 +330,14 @@ public class QRTone {
                 outputSamples += stepEnd;
             } else {
                 // On word
-                int wordIndex = (outputSamples - gateLength * 2) / (wordLength + wordSilenceLength);
+                int wordIndex = ((outputSamples - gateLength * 2) / (wordLength + wordSilenceLength)) * 2;
                 int wordDone = (outputSamples - gateLength * 2) % (wordLength + wordSilenceLength);
                 if(wordDone < wordSilenceLength) {
                     // silence stage
                     int stepEnd = Math.min(wordSilenceLength - wordDone, samples.length - writeOffset);
                     writeOffset += stepEnd;
                     outputSamples += stepEnd;
-                } else if(wordIndex < symbolsToDeliver.length / 2) {
+                } else if(wordIndex < symbolsToDeliver.length) {
                     // tone stage
                     wordDone -= wordSilenceLength;
                     if(wordDone == 0) {
@@ -346,11 +346,14 @@ public class QRTone {
                         hannWindow = new IterativeHann(wordLength);
                     }
                     int stepEnd = Math.min(wordLength - wordDone, samples.length - writeOffset);
+                    double tonePower = power / 2;
+                    int firstFreqIndex = symbolsToDeliver[wordIndex];
+                    int secondFreqIndex = symbolsToDeliver[wordIndex + 1] + FREQUENCY_ROOT;
                     for (int i = 0; i < stepEnd; i++) {
                         double window = hannWindow.next();
-                        double firstTone = iterativeTones[symbolsToDeliver[wordIndex]].next() * window * power;
-                        double secondTone = iterativeTones[symbolsToDeliver[wordIndex + 1]].next() * window * power;
-                        samples[writeOffset + i] += (float) (firstTone + secondTone);
+                        double firstTone = iterativeTones[firstFreqIndex].next() * tonePower;
+                        double secondTone = iterativeTones[secondFreqIndex].next() * tonePower;
+                        samples[writeOffset + i] += (float) ((firstTone + secondTone) * window);
                     }
                     writeOffset += stepEnd;
                     outputSamples += stepEnd;

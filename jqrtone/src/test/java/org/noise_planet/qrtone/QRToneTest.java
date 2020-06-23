@@ -607,7 +607,53 @@ public class QRToneTest {
 
     @Test
     public void testToneDetection() throws IOException {
-        boolean writeCSV = false;
+        boolean writeCSV = true;
+        double sampleRate = 16000;
+        double timeBlankBefore = 0.35;
+        double timeBlankAfter = 0.35;
+        double powerRMS = Math.pow(10, -26.0 / 20.0); // -26 dBFS
+        double powerPeak = powerRMS * Math.sqrt(2);
+        double noisePeak = Math.pow(10, -50.0 / 20.0); // -26 dBFS
+        int samplesBefore = (int)(timeBlankBefore * sampleRate);
+        int samplesAfter = (int)(timeBlankAfter * sampleRate);
+        Configuration configuration = Configuration.getAudible(sampleRate);
+        QRTone qrTone = new QRTone(configuration);
+        QRToneCallback csvWriter = new QRToneCallback(qrTone);
+        qrTone.setTriggerCallback(csvWriter);
+        if(writeCSV) {
+            csvWriter.open("target/spectrum.csv");
+        }
+        final int dataSampleLength = qrTone.setPayload(IPFS_PAYLOAD);
+        float[] audio = new float[dataSampleLength];
+        float[] samples = new float[samplesBefore + dataSampleLength + samplesAfter];
+        qrTone.getSamples(audio,0, powerPeak);
+        System.arraycopy(audio, 0, samples, samplesBefore, dataSampleLength);
+        QRTone.generatePitch(samples, 0, samples.length, 0, sampleRate, 125, noisePeak);
+        if(writeCSV) {
+            writeFloatToFile("target/inputSignal.raw", samples);
+        }
+        long start = System.currentTimeMillis();
+        int cursor = 0;
+        while (cursor < samples.length) {
+            int windowSize = Math.min(qrTone.getMaximumWindowLength(), samples.length - cursor);
+            float[] window = new float[windowSize];
+            System.arraycopy(samples, cursor, window, 0, window.length);
+            if(qrTone.pushSamples(window)) {
+                break;
+            }
+            cursor += windowSize;
+        }
+        System.out.println(String.format("Done in %.3f",(System.currentTimeMillis() - start) /1e3));
+        if(writeCSV) {
+            csvWriter.close();
+        }
+        assertArrayEquals(IPFS_PAYLOAD, qrTone.getPayload());
+        assertEquals(timeBlankBefore, qrTone.gePayloadSampleIndex() / sampleRate, 0.001);
+    }
+
+    @Test
+    public void testToneDetection2() throws IOException {
+        boolean writeCSV = true;
         double sampleRate = 16000;
         double timeBlankBefore = 0.35;
         double timeBlankAfter = 0.35;
