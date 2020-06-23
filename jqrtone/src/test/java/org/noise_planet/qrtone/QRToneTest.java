@@ -626,7 +626,7 @@ public class QRToneTest {
         final int dataSampleLength = qrTone.setPayload(IPFS_PAYLOAD);
         float[] audio = new float[dataSampleLength];
         float[] samples = new float[samplesBefore + dataSampleLength + samplesAfter];
-        qrTone.getSamples(audio, 0, powerPeak);
+        qrTone.getSamples(audio, powerPeak);
         System.arraycopy(audio, 0, samples, samplesBefore, dataSampleLength);
         QRTone.generatePitch(samples, 0, samples.length, 0, sampleRate, 125, noisePeak);
         if(writeCSV) {

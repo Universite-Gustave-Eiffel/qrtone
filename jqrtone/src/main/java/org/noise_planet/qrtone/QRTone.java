@@ -80,6 +80,12 @@ public class QRTone {
     private int symbolIndex = 0;
     private byte[] payload;
     private AtomicInteger fixedErrors = new AtomicInteger(0);
+    // Number of samples generated with getSamples function
+    int outputSamples = 0;
+    // Hann/Tukey window for samples generation
+    IterativeHann hannWindow;
+    // Sin for samples generation
+    IterativeTone[] iterativeTones = new IterativeTone[NUM_FREQUENCIES];
 
     public QRTone(Configuration configuration) {
         this.configuration = configuration;
@@ -93,6 +99,9 @@ public class QRTone {
         triggerAnalyzer = new TriggerAnalyzer(configuration.sampleRate, gateLength,
                 new double[]{gate1Frequency, gate2Frequency}, Configuration.computeMinimumWindowSize(configuration.sampleRate, gate1Frequency, frequencyLimits[FREQUENCY_ROOT]),
                 configuration.triggerSnr);
+        for(int idFreq = 0; idFreq < NUM_FREQUENCIES; idFreq++) {
+            iterativeTones[idFreq] = new IterativeTone(frequencies[idFreq], configuration.sampleRate);
+        }
     }
 
     /**
@@ -267,6 +276,7 @@ public class QRTone {
         symbolsToDeliver = new byte[headerSymbols.length+payloadSymbols.length];
         System.arraycopy(headerSymbols, 0, symbolsToDeliver, 0, headerSymbols.length);
         System.arraycopy(payloadSymbols, 0, symbolsToDeliver, headerSymbols.length, payloadSymbols.length);
+        outputSamples = 0;
         return 2 * gateLength + (symbolsToDeliver.length / 2) * (wordSilenceLength + wordLength);
     }
 
@@ -295,6 +305,94 @@ public class QRTone {
         }
     }
 
+    /**
+     * Compute the audio samples for sending the message.
+     *
+     * @param samples Write samples here
+     * @param power Signal power
+     */
+    public void getSamples(float[] samples, double power) {
+        int writeOffset = 0;
+        while(writeOffset < samples.length) {
+            if(outputSamples < gateLength * 2) {
+                // On header
+                int done = outputSamples % gateLength;
+                int frequencyIndex = outputSamples == 0 ? FREQUENCY_ROOT : FREQUENCY_ROOT + 2;
+                if(done == 0) {
+                    iterativeTones[frequencyIndex].reset();
+                    hannWindow = new IterativeHann(gateLength);
+                }
+                int stepEnd = Math.min(gateLength - done, samples.length - writeOffset);
+                for (int i = 0; i < stepEnd; i++) {
+                    samples[writeOffset + i] += (float) (iterativeTones[frequencyIndex].next() * hannWindow.next() * power);
+                }
+                writeOffset += stepEnd;
+                outputSamples += stepEnd;
+            } else {
+                // On word
+                int wordIndex = (outputSamples - gateLength * 2) / (wordLength + wordSilenceLength);
+                int wordDone = (outputSamples - gateLength * 2) % (wordLength + wordSilenceLength);
+                if(wordDone < wordSilenceLength) {
+                    // silence stage
+                    int stepEnd = Math.min(wordSilenceLength - wordDone, samples.length - writeOffset);
+                    writeOffset += stepEnd;
+                    outputSamples += stepEnd;
+                } else if(wordIndex < symbolsToDeliver.length / 2) {
+                    // tone stage
+                    wordDone -= wordSilenceLength;
+                    if(wordDone == 0) {
+                        iterativeTones[symbolsToDeliver[wordIndex]].reset();
+                        iterativeTones[symbolsToDeliver[wordIndex + 1]].reset();
+                        hannWindow = new IterativeHann(wordLength);
+                    }
+                    int stepEnd = Math.min(wordLength - wordDone, samples.length - writeOffset);
+                    for (int i = 0; i < stepEnd; i++) {
+                        double window = hannWindow.next();
+                        double firstTone = iterativeTones[symbolsToDeliver[wordIndex]].next() * window * power;
+                        double secondTone = iterativeTones[symbolsToDeliver[wordIndex + 1]].next() * window * power;
+                        samples[writeOffset + i] += (float) (firstTone + secondTone);
+                    }
+                    writeOffset += stepEnd;
+                    outputSamples += stepEnd;
+                } else {
+                    // no more data to write
+                    writeOffset += samples.length - writeOffset;
+                    outputSamples += samples.length - writeOffset;
+                }
+            }
+        }
+
+
+
+//        int cursor = 0;
+//        int stepEnd = (int)(cursor + gateLength - outputSamples);
+//        if(stepEnd >= 0) {
+//            if(outputSamples == 0) {
+//                iterativeTones[FREQUENCY_ROOT].reset();
+//                hannWindow = new IterativeHann(gateLength);
+//            }
+//            for(int i=0; i < stepEnd; i++) {
+//                samples[i] = (float)(iterativeTones[FREQUENCY_ROOT].next() * hannWindow.next() * power);
+//            }
+//            writeOffset += stepEnd;
+//            outputSamples += stepEnd;
+//        }
+//        cursor += this.gateLength;
+//        if (cursor < outputSamples + samples.length) {
+//            stepEnd = (int)(cursor + gateLength - outputSamples);
+//            if(stepEnd >= 0) {
+//                if(stepEnd - gateLength == 0) {
+//                    iterativeTones[FREQUENCY_ROOT + 2].reset();
+//                    hannWindow = new IterativeHann(gateLength);
+//                    for(int i=0; i < stepEnd; i++) {
+//                        samples[i + writeOffset] = (float)(iterativeTones[FREQUENCY_ROOT].next() * hannWindow.next() * power);
+//                    }
+//                    writeOffset += stepEnd;
+//                    outputSamples += stepEnd;
+//                }
+//            }
+//        }
+    }
     /**
      * Checksum of bytes (could be used only up to 64 bytes)
      * @param payload payload to crc
