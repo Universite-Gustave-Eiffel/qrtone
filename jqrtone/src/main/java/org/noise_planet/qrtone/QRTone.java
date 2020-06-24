@@ -268,7 +268,7 @@ public class QRTone {
     /**
      * Set the payload to send
      * @param payload Payload content
-     * @return Number of samples of the signal for {@link #getSamples(float[], int, double)}
+     * @return Number of samples of the signal for {@link #getSamples(float[], double)}}
      */
     public int setPayload(byte[] payload, Configuration.ECC_LEVEL eccLevel, boolean addPayloadCRC) {
         Header header = new Header(payload.length, eccLevel, addPayloadCRC);
@@ -295,7 +295,7 @@ public class QRTone {
             if(outputSamples < gateLength * 2) {
                 // On header
                 int done = outputSamples % gateLength;
-                int frequencyIndex = outputSamples == 0 ? FREQUENCY_ROOT : FREQUENCY_ROOT + 2;
+                int frequencyIndex = outputSamples < gateLength ? FREQUENCY_ROOT : FREQUENCY_ROOT + 2;
                 if(done == 0) {
                     iterativeTones[frequencyIndex].reset();
                     hannWindow.reset();
@@ -318,15 +318,15 @@ public class QRTone {
                 } else if(wordIndex < symbolsToDeliver.length) {
                     // tone stage
                     wordDone -= wordSilenceLength;
+                    int firstFreqIndex = symbolsToDeliver[wordIndex];
+                    int secondFreqIndex = symbolsToDeliver[wordIndex + 1] + FREQUENCY_ROOT;
                     if(wordDone == 0) {
-                        iterativeTones[symbolsToDeliver[wordIndex]].reset();
-                        iterativeTones[symbolsToDeliver[wordIndex + 1]].reset();
+                        iterativeTones[firstFreqIndex].reset();
+                        iterativeTones[secondFreqIndex].reset();
                         tukeyWindow.reset();
                     }
                     int stepEnd = Math.min(wordLength - wordDone, samples.length - writeOffset);
                     double tonePower = power / 2;
-                    int firstFreqIndex = symbolsToDeliver[wordIndex];
-                    int secondFreqIndex = symbolsToDeliver[wordIndex + 1] + FREQUENCY_ROOT;
                     for (int i = 0; i < stepEnd; i++) {
                         final double firstTone = iterativeTones[firstFreqIndex].next() * tonePower;
                         final double secondTone = iterativeTones[secondFreqIndex].next() * tonePower;
@@ -341,37 +341,6 @@ public class QRTone {
                 }
             }
         }
-
-
-
-//        int cursor = 0;
-//        int stepEnd = (int)(cursor + gateLength - outputSamples);
-//        if(stepEnd >= 0) {
-//            if(outputSamples == 0) {
-//                iterativeTones[FREQUENCY_ROOT].reset();
-//                hannWindow = new IterativeHann(gateLength);
-//            }
-//            for(int i=0; i < stepEnd; i++) {
-//                samples[i] = (float)(iterativeTones[FREQUENCY_ROOT].next() * hannWindow.next() * power);
-//            }
-//            writeOffset += stepEnd;
-//            outputSamples += stepEnd;
-//        }
-//        cursor += this.gateLength;
-//        if (cursor < outputSamples + samples.length) {
-//            stepEnd = (int)(cursor + gateLength - outputSamples);
-//            if(stepEnd >= 0) {
-//                if(stepEnd - gateLength == 0) {
-//                    iterativeTones[FREQUENCY_ROOT + 2].reset();
-//                    hannWindow = new IterativeHann(gateLength);
-//                    for(int i=0; i < stepEnd; i++) {
-//                        samples[i + writeOffset] = (float)(iterativeTones[FREQUENCY_ROOT].next() * hannWindow.next() * power);
-//                    }
-//                    writeOffset += stepEnd;
-//                    outputSamples += stepEnd;
-//                }
-//            }
-//        }
     }
     /**
      * Checksum of bytes (could be used only up to 64 bytes)
