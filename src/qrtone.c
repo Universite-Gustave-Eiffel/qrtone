@@ -158,6 +158,28 @@ struct _qrtonecomplex CX_EXP(const qrtonecomplex c1) {
 // DTMF 16*16 frequencies
 #define QRTONE_NUM_FREQUENCIES 32
 
+typedef struct _qrtone_iterative_tone_t {
+    float k1;
+    float original_k2;
+    float k2;
+    float k3;
+    int index;
+} qrtone_iterative_tone_t;
+
+typedef struct _qrtone_iterative_hann_t {
+    float k1;
+    float k2;
+    float k3;
+    int index;
+} qrtone_iterative_hann_t;
+
+typedef struct _qrtone_iterative_tukey_t {
+    qrtone_iterative_hann_t hann;
+    int index_begin_flat;
+    int index_end_flat;
+    int index;
+} qrtone_iterative_tukey_t;
+
 typedef struct _qrtone_crc8_t {
     int32_t crc8;
 } qrtone_crc8_t;
@@ -264,7 +286,68 @@ typedef struct _qrtone_t {
     int32_t payload_length;
     int32_t fixed_errors;
     ecc_reed_solomon_encoder_t encoder;
+    qrtone_iterative_tukey_t tukey;
+    qrtone_iterative_hann_t hann;
+    qrtone_iterative_tone_t tone[QRTONE_NUM_FREQUENCIES];
 } qrtone_t;
+
+void qrtone_iterative_tone_reset(qrtone_iterative_tone_t* self) {
+    self->index = 0;
+    self->k2 = self->original_k2;
+    self->k3 = 0;
+}
+
+void qrtone_iterative_tone_init(qrtone_iterative_tone_t* self,float frequency, float sampleRate) {
+    float ffs = frequency / sampleRate;
+    self->k1 = 2 * cosf(QRTONE_2PI * ffs);
+    self->original_k2 = sinf(QRTONE_2PI * ffs);
+    qrtone_iterative_tone_reset(self);
+}
+
+/**
+ * Next sample value
+ * @return Sample value [-1;1]
+ */
+float qrtone_iterative_tone_next(qrtone_iterative_tone_t* self) {
+    if (self->index >= 2) {
+        double tmp = self->k2;
+        self->k2 = self->k1 * self->k2 - self->k3;
+        self->k3 = tmp;
+        return self->k2;
+    } else if (self->index == 1) {
+        self->index++;
+        return self->k2;
+    } else {
+        self->index++;
+        return 0;
+    }
+}
+
+void qrtone_iterative_hann_reset(qrtone_iterative_hann_t* self) {
+    self->index = 0;
+    self->k2 = self->k1 / 2.0f;
+    self->k3 = 1.0f;
+}
+
+void qrtone_iterative_hann_init(qrtone_iterative_hann_t* self, int window_size) {
+    self->k1 = 2.0f * cosf(QRTONE_2PI / (window_size - 1));
+    qrtone_iterative_hann_reset(self);
+}
+
+float qrtone_iterative_hann_next(qrtone_iterative_hann_t* self) {
+    if (self->index >= 2) {
+        float tmp = self->k2;
+        self->k2 = self->k1 * self->k2 - self->k3;
+        self->k3 = tmp;
+        return 0.5f - 0.5f * self->k2;
+    } else if (self->index == 1) {
+        self->index++;
+        return 0.5f - 0.5f * self->k2;
+    } else {
+        self->index++;
+        return 0;
+    }
+}
 
 qrtone_crc8_t* qrtone_crc8_new(void) {
     return malloc(sizeof(qrtone_crc8_t));

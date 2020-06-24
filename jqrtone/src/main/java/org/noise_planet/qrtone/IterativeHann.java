@@ -5,23 +5,21 @@ package org.noise_planet.qrtone;
  * https://dsp.stackexchange.com/questions/68528/compute-hann-window-without-cos-function
  */
 public class IterativeHann {
-    final double originalK2;
     final double k1;
     double k2;
     double k3;
     int index = 0;
 
     public IterativeHann(int windowSize) {
-        double wT = Math.PI / (windowSize - 1);
-        k1 = 2 * Math.cos(wT);
-        originalK2 = Math.sin(wT);
+        double wT = 2* Math.PI / (windowSize - 1);
+        k1 = 2.0 * Math.cos(wT);
         reset();
     }
 
     void reset() {
         index = 0;
-        k2 = originalK2;
-        k3 = 0;
+        k2 = k1 / 2.0;
+        k3 = 1.0;
     }
 
     /**
@@ -33,11 +31,10 @@ public class IterativeHann {
             double tmp = k2;
             k2 = k1 * k2 - k3;
             k3 = tmp;
-            index++;
-            return k2 * k2;
+            return 0.5 - 0.5 * k2;
         } else if(index == 1) {
             index++;
-            return k2 * k2;
+            return 0.5 - 0.5 * k2;
         } else {
             index++;
             return 0;

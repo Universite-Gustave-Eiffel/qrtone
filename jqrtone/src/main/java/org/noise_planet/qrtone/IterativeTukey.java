@@ -6,13 +6,13 @@ package org.noise_planet.qrtone;
 public class IterativeTukey {
     IterativeHann hannWindow;
     long index = 0;
-    int index_begin_flat;
-    int index_end_flat;
+    int indexBeginFlat;
+    int indexEndFlat;
 
     public IterativeTukey(int windowLength, double alpha) {
-        index_begin_flat = (int)(Math.floor(alpha * (windowLength - 1) / 2.0));
-        index_end_flat = windowLength - index_begin_flat;
-        hannWindow = new IterativeHann(index_begin_flat * 2);
+        indexBeginFlat = (int)(Math.floor(alpha * (windowLength - 1) / 2.0));
+        indexEndFlat = windowLength - indexBeginFlat;
+        hannWindow = new IterativeHann(indexBeginFlat * 2);
     }
 
     void reset() {
@@ -25,7 +25,7 @@ public class IterativeTukey {
      * @return Sample value [-1;1]
      */
     double next() {
-        if(index < index_begin_flat || index >= index_end_flat) {
+        if(index < indexBeginFlat || index >= indexEndFlat) {
             index++;
             return hannWindow.next();
         } else {
