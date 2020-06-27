@@ -158,6 +158,28 @@ struct _qrtonecomplex CX_EXP(const qrtonecomplex c1) {
 // DTMF 16*16 frequencies
 #define QRTONE_NUM_FREQUENCIES 32
 
+typedef struct _qrtone_iterative_tone_t {
+    float k1;
+    float original_k2;
+    float k2;
+    float k3;
+    int index;
+} qrtone_iterative_tone_t;
+
+typedef struct _qrtone_iterative_hann_t {
+    float k1;
+    float k2;
+    float k3;
+    int index;
+} qrtone_iterative_hann_t;
+
+typedef struct _qrtone_iterative_tukey_t {
+    qrtone_iterative_hann_t hann;
+    int index_begin_flat;
+    int index_end_flat;
+    int index;
+} qrtone_iterative_tukey_t;
+
 typedef struct _qrtone_crc8_t {
     int32_t crc8;
 } qrtone_crc8_t;
@@ -263,8 +285,91 @@ typedef struct _qrtone_t {
     int8_t* payload;
     int32_t payload_length;
     int32_t fixed_errors;
+    int32_t output_samples;
     ecc_reed_solomon_encoder_t encoder;
+    qrtone_iterative_tukey_t tukey;
+    qrtone_iterative_hann_t hann;
+    qrtone_iterative_tone_t tone[QRTONE_NUM_FREQUENCIES];
 } qrtone_t;
+
+void qrtone_iterative_tone_reset(qrtone_iterative_tone_t* self) {
+    self->index = 0;
+    self->k2 = self->original_k2;
+    self->k3 = 0;
+}
+
+void qrtone_iterative_tone_init(qrtone_iterative_tone_t* self,float frequency, float sampleRate) {
+    float ffs = frequency / sampleRate;
+    self->k1 = 2 * cosf(QRTONE_2PI * ffs);
+    self->original_k2 = sinf(QRTONE_2PI * ffs);
+    qrtone_iterative_tone_reset(self);
+}
+
+/**
+ * Next sample value
+ * @return Sample value [-1;1]
+ */
+float qrtone_iterative_tone_next(qrtone_iterative_tone_t* self) {
+    if (self->index >= 2) {
+        double tmp = self->k2;
+        self->k2 = self->k1 * self->k2 - self->k3;
+        self->k3 = tmp;
+        return self->k2;
+    } else if (self->index == 1) {
+        self->index++;
+        return self->k2;
+    } else {
+        self->index++;
+        return 0;
+    }
+}
+
+void qrtone_iterative_hann_reset(qrtone_iterative_hann_t* self) {
+    self->index = 0;
+    self->k2 = self->k1 / 2.0f;
+    self->k3 = 1.0f;
+}
+
+void qrtone_iterative_hann_init(qrtone_iterative_hann_t* self, int window_length) {
+    self->k1 = 2.0f * cosf(QRTONE_2PI / (window_length - 1));
+    qrtone_iterative_hann_reset(self);
+}
+
+float qrtone_iterative_hann_next(qrtone_iterative_hann_t* self) {
+    if (self->index >= 2) {
+        float tmp = self->k2;
+        self->k2 = self->k1 * self->k2 - self->k3;
+        self->k3 = tmp;
+        return 0.5f - 0.5f * self->k2;
+    } else if (self->index == 1) {
+        self->index++;
+        return 0.5f - 0.5f * self->k2;
+    } else {
+        self->index++;
+        return 0;
+    }
+}
+
+void qrtone_iterative_tukey_reset(qrtone_iterative_tukey_t* self) {
+    qrtone_iterative_hann_reset(&(self->hann));
+    self->index = 0;
+}
+
+void qrtone_iterative_tukey_init(qrtone_iterative_tukey_t* self, float alpha, int window_length) {
+    self->index_begin_flat = (int)(floorf(alpha * (window_length - 1) / 2.0f));
+    self->index_end_flat = window_length - self->index_begin_flat;
+    qrtone_iterative_hann_init(&(self->hann), self->index_begin_flat * 2);
+}
+
+float qrtone_iterative_tukey_next(qrtone_iterative_tukey_t* self) {
+    if (self->index < self->index_begin_flat || self->index >= self->index_end_flat) {
+        self->index++;
+        return qrtone_iterative_hann_next(&(self->hann));
+    } else {
+        self->index++;
+        return 1.0f;
+    }
+}
 
 qrtone_crc8_t* qrtone_crc8_new(void) {
     return malloc(sizeof(qrtone_crc8_t));
@@ -1141,10 +1246,14 @@ void qrtone_init(qrtone_t* self, float sample_rate) {
     for (idfreq = 0; idfreq < QRTONE_NUM_FREQUENCIES; idfreq++) {        
         int32_t adaptative_window = qrtone_compute_minimum_window_size(sample_rate, self->frequencies[idfreq], close_frequencies[idfreq]);
         qrtone_goertzel_init(&(self->frequency_analyzers[idfreq]), sample_rate, self->frequencies[idfreq], min(self->word_length, adaptative_window), 1);
+        qrtone_iterative_tone_init(&(self->tone[idfreq]), self->frequencies[idfreq], self->sample_rate);
     }
     qrtone_trigger_analyzer_init(&(self->trigger_analyzer), sample_rate, self->gate_length, self->frequency_analyzers[FREQUENCY_ROOT].window_size ,gates_freq, QRTONE_DEFAULT_TRIGGER_SNR);
     ecc_reed_solomon_encoder_init(&(self->encoder), 0x13, 16, 1);
     self->header_cache = NULL;
+    qrtone_iterative_hann_init(&(self->hann), self->gate_length);
+    qrtone_iterative_tukey_init(&(self->tukey), QRTONE_TUKEY_ALPHA, self->word_length);
+    self->output_samples = 0;
 }
 
 void qrtone_set_level_callback(qrtone_t* self, void* data, qrtone_level_callback_t lvl_callback) {    
@@ -1241,6 +1350,7 @@ int32_t qrtone_set_payload_ext(qrtone_t* self, int8_t* payload, uint8_t payload_
     qrtone_payload_to_symbols(self, header_data, HEADER_SIZE, HEADER_SYMBOLS, HEADER_ECC_SYMBOLS, 0, self->symbols_to_deliver);
     // Encode payload symbols
     qrtone_payload_to_symbols(self, payload, payload_length, ECC_SYMBOLS[ecc_level][0], ECC_SYMBOLS[ecc_level][1], add_crc, self->symbols_to_deliver + HEADER_SYMBOLS);
+    self->output_samples = 0;
     // return number of samples
     return 2 * self->gate_length + (self->symbols_to_deliver_length / 2) * (self->word_silence_length + self->word_length);
 }
@@ -1257,40 +1367,62 @@ void qrtone_generate_pitch(float* samples, int32_t samples_length, int32_t offse
     }
 }
 
-void qrtone_get_samples(qrtone_t* self, float* samples, int32_t samples_length, int32_t offset, float power) {
-    int32_t cursor = 0;
-    // First gate tone
-    if (cursor + self->gate_length - offset >= 0) {
-        qrtone_generate_pitch(samples + max(0, cursor - offset), max(0, min(self->gate_length - max(0, offset - cursor), samples_length - max(0, cursor - offset))), max(0, offset - cursor), (float)self->sample_rate, (float)self->gate1_frequency, power);
-        qrtone_hann_window(samples + max(0, cursor - offset), max(0, min(self->gate_length - max(0, offset - cursor), samples_length - max(0, cursor - offset))), self->gate_length, max(0, offset - cursor));
-    }
-    cursor += self->gate_length;
-    if (cursor > offset + samples_length) {
-        return;
-    }
-    // Second gate tone
-    if (cursor + self->gate_length - offset >= 0) {
-        qrtone_generate_pitch(samples + max(0, cursor - offset), max(0, min(self->gate_length - max(0, offset - cursor), samples_length - max(0, cursor - offset))), max(0, offset - cursor), (float)self->sample_rate, (float)self->gate2_frequency, power);
-        qrtone_hann_window(samples + max(0, cursor - offset), max(0, min(self->gate_length - max(0, offset - cursor), samples_length - max(0, cursor - offset))), self->gate_length, max(0, offset - cursor));
-    }
-    cursor += self->gate_length;
-    if (cursor > offset + samples_length) {
-        return;
-    }
-    // Symbols
-    int32_t i;
-    for (i = 0; i < self->symbols_to_deliver_length; i += 2) {
-        cursor += self->word_silence_length;
-        if (cursor + self->word_length - offset >= 0) {
-            float f1 = (float)self->frequencies[self->symbols_to_deliver[i]];
-            float f2 = (float)self->frequencies[self->symbols_to_deliver[i + 1] + FREQUENCY_ROOT];
-            qrtone_generate_pitch(samples + max(0, cursor - offset), max(0, min(self->word_length - max(0, offset - cursor), samples_length - max(0, cursor - offset))), max(0, offset - cursor), (float)self->sample_rate, f1, power / 2);
-            qrtone_generate_pitch(samples + max(0, cursor - offset), max(0, min(self->word_length - max(0, offset - cursor), samples_length - max(0, cursor - offset))), max(0, offset - cursor), (float)self->sample_rate, f2, power / 2);
-            qrtone_tukey_window(samples + max(0, cursor - offset), QRTONE_TUKEY_ALPHA, max(0, min(self->word_length - max(0, offset - cursor), samples_length - max(0, cursor - offset))), self->word_length, max(0, offset - cursor));
-        }
-        cursor += self->word_length;
-        if (cursor > offset + samples_length) {
-            return;
+void qrtone_get_samples(qrtone_t* self, float* samples, int32_t samples_length, float power) {
+    int write_offset = 0;
+    int i;
+    while (write_offset < samples_length) {
+        if (self->output_samples < self->gate_length * 2) {
+            // On header
+            int done = self->output_samples % self->gate_length;
+            int frequencyIndex;
+            if(self->output_samples < self->gate_length) {
+                frequencyIndex = FREQUENCY_ROOT;
+            }else {
+                frequencyIndex = FREQUENCY_ROOT + 2;
+            }
+            if (done == 0) {
+                qrtone_iterative_tone_reset(&(self->tone[frequencyIndex]));
+                qrtone_iterative_hann_reset(&(self->hann));
+            }
+            int step_end = min(self->gate_length - done, samples_length - write_offset);
+            for (i = 0; i < step_end; i++) {
+                samples[write_offset + i] += qrtone_iterative_tone_next(&(self->tone[frequencyIndex])) * qrtone_iterative_hann_next(&(self->hann)) * power;
+            }
+            write_offset += step_end;
+            self->output_samples += step_end;
+        } else {
+            // On word
+            int word_index = ((self->output_samples - self->gate_length * 2) / (self->word_length + self->word_silence_length)) * 2;
+            int word_done = (self->output_samples - self->gate_length * 2) % (self->word_length + self->word_silence_length);
+            if (word_done < self->word_silence_length) {
+                // silence stage
+                int step_end = min(self->word_silence_length - word_done, samples_length - write_offset);
+                write_offset += step_end;
+                self->output_samples += step_end;
+            } else if (word_index < self->symbols_to_deliver_length) {
+                // tone stage
+                word_done -= self->word_silence_length;
+                int first_freq_index = self->symbols_to_deliver[word_index];
+                int second_freq_index = self->symbols_to_deliver[word_index + 1] + FREQUENCY_ROOT;
+                if (word_done == 0) {
+                    qrtone_iterative_tone_reset(&(self->tone[first_freq_index]));
+                    qrtone_iterative_tone_reset(&(self->tone[second_freq_index]));
+                    qrtone_iterative_tukey_reset(&(self->tukey));
+                }
+                int step_end = min(self->word_length - word_done, samples_length - write_offset);
+                float tone_power = power / 2.0f;
+                for (i = 0; i < step_end; i++) {
+                    float firstTone = qrtone_iterative_tone_next(&(self->tone[first_freq_index])) * tone_power;
+                    float secondTone = qrtone_iterative_tone_next(&(self->tone[second_freq_index])) * tone_power;
+                    samples[write_offset + i] += (firstTone + secondTone) * qrtone_iterative_tukey_next(&(self->tukey));
+                }
+                write_offset += step_end;
+                self->output_samples += step_end;
+            } else {
+                // no more data to write
+                write_offset += samples_length - write_offset;
+                self->output_samples += samples_length - write_offset;
+            }
         }
     }
 }

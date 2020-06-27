@@ -189,14 +189,13 @@ int32_t qrtone_set_payload(qrtone_t* qrtone, int8_t* payload, uint8_t payload_le
 int32_t qrtone_set_payload_ext(qrtone_t* qrtone, int8_t* payload, uint8_t payload_length, int8_t ecc_level, int8_t add_crc);
 
 /**
- * Populate the provided array with audio samples
+ * Populate the provided array with audio samples. You must call qrtone_set_payload function before.
  * @param qrtone A pointer to the initialized qrtone structure.
  * @param samples Pre-allocated array of samples_length length
  * @param samples_length array length. samples_length + offset should be equal or inferior than the total number of audio samples.
- * @param offset Cursor of the audio samples. Must be positive.
  * @param power Amplitude of the audio tones.
  */
-void qrtone_get_samples(qrtone_t* qrtone, float* samples, int32_t samples_length, int32_t offset, float power);
+void qrtone_get_samples(qrtone_t* qrtone, float* samples, int32_t samples_length, float power);
 
 #ifdef __cplusplus
 }

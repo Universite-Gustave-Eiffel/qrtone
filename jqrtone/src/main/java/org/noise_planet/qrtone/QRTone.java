@@ -80,6 +80,13 @@ public class QRTone {
     private int symbolIndex = 0;
     private byte[] payload;
     private AtomicInteger fixedErrors = new AtomicInteger(0);
+    // Number of samples generated with getSamples function
+    int outputSamples = 0;
+    // Hann/Tukey window for samples generation
+    IterativeHann hannWindow;
+    IterativeTukey tukeyWindow;
+    // Sin for samples generation
+    IterativeTone[] iterativeTones = new IterativeTone[NUM_FREQUENCIES];
 
     public QRTone(Configuration configuration) {
         this.configuration = configuration;
@@ -93,6 +100,11 @@ public class QRTone {
         triggerAnalyzer = new TriggerAnalyzer(configuration.sampleRate, gateLength,
                 new double[]{gate1Frequency, gate2Frequency}, Configuration.computeMinimumWindowSize(configuration.sampleRate, gate1Frequency, frequencyLimits[FREQUENCY_ROOT]),
                 configuration.triggerSnr);
+        for(int idFreq = 0; idFreq < NUM_FREQUENCIES; idFreq++) {
+            iterativeTones[idFreq] = new IterativeTone(frequencies[idFreq], configuration.sampleRate);
+        }
+        hannWindow = new IterativeHann(gateLength);
+        tukeyWindow = new IterativeTukey(wordLength, TUKEY_ALPHA);
     }
 
     /**
@@ -256,7 +268,7 @@ public class QRTone {
     /**
      * Set the payload to send
      * @param payload Payload content
-     * @return Number of samples of the signal for {@link #getSamples(float[], int, double)}
+     * @return Number of samples of the signal for {@link #getSamples(float[], double)}}
      */
     public int setPayload(byte[] payload, Configuration.ECC_LEVEL eccLevel, boolean addPayloadCRC) {
         Header header = new Header(payload.length, eccLevel, addPayloadCRC);
@@ -267,6 +279,7 @@ public class QRTone {
         symbolsToDeliver = new byte[headerSymbols.length+payloadSymbols.length];
         System.arraycopy(headerSymbols, 0, symbolsToDeliver, 0, headerSymbols.length);
         System.arraycopy(payloadSymbols, 0, symbolsToDeliver, headerSymbols.length, payloadSymbols.length);
+        outputSamples = 0;
         return 2 * gateLength + (symbolsToDeliver.length / 2) * (wordSilenceLength + wordLength);
     }
 
@@ -274,27 +287,61 @@ public class QRTone {
      * Compute the audio samples for sending the message.
      *
      * @param samples Write samples here
-     * @param offset  Offset from the beginning of the message.
+     * @param power Signal power
      */
-    public void getSamples(float[] samples, int offset, double power) {
-        int cursor = 0;
-        generatePitch(samples, Math.max(0, cursor - offset), gateLength, Math.max(0, offset - cursor), configuration.sampleRate, gate1Frequency, power);
-        applyHann(samples, Math.max(0, cursor - offset), cursor + gateLength, gateLength, offset);
-        cursor += gateLength;
-        generatePitch(samples, Math.max(0, cursor - offset), gateLength, Math.max(0, offset - cursor), configuration.sampleRate, gate2Frequency, power);
-        applyHann(samples, Math.max(0, cursor - offset), cursor + gateLength, gateLength, offset - cursor);
-        cursor += gateLength;
-        for (int i = 0; i < symbolsToDeliver.length; i += 2) {
-            cursor += wordSilenceLength;
-            double f1 = frequencies[symbolsToDeliver[i]];
-            double f2 = frequencies[symbolsToDeliver[i + 1] + FREQUENCY_ROOT];
-            generatePitch(samples, Math.max(0, cursor - offset), wordLength, Math.max(0, offset - cursor), configuration.sampleRate, f1, power / 2);
-            generatePitch(samples, Math.max(0, cursor - offset), wordLength, Math.max(0, offset - cursor), configuration.sampleRate, f2, power / 2);
-            applyTukey(samples, Math.max(0, cursor - offset), cursor + wordLength, TUKEY_ALPHA, wordLength, Math.max(0, offset - cursor));
-            cursor += wordLength;
+    public void getSamples(float[] samples, double power) {
+        int writeOffset = 0;
+        while(writeOffset < samples.length) {
+            if(outputSamples < gateLength * 2) {
+                // On header
+                int done = outputSamples % gateLength;
+                int frequencyIndex = outputSamples < gateLength ? FREQUENCY_ROOT : FREQUENCY_ROOT + 2;
+                if(done == 0) {
+                    iterativeTones[frequencyIndex].reset();
+                    hannWindow.reset();
+                }
+                int stepEnd = Math.min(gateLength - done, samples.length - writeOffset);
+                for (int i = 0; i < stepEnd; i++) {
+                    samples[writeOffset + i] += (float) (iterativeTones[frequencyIndex].next() * hannWindow.next() * power);
+                }
+                writeOffset += stepEnd;
+                outputSamples += stepEnd;
+            } else {
+                // On word
+                int wordIndex = ((outputSamples - gateLength * 2) / (wordLength + wordSilenceLength)) * 2;
+                int wordDone = (outputSamples - gateLength * 2) % (wordLength + wordSilenceLength);
+                if(wordDone < wordSilenceLength) {
+                    // silence stage
+                    int stepEnd = Math.min(wordSilenceLength - wordDone, samples.length - writeOffset);
+                    writeOffset += stepEnd;
+                    outputSamples += stepEnd;
+                } else if(wordIndex < symbolsToDeliver.length) {
+                    // tone stage
+                    wordDone -= wordSilenceLength;
+                    int firstFreqIndex = symbolsToDeliver[wordIndex];
+                    int secondFreqIndex = symbolsToDeliver[wordIndex + 1] + FREQUENCY_ROOT;
+                    if(wordDone == 0) {
+                        iterativeTones[firstFreqIndex].reset();
+                        iterativeTones[secondFreqIndex].reset();
+                        tukeyWindow.reset();
+                    }
+                    int stepEnd = Math.min(wordLength - wordDone, samples.length - writeOffset);
+                    double tonePower = power / 2;
+                    for (int i = 0; i < stepEnd; i++) {
+                        final double firstTone = iterativeTones[firstFreqIndex].next() * tonePower;
+                        final double secondTone = iterativeTones[secondFreqIndex].next() * tonePower;
+                        samples[writeOffset + i] += (float) ((firstTone + secondTone) * tukeyWindow.next());
+                    }
+                    writeOffset += stepEnd;
+                    outputSamples += stepEnd;
+                } else {
+                    // no more data to write
+                    writeOffset += samples.length - writeOffset;
+                    outputSamples += samples.length - writeOffset;
+                }
+            }
         }
     }
-
     /**
      * Checksum of bytes (could be used only up to 64 bytes)
      * @param payload payload to crc

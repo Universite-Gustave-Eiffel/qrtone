@@ -547,7 +547,7 @@ MU_TEST(testGenerate) {
 		memset(window, 0, sizeof(float) * window_size);
 		// add audio samples
 		if(cursor + window_size > offset_before && cursor < samples_length - offset_before) {
-			qrtone_get_samples(qrtone, window + MAX(0, offset_before - cursor), window_size - MAX(0, offset_before - cursor), MAX(0, cursor - offset_before), (float_t)powerPeak);
+			qrtone_get_samples(qrtone, window + MAX(0, offset_before - cursor), window_size - MAX(0, offset_before - cursor), (float_t)powerPeak);
 		}
 		// add noise
 		qrtone_generate_pitch(window, window_size, cursor, sample_rate, 125.0f, noise_peak);
@@ -630,7 +630,7 @@ MU_TEST(testWriteSignal) {
 
 	memset(samples, 0, sizeof(float) * samples_length);
 
-	qrtone_get_samples(qrtone, samples + blankBefore, samples_length, 0, power_peak);
+	qrtone_get_samples(qrtone, samples + blankBefore, samples_length, power_peak);
 
 
 	// Write signal

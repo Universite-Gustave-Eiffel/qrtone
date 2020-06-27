@@ -595,7 +595,7 @@ public class QRToneTest {
         while (cursor < dataSampleLength) {
             int windowSize = Math.min(random.nextInt(115) + 20, samples.length - cursor);
             float[] window = new float[windowSize];
-            qrTone.getSamples(window, cursor, powerPeak);
+            qrTone.getSamples(window, powerPeak);
             System.arraycopy(window, 0, samples, cursor + samplesBefore, window.length);
             cursor += windowSize;
         }
@@ -607,7 +607,7 @@ public class QRToneTest {
 
     @Test
     public void testToneDetection() throws IOException {
-        boolean writeCSV = false;
+        boolean writeCSV = true;
         double sampleRate = 16000;
         double timeBlankBefore = 0.35;
         double timeBlankAfter = 0.35;
@@ -626,7 +626,7 @@ public class QRToneTest {
         final int dataSampleLength = qrTone.setPayload(IPFS_PAYLOAD);
         float[] audio = new float[dataSampleLength];
         float[] samples = new float[samplesBefore + dataSampleLength + samplesAfter];
-        qrTone.getSamples(audio, 0, powerPeak);
+        qrTone.getSamples(audio, powerPeak);
         System.arraycopy(audio, 0, samples, samplesBefore, dataSampleLength);
         QRTone.generatePitch(samples, 0, samples.length, 0, sampleRate, 125, noisePeak);
         if(writeCSV) {
@@ -667,7 +667,7 @@ public class QRToneTest {
         final int dataSampleLength = qrTone.setPayload(payload, Configuration.ECC_LEVEL.ECC_L, false);
         float[] audio = new float[dataSampleLength];
         float[] samples = new float[samplesBefore + dataSampleLength + samplesAfter];
-        qrTone.getSamples(audio, 0, powerPeak);
+        qrTone.getSamples(audio, powerPeak);
         System.arraycopy(audio, 0, samples, samplesBefore, dataSampleLength);
         Random random = new Random(1337);
         for (int s = 0; s < samples.length; s++) {
@@ -720,7 +720,7 @@ public class QRToneTest {
         try(InputStream fileInputStream = QRToneTest.class.getResourceAsStream("noisy_10sec_44100_16bitsPCMMono.raw")) {
             samples = loadShortStream(fileInputStream, ByteOrder.LITTLE_ENDIAN);
         }
-        qrTone.getSamples(audio, 0, powerPeak);
+        qrTone.getSamples(audio, powerPeak);
         // Add audio effects
         AudioDispatcher d = AudioDispatcherFactory.fromFloatArray(audio, (int)sampleRate, 1024, 0);
         d.addAudioProcessor(new DelayEffect(0.04, 0.1, sampleRate));
@@ -951,5 +951,42 @@ public class QRToneTest {
                 fileWriter.write("\n");
             }
         }
+    }
+
+    /**
+     * Magic method to generate a tone using only one call to cos and sin
+     * @ref http://ww1.microchip.com/downloads/en/appnotes/00543c.pdf https://ipfs.io/ipfs/QmdfpU2ziBrEg1WgzBXFqvrgRNse7btHoyVCfw8cEv5qgU
+     *
+     */
+    @Test
+    public void testFastTone() {
+        double sampleRate = 16000;
+        Configuration configuration = Configuration.getAudible(sampleRate);
+        QRTone qrTone = new QRTone(configuration);
+        for(int idFreq=0; idFreq < QRTone.NUM_FREQUENCIES; idFreq++) {
+            double freq = qrTone.getFrequencies()[idFreq];
+            IterativeTone it = new IterativeTone(freq, sampleRate);
+            float[] expected = new float[1600];
+            QRTone.generatePitch(expected, 0, expected.length, 0, sampleRate, freq, 1);
+            float[] got = new float[expected.length];
+            for(int i=0; i < expected.length; i++) {
+                got[i] = (float)(it.next());
+            }
+            assertArrayEquals(expected, got, 0.001f);
+        }
+    }
+
+    @Test
+    public void testHann() {
+        float[] expected = new float[61];
+        float[] got = new float[expected.length];
+
+        Arrays.fill(expected, 1.0f);
+        QRTone.applyHann(expected, 0, expected.length, expected.length, 0);
+        IterativeHann it = new IterativeHann(expected.length);
+        for(int i=0; i < expected.length; i++) {
+            got[i] = (float)(it.next());
+        }
+        assertArrayEquals(expected, got, 0.0001f);
     }
 }
