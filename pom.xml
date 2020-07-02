@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.noise-planet</groupId>
     <artifactId>qrtone-parent</artifactId>
-    <version>0.3-SNAPSHOT</version>
+    <version>0.3.0</version>
     <packaging>pom</packaging>
 
     <name>qrtone-parent</name>
@@ -24,6 +24,6 @@
         <connection>scm:git:https://github.com/Ifsttar/qrtone.git</connection>
         <developerConnection>scm:git:git@github.com:Ifsttar/qrtone.git</developerConnection>
         <url>git@github.com:Ifsttar/qrtone.git</url>
-        <tag>HEAD</tag>
+        <tag>v0.3.0</tag>
     </scm>
 </project>
