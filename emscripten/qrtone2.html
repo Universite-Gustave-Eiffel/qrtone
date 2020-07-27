@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Emscripten-Generated Code</title>
+  <script>
+    var Module = {
+      onRuntimeInitialized: function() {
+		let winstance = _qrtone_new();
+		let content = new Int8Array([18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36,
+		-100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114]);
+		
+	
+		_qrtone_init(winstance, audioCtx.sampleRate);
+		
+        console.log('qrtone result: ' + winstance);
+        
+		_qrtone_free(winstance);
+      }
+    };
+  </script>
+  <script src="qrtone.js"></script>
+    <style>
+      body {
+        font-family: arial;
+        margin: 0;
+        padding: none;
+      }
+    </style>
+  </head>
+  <body>
+    <p id="demo"></p>
+	<script type="text/javascript" >
+
+	var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+	
+	
+	function play(){
+	
+		let winstance = _qrtone_new();
+		
+		let content = new Int8Array([18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36,
+		-100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114]);
+		
+	
+		_qrtone_init(winstance, audioCtx.sampleRate);
+		
+
+		_qrtone_free(winstance);
+	
+	}
+	
+	</script>
+	<div>
+     <button id="play" type="button" onclick="play()">Play sound</button>
+   </div>
+  </body>
+</html>
