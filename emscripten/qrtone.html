@@ -1,0 +1,18 @@
+<!doctype html>
+<meta charset="UTF-8">
+<html>
+  <script>
+    var Module = {
+      onRuntimeInitialized: function() {
+        console.log('create qrtone');
+        var instance = new Module.QRTone(44100.0);
+        console.log('qrtone result: ' + instance);
+        instance.delete();
+      }
+    };
+  </script>
+  <script src="qrtone.js"></script>
+</html>
+
+
+

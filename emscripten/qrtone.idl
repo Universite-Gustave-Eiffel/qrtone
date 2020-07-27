@@ -1,0 +1,13 @@
+
+interface QRTone {
+    void QRTone(float sample_rate);
+    long getMaximumLength();
+    boolean pushSamples(Float32Array samples, long samples_length);
+    byte[] getPayload();
+    long getPayloadLength();
+    long long getPayloadSampleIndex();
+    long getFixedErrors();
+    long setPayload(Int8Array payload, byte payload_length);
+    long setPayloadExt(Int8Array payload, byte payload_length, byte ecc_level, byte add_crc);
+    void getSamples(Float32Array samples, long samples_length, float power);
+};
