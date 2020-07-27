@@ -50,6 +50,9 @@ if __name__ == "__main__":
     PORT = 8000
 
     Handler = CORSHTTPRequestHandler
+    Handler.extensions_map.update({
+        '.wasm': 'application/wasm',
+    })
     #Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
 
     httpd = SocketServer.TCPServer(("", PORT), Handler)
