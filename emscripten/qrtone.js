@@ -11,6 +11,8 @@ function play() {
 
     let signalAlloc = Module._malloc(nsamples * 4);
 
+    _memset(signalAlloc, 0, nsamples * 4);
+
     _qrtone_get_samples(qrtone, signalAlloc, nsamples, 1.0);
 
     let signal = Module.HEAPF32.subarray(signalAlloc / 4, signalAlloc / 4 + nsamples * 4);
