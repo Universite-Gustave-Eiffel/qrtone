@@ -26,5 +26,5 @@ ubuntu-xenial-16.04-cloudimg-console.log
 venv
 .vs/
 qrtone.js
-qrtone.wasm
+*.wasm
 

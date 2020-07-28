@@ -5,18 +5,26 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Emscripten-Generated Code</title>
   <script>
+  
+    function QRTone(sampleRate) {
+        this.self = _qrtone_new();
+        _qrtone_init(this.self, sampleRate);
+    }
+    
+    QRTone.prototype.delete = function() {
+        _qrtone_free(this.self);        
+    }
+    
+    QRTone.prototype.setPayload = function(payload, eccLevel, addCRC) {
+        
+    }
+        
     var Module = {
       onRuntimeInitialized: function() {
-		let winstance = _qrtone_new();
+		let winstance = new QRTone(audioCtx.sampleRate);
 		let content = new Int8Array([18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36,
 		-100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114]);
-		
-	
-		_qrtone_init(winstance, audioCtx.sampleRate);
-		
-        console.log('qrtone result: ' + winstance);
-        
-		_qrtone_free(winstance);
+		winstance.delete();
       }
     };
   </script>
@@ -37,17 +45,7 @@
 	
 	
 	function play(){
-	
-		let winstance = _qrtone_new();
 		
-		let content = new Int8Array([18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36,
-		-100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114]);
-		
-	
-		_qrtone_init(winstance, audioCtx.sampleRate);
-		
-
-		_qrtone_free(winstance);
 	
 	}
 	
