@@ -4,31 +4,7 @@
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Emscripten-Generated Code</title>
-  <script>
-  
-    function QRTone(sampleRate) {
-        this.self = _qrtone_new();
-        _qrtone_init(this.self, sampleRate);
-    }
-    
-    QRTone.prototype.delete = function() {
-        _qrtone_free(this.self);        
-    }
-    
-    QRTone.prototype.setPayload = function(payload, eccLevel, addCRC) {
-        
-    }
-        
-    var Module = {
-      onRuntimeInitialized: function() {
-		let winstance = new QRTone(audioCtx.sampleRate);
-		let content = new Int8Array([18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36,
-		-100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114]);
-		winstance.delete();
-      }
-    };
-  </script>
-  <script src="qrtone.js"></script>
+  <script src="qrtone_emscripten.js"></script>
     <style>
       body {
         font-family: arial;
@@ -39,17 +15,6 @@
   </head>
   <body>
     <p id="demo"></p>
-	<script type="text/javascript" >
-
-	var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-	
-	
-	function play(){
-		
-	
-	}
-	
-	</script>
 	<div>
      <button id="play" type="button" onclick="play()">Play sound</button>
    </div>

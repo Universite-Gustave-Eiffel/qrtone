@@ -25,6 +25,6 @@ ubuntu-xenial-16.04-cloudimg-console.log
 .attach_pid*
 venv
 .vs/
-qrtone.js
+qrtone_emscripten.js
 *.wasm
 
