@@ -1,8 +1,7 @@
 var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 function play() {
     let qrtone = _qrtone_new();
-    let content = new Int8Array([18, 32, -117, -93, -50, 2, 52, 26, -117, 93, 119, -109, 39, 46, 108, 4, 31, 36,
-    -100, 95, -9, -70, -82, -93, -75, -32, -63, 42, -44, -100, 50, 83, -118, 114]);
+    let content = new Uint8Array([0, 7, 78, 105, 99, 111, 108, 97, 115, 1, 5, 72, 101, 108, 108, 111]);
     _qrtone_init(qrtone, audioCtx.sampleRate);
 
     let contenti8 = allocate(content, 'i8', ALLOC_NORMAL);
