@@ -13,10 +13,14 @@ function sendChat() {
 }
 
 function sendColor() {
-
+    // Send data
+    var ecc_level = 0; // forward correction error level (0=low 3=max)
+    var addCRC = 0; // add 16 bits crc if != 0
+    var tx = QRTone.transmitter({onFinish: function () { console.log("transmission complete"); }});
+    tx.transmit([colorPicker.color.rgb.r, colorPicker.color.rgb.g, colorPicker.color.rgb.b], ecc_level, addCRC);
 }
 
 var colorPicker = new iro.ColorPicker('#picker');
 $( function() {
-$( "#tabs" ).tabs();
+$( "#tabs" ).tabs({ active: 0 });
 } );
