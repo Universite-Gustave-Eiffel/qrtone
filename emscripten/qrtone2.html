@@ -5,6 +5,12 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Emscripten-Generated Code</title>
   <script src="qrtone_emscripten.js"></script>
+    <script>
+      function play() {
+       var tx = QRTone.transmitter({onFinish: function () { console.log("transmission complete"); }});
+       tx.transmit([0, 7, 78, 105, 99, 111, 108, 97, 115, 1, 5, 72, 101, 108, 108, 111]);
+      }
+    </script>
     <style>
       body {
         font-family: arial;
