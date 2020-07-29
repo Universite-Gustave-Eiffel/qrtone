@@ -1,64 +1,5 @@
-//var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-//function play() {
-//    let qrtone = _qrtone_new();
-//    let content = new Uint8Array([0, 7, 78, 105, 99, 111, 108, 97, 115, 1, 5, 72, 101, 108, 108, 111]);
-//    _qrtone_init(qrtone, audioCtx.sampleRate);
-//
-//    let contenti8 = allocate(content, 'i8', ALLOC_NORMAL);
-//
-//    let nsamples = _qrtone_set_payload(qrtone, contenti8, content.length);
-//
-//    let signalAlloc = Module._malloc(nsamples * 4);
-//
-//    _memset(signalAlloc, 0, nsamples * 4);
-//
-//    _qrtone_get_samples(qrtone, signalAlloc, nsamples, 1.0);
-//
-//    let signal = Module.HEAPF32.subarray(signalAlloc / 4, signalAlloc / 4 + nsamples * 4);
-//
-//    _free(signalAlloc);
-//
-//    _qrtone_free(qrtone);
-//
-//    _free(qrtone);
-//
-//    let channels = 1;
-//
-//    // Create an empty two second stereo buffer at the
-//    // sample rate of the AudioContext
-//    var frameCount = nsamples;
-//
-//    //document.getElementById("demo").innerHTML += "sampleRate: "+audioCtx.sampleRate+" Hz<br>"+
-//    //"content length: "+ content.length+"<br>"+
-//    //"words length: "+ wordLength+"<br>"+
-//    //" Play time "+(signalSize/audioCtx.sampleRate)+" s<br>";
-//
-//    var myAudioBuffer = audioCtx.createBuffer(channels, frameCount, audioCtx.sampleRate);
-//    var nanvals = 0;
-//    for (var channel = 0; channel < channels; channel++) {
-//
-//        var nowBuffering = myAudioBuffer.getChannelData(channel);
-//        for (var i = 0; i < frameCount; i++) {
-//            // audio needs to be in [-1.0; 1.0]
-//            nowBuffering[i] = Module.getValue(signalAlloc + ( i * 4), 'float');
-//        }
-//    }
-//
-//    // Get an AudioBufferSourceNode.
-//    // This is the AudioNode to use when we want to play an AudioBuffer
-//    var source = audioCtx.createBufferSource();
-//    // set the buffer in the AudioBufferSourceNode
-//    source.buffer = myAudioBuffer;
-//    // connect the AudioBufferSourceNode to the
-//    // destination so we can hear the sound
-//    source.connect(audioCtx.destination);
-//    // start the source playing
-//    source.start();
-//}
-
-
 /**
- * JS Code derived from QietJS 3-clause BSD code
+ * JS Code derived from QuietJS 3-clause BSD code
  */
 
 var QRTone = (function() {
@@ -264,8 +205,6 @@ var QRTone = (function() {
         initAudioContext();
         var done = opts.onFinish;
 
-        // libquiet internally works at 44.1kHz but the local sound card
-        // may be a different rate. we inform quiet about that here
         var encoder = _qrtone_new();
         _qrtone_init(encoder, audioCtx.sampleRate);
 
@@ -346,7 +285,6 @@ var QRTone = (function() {
 
         // unfortunately, we need to flush out the browser's sound sample buffer ourselves
         // the way we do this is by writing empty blocks once we're done and *then* we can disconnect
-        var payload = [];
         var empties_written = 0;
 
         var written = 0;
@@ -379,9 +317,9 @@ var QRTone = (function() {
             _qrtone_get_samples(encoder, samples, sampleBufferSize, 1.0);
             written += sampleBufferSize;
 
-            // libquiet notifies us that the payload is finished by
-            // returning written < number of samples we asked for
-            if (written >= frame_len) {
+            // frame_len is the total number of audio samples of the payload
+            // So if written >= number of samples. The output is done
+            if (written >= frame_len + sampleBufferSize) {
                 if (empties_written < 3) {
                     // flush out browser's sound sample buffer before quitting
                     for (var i = 0; i < sampleBufferSize; i++) {
@@ -408,15 +346,27 @@ var QRTone = (function() {
 
         };
 
-        var transmit = function(buf) {
+        var transmit = function(buf, qLevel, addCRC) {
             if (destroyed) {
                 return;
             }
-            payload = buf.slice();
+            if(!Array.isArray(buf)) {
+                console.error("transmit expect Array of integer as first parameter")
+                return;
+            }
+            if(qLevel === undefined) {
+                qLevel = 2;
+            } else {
+                qLevel = Math.min(3, Math.max(0, qLevel));
+            }
 
-            var contenti8 = _malloc(payload.length);
-            writeArrayToMemory(new Uint8Array(payload), contenti8);
-            frame_len = _qrtone_set_payload(encoder, contenti8, payload.length);
+            if(addCRC === undefined) {
+                addCRC = 1;
+            }
+
+            var contenti8 = _malloc(buf.length);
+            writeArrayToMemory(new Uint8Array(buf), contenti8);
+            frame_len = _qrtone_set_payload_ext(encoder, contenti8, buf.length, qLevel, addCRC);
 
             _free(contenti8);
 

@@ -8,7 +8,9 @@
     <script>
       function play() {
        var tx = QRTone.transmitter({onFinish: function () { console.log("transmission complete"); }});
-       tx.transmit([0, 7, 78, 105, 99, 111, 108, 97, 115, 1, 5, 72, 101, 108, 108, 111]);
+       var ecc_level = 0; // forward correction error level (0=low 3=max)
+       var addCRC = 0; // add 16 bits crc if != 0
+       tx.transmit([0, 7, 78, 105, 99, 111, 108, 97, 115, 1, 5, 72, 101, 108, 108, 111],ecc_level, addCRC);
       }
     </script>
     <style>
