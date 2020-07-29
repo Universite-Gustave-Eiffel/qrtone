@@ -1,0 +1,14 @@
+body {
+    font-family: arial;
+    margin: 0;
+    padding: none;
+}
+label
+{
+    display: block;
+    width: 150px;
+    float: left;
+}
+#tabs {
+    width: 80%;
+}
