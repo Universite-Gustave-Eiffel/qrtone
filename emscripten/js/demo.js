@@ -26,15 +26,17 @@ function sendColor() {
 function changeReceiveMode() {
   if($("#radio-enable-receiver")[0].checked) {
     console.log("enabled");
-    var rx = QRTone.receiver({onReceive: function(payload, sampleIndex) { console.log("received chunk of data: " + payload); }});
+    rx = QRTone.receiver({onReceive: function(payload, sampleIndex) { console.log("received chunk of data: " + payload); }});
   } else {
     console.log("disabled");
     if (typeof rx !== "undefined") {
         rx.destroy();
+        //QRTone.disconnect();
     }
   }
 }
-
+var rx;
+var tx;
 var colorPicker = new iro.ColorPicker('#picker');
 $( function() {
 $( "#tabs" ).tabs({ active: 0 });
