@@ -8,6 +8,9 @@ function sendChat() {
     var bytes = [0, user.length].concat(user).concat([1, message.length]).concat(message);
 
     // Send data
+    if (typeof tx !== "undefined") {
+        tx.destroy();
+    }
     var tx = QRTone.transmitter({onFinish: function () { console.log("transmission complete"); }});
     tx.transmit(bytes, ecc_level, addCRC);
 }
@@ -20,7 +23,23 @@ function sendColor() {
     tx.transmit([colorPicker.color.rgb.r, colorPicker.color.rgb.g, colorPicker.color.rgb.b], ecc_level, addCRC);
 }
 
+function changeReceiveMode() {
+  if($("#radio-enable-receiver")[0].checked) {
+    console.log("enabled");
+    var rx = QRTone.receiver({onReceive: function(payload, sampleIndex) { console.log("received chunk of data: " + payload); }});
+  } else {
+    console.log("disabled");
+    if (typeof rx !== "undefined") {
+        rx.destroy();
+    }
+  }
+}
+
 var colorPicker = new iro.ColorPicker('#picker');
 $( function() {
 $( "#tabs" ).tabs({ active: 0 });
+} );
+
+$( function() {
+$( "input" ).filter(":radio").checkboxradio();
 } );

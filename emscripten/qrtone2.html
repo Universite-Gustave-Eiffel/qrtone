@@ -33,6 +33,18 @@
             <input type="submit" value="Send" onclick="sendColor()">
         </div>
     </div>
+
+    <div>
+      <fieldset id="receive">
+        <legend>Receiver mode: </legend>
+        <label for="radio-disable-receiver">Off</label>
+        <input type="radio" name="radio-1" id="radio-disable-receiver" checked onchange="changeReceiveMode()">
+        <label for="radio-enable-receiver">On</label>
+        <input type="radio" name="radio-1" id="radio-enable-receiver" onchange="changeReceiveMode()"><br /><br />
+        <textarea id="receivedMessage" name="fmessage" readonly
+                  rows="15" cols="80"></textarea>
+      </fieldset>
+    </div>
 </div>
 </body>
 </html>

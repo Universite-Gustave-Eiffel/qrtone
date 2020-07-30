@@ -1,5 +1,6 @@
 /**
- * JS Code derived from QuietJS 3-clause BSD code
+ * Copyright Nicolas Fortin, Univ. Gustave Eiffel, UMRAE
+ * JS Code derived from QuietJS 3-clause BSD code Copyright 2016, Brian Armstrong
  */
 
 var QRTone = (function() {
@@ -19,6 +20,18 @@ var QRTone = (function() {
     var readyCallbacks = [];
     var readyErrbacks = [];
     var failReason = "";
+
+    // these are used for receiver only
+    var gUM;
+    var audioInput;
+    var audioInputFailedReason = "";
+    var audioInputReadyCallbacks = [];
+    var audioInputFailedCallbacks = [];
+    var frameBufferSize = Math.pow(2, 14);
+
+    // anti-gc
+    var receivers = {};
+    var receivers_idx = 0;
 
     // isReady tells us if we can start creating transmitters and receivers
     // we need the emscripten portion to be running and we need our
@@ -397,10 +410,189 @@ var QRTone = (function() {
         };
     };
 
+    /**
+     * Create a new receiver
+     * @function receiver
+     * @memberof QRTone
+     * @param {object} opts - receiver params
+     * @param {onReceive} opts.onReceive - callback which receiver will call to send user received data
+     * @param {function} [opts.onCreate] - callback to notify user that receiver has been created and is ready to receive. if the user needs to grant permission to use the microphone, this callback fires after that permission is granted.
+     * @param {onReceiverCreateFail} [opts.onCreateFail] - callback to notify user that receiver could not be created
+     * @param {onReceiveFail} [opts.onReceiveFail] - callback to notify user that receiver received corrupted data
+     * @param {onReceiverStatsUpdate} [opts.onReceiverStatsUpdate] - callback to notify user with new decode stats
+     * @returns {Receiver} - Receiver object
+     * @example
+     * receiver({onReceive: function(payload, sampleIndex) { console.log("received chunk of data: " + payload); }});
+     */
+    function receiver(opts) {
+        initAudioContext();
+        // quiet does not create an audio input when it starts
+        // getting microphone access requires a permission dialog so only ask for it if we need it
+        if (gUM === undefined) {
+            gUM = (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia);
+        }
+
+        if (gUM === undefined) {
+            // we couldn't find a suitable getUserMedia, so fail fast
+            if (opts.onCreateFail !== undefined) {
+                opts.onCreateFail("getUserMedia undefined (mic not supported by browser)");
+            }
+            return;
+        }
+
+        if (audioInput === undefined) {
+            createAudioInput()
+        }
+
+        // TODO investigate if this still needs to be placed on window.
+        // seems this was done to keep it from being collected
+        var scriptProcessor = audioCtx.createScriptProcessor(16384, 2, 1);
+        var idx = receivers_idx;
+        receivers[idx] = scriptProcessor;
+        receivers_idx++;
+
+        // inform quiet about our local sound card's sample rate so that it can resample to its internal sample rate
+        var decoder = _qrtone_new();
+
+        _qrtone_init(decoder, audioCtx.sampleRate);
+
+        var samples = _malloc(4 * sampleBufferSize);
+
+        // Message stacks
+        var messages = [];
+
+        var destroyed = false;
+
+        var readbuf = function() {
+            if (destroyed) {
+                return;
+            }
+            while (messages.length > 0) {
+                opts.onReceive(messages.pop());
+            }
+        };
+
+        var lastChecksumFailCount = 0;
+        var last_consume_times = [];
+        var num_consume_times = 3;
+        var consume = function() {
+            if (destroyed) {
+                return;
+            }
+
+            var cursor = 0;
+            while(cursor < sampleBufferSize) {
+                // Get maximum samples that QRTone can process
+                var windowLen = Math.min(sampleBufferSize - cursor,  _qrtone_get_maximum_length(decoder));
+                if(_qrtone_push_samples(decoder, samples + (cursor * 4), windowLen)) {
+                    // Got message
+                    var payload = _qrtone_get_payload(decoder);
+                    var payload_length = _qrtone_get_payload_length(decoder);
+                    var payloadContent = Module.HEAP8.slice(payload, payload + payload_length);
+                    var payloadSampleIndex = _qrtone_get_payload_sample_index(decoder);
+                    messages.push([payloadSampleIndex, payloadContent]);
+                }
+                cursor += windowLen;
+            }
+            window.setTimeout(readbuf, 0);
+//            var before = new Date();
+//            Module.ccall('quiet_decoder_consume', 'number', ['pointer', 'pointer', 'number'], [decoder, samples, sampleBufferSize]);
+//            var after = new Date();
+//
+//            last_consume_times.unshift(after - before);
+//            if (last_consume_times.length > num_consume_times) {
+//                last_consume_times.pop();
+//            }
+//
+//            window.setTimeout(readbuf, 0);
+//
+//            var currentChecksumFailCount = Module.ccall('quiet_decoder_checksum_fails', 'number', ['pointer'], [decoder]);
+//            if ((opts.onReceiveFail !== undefined) && (currentChecksumFailCount > lastChecksumFailCount)) {
+//                window.setTimeout(function() { opts.onReceiveFail(currentChecksumFailCount); }, 0);
+//            }
+//            lastChecksumFailCount = currentChecksumFailCount;
+//
+//            if (opts.onReceiverStatsUpdate !== undefined) {
+//                var num_frames_ptr = Module.ccall('malloc', 'pointer', ['number'], [4]);
+//                var frames = Module.ccall('quiet_decoder_consume_stats', 'pointer', ['pointer', 'pointer'], [decoder, num_frames_ptr]);
+//                // time for some more pointer arithmetic
+//                var num_frames = Module.HEAPU32[num_frames_ptr/4];
+//                Module.ccall('free', null, ['pointer'], [num_frames_ptr]);
+//
+//                var framesize = 4 + 4 + 4 + 4 + 4;
+//                var stats = [];
+//
+//                for (var i = 0; i < num_frames; i++) {
+//                    var frameStats = {};
+//                    var frame = (frames + i*framesize)/4;
+//                    var symbols = Module.HEAPU32[frame];
+//                    var num_symbols = Module.HEAPU32[frame + 1];
+//                    frameStats.errorVectorMagnitude = Module.HEAPF32[frame + 2];
+//                    frameStats.receivedSignalStrengthIndicator = Module.HEAPF32[frame + 3];
+//
+//                    frameStats.symbols = [];
+//                    for (var j = 0; j < num_symbols; j++) {
+//                        var symbol = (symbols + 8*j)/4;
+//                        frameStats.symbols.push({
+//                            real: Module.HEAPF32[symbol],
+//                            imag: Module.HEAPF32[symbol + 1]
+//                        });
+//                    }
+//                    stats.push(frameStats);
+//                }
+//                opts.onReceiverStatsUpdate(stats);
+//            }
+        }
+
+        scriptProcessor.onaudioprocess = function(e) {
+            if (destroyed) {
+                return;
+            }
+            var input = e.inputBuffer.getChannelData(0);
+            var sample_view = Module.HEAPF32.subarray(samples/4, samples/4 + sampleBufferSize);
+            sample_view.set(input);
+
+            window.setTimeout(consume, 0);
+        }
+
+        // if this is the first receiver object created, wait for our input node to be created
+        addAudioInputReadyCallback(function() {
+            audioInput.connect(scriptProcessor);
+            if (opts.onCreate !== undefined) {
+                window.setTimeout(opts.onCreate, 0);
+            }
+        }, opts.onCreateFail);
+
+        // more unused nodes in the graph that some browsers insist on having
+        var fakeGain = audioCtx.createGain();
+        fakeGain.value = 0;
+        scriptProcessor.connect(fakeGain);
+        fakeGain.connect(audioCtx.destination);
+
+        var destroy = function() {
+            if (destroyed) {
+                return;
+            }
+            fakeGain.disconnect();
+            scriptProcessor.disconnect();
+            _free(samples);
+            _qrtone_free(decoder);
+            _free(decoder);
+            delete receivers[idx];
+            destroyed = true;
+        };
+
+        return {
+            destroy: destroy
+        }
+    };
+
+
     return {
         emscriptenInitialized: onEmscriptenInitialized,
         addReadyCallback: addReadyCallback,
         transmitter: transmitter,
+        receiver: receiver,
         disconnect: disconnect
     };
 })();
