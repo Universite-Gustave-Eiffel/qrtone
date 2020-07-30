@@ -450,6 +450,8 @@ var QRTone = (function() {
             createAudioInput()
         }
 
+        var epochRef = 0;
+
         // TODO investigate if this still needs to be placed on window.
         // seems this was done to keep it from being collected
         var scriptProcessor = audioCtx.createScriptProcessor(sampleBufferSize, 2, 1);
@@ -458,9 +460,7 @@ var QRTone = (function() {
         receivers_idx++;
 
         // Init qrtone
-        var decoder = _qrtone_new();
-
-        _qrtone_init(decoder, audioCtx.sampleRate);
+        var decoder;
 
         var samples = _malloc(4 * sampleBufferSize);
 
@@ -476,7 +476,8 @@ var QRTone = (function() {
                 return;
             }
             while (messages.length > 0) {
-                opts.onReceive(messages.pop());
+                let evt = messages.pop();
+                opts.onReceive(evt[1], evt[0]); // payload, samplesIndex
             }
         };
 
@@ -486,6 +487,10 @@ var QRTone = (function() {
         var consume = function() {
             if (destroyed) {
                 return;
+            }
+
+            if(epochRef == 0) {
+                epochRef = Date.now();
             }
 
             var cursor = 0;
@@ -499,7 +504,7 @@ var QRTone = (function() {
                     var payload_length = _qrtone_get_payload_length(decoder);
                     var payloadContent = Module.HEAPU8.slice(payload, payload + payload_length);
                     var payloadSampleIndex = _qrtone_get_payload_sample_index(decoder);
-                    messages.push([payloadSampleIndex, payloadContent]);
+                    messages.push([epochRef / 1000.0 + payloadSampleIndex / audioCtx.sampleRate, payloadContent]);
                 }
                 cursor += windowLen;
             }
@@ -510,27 +515,37 @@ var QRTone = (function() {
             if (destroyed) {
                 return;
             }
-            if(audioInput !== undefined && audioInput !== 0) {
-                var input = e.inputBuffer.getChannelData(0);
-                var sample_view = Module.HEAPF32.subarray(samples/4, samples/4 + sampleBufferSize);
-                sample_view.set(input);
+            var input = e.inputBuffer.getChannelData(0);
+            var sample_view = Module.HEAPF32.subarray(samples/4, samples/4 + sampleBufferSize);
+            sample_view.set(input);
+
+            if(decoder !== undefined) {
                 window.setTimeout(consume, 0);
             }
+        }
+
+        var initDecoder = function() {
+
+            decoder = _qrtone_new();
+
+            _qrtone_init(decoder, audioCtx.sampleRate);
         }
 
         // if this is the first receiver object created, wait for our input node to be created
         addAudioInputReadyCallback(function() {
             audioInput.connect(scriptProcessor);
+            fakeGain = audioCtx.createGain();
+            fakeGain.value = 0;
+            scriptProcessor.connect(fakeGain);
+            fakeGain.connect(audioCtx.destination);
             if (opts.onCreate !== undefined) {
                 window.setTimeout(opts.onCreate, 0);
             }
+            window.setTimeout(initDecoder, 2000);
         }, opts.onCreateFail);
 
         // more unused nodes in the graph that some browsers insist on having
-        var fakeGain = audioCtx.createGain();
-        fakeGain.value = 0;
-        scriptProcessor.connect(fakeGain);
-        fakeGain.connect(audioCtx.destination);
+        var fakeGain;
 
         var destroy = function() {
             if (destroyed) {

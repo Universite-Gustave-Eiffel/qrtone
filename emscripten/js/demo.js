@@ -23,15 +23,41 @@ function sendColor() {
     tx.transmit([colorPicker.color.rgb.r, colorPicker.color.rgb.g, colorPicker.color.rgb.b], ecc_level, addCRC);
 }
 
+function onNewMessage(payload, epoch) {
+    var d = new Date(0);
+    d.setUTCSeconds(epoch);
+    var user = "";
+    var message = "";
+    if(payload.length > 4) {
+        // Parse message
+        let utf8decoder = new TextDecoder();
+        var cursor = 0;
+        while(cursor < payload.length) {
+            if(payload[cursor] == 0 && cursor + 1 < payload.length && cursor + payload[cursor + 1] < payload.length ) {
+                user = utf8decoder.decode(new Uint8Array(payload.slice(cursor + 2, cursor + 2 + payload[cursor + 1])));
+                cursor += payload[cursor + 1] + 2;
+            } else  if(payload[cursor] == 1 && cursor + 1 < payload.length && cursor + payload[cursor + 1] < payload.length ) {
+                message = utf8decoder.decode(new Uint8Array(payload.slice(cursor + 2, cursor + 2 + payload[cursor + 1])));
+                cursor += payload[cursor + 1] + 2;
+            }
+        }
+    }
+    if(user == "") {
+        $("#receivedMessage")[0].value += d.toTimeString() + ": " + payload + "\n"
+    } else {
+        $("#receivedMessage")[0].value += d.toTimeString() + ": " + user + " says \""+ message +"\"\n"
+    }
+}
+
 function changeReceiveMode() {
   if($("#radio-enable-receiver")[0].checked) {
     console.log("enabled");
-    rx = QRTone.receiver({onReceive: function(payload, sampleIndex) { console.log("received chunk of data: " + payload); }});
+    rx = QRTone.receiver({onReceive: onNewMessage});
   } else {
     console.log("disabled");
     if (typeof rx !== "undefined") {
         rx.destroy();
-        //QRTone.disconnect();
+        QRTone.disconnect();
     }
   }
 }
