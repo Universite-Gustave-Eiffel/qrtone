@@ -9,42 +9,67 @@
     <script src="js/jquery-3.5.1.min.js"></script>
     <script src="js/jquery-ui.min.js"></script>
     <script src="js/demo.js"></script>
-	<link rel="stylesheet" href="css/jquery-ui.min.css" />
-	<link rel="stylesheet" href="css/demo.css" />
+    <link rel="stylesheet" href="css/jquery-ui.min.css"/>
+    <link rel="stylesheet" href="css/demo.css"/>
 </head>
 <body>
 <p id="demo"></p>
-<div>
-    <div id="tabs">
+<div class="form-style-7">
+    <h1>QRTone demo</h1>
+    <ul>
+        <li>
+        <label for="radio-quality-0">0 - Low</label>
+        <input type="radio" name="radio-2" id="radio-quality-0">
+        <label for="radio-quality-1">1 - Medium</label>
+        <input type="radio" name="radio-2" id="radio-quality-1">
+        <label for="radio-quality-2">2 - Quality</label>
+        <input type="radio" name="radio-2" id="radio-quality-2" checked>
+        <label for="radio-quality-3">3 - High</label>
+        <input type="radio" name="radio-2" id="radio-quality-3">
+        <span>Forward Error Correction level</span>
+        </li>
+        <li>
+            <label for="radio-crc-off">CRC16 Disabled</label>
+            <input type="radio" name="radio-3" id="radio-crc-off">
+            <label for="radio-crc-on">CRC16 Enabled</label>
+            <input type="radio" name="radio-3" id="radio-crc-on" checked>
+            <span>Add CRC16 in message</span>
+        </li>
+        <li>
+                <div id="tabs">
         <ul>
             <li><a href="#tabs-1">Chat</a></li>
             <li><a href="#tabs-2">Color picker</a></li>
         </ul>
         <div id="tabs-1">
             <label for="fname">Name:</label>
-            <input type="text" id="fname" name="fname" value="Tom"><br />
+            <input type="text" id="fname" name="fname" value="Tom"><br/>
             <label for="fmessage">Message:</label>
             <textarea id="fmessage" name="fmessage"
-                      rows="5" cols="33">Hello</textarea><br />
+                      rows="5" cols="33">Hello</textarea><br/>
             <input type="submit" value="Send" onclick="sendChat()">
         </div>
         <div id="tabs-2">
-            <div id="picker"></div><br />
+            <div id="picker"></div>
+            <br/>
             <input type="submit" value="Send" onclick="sendColor()">
         </div>
     </div>
 
-    <div>
-      <fieldset id="receive">
-        <legend>Receiver mode: </legend>
-        <label for="radio-disable-receiver">Off</label>
-        <input type="radio" name="radio-1" id="radio-disable-receiver" checked onchange="changeReceiveMode()">
-        <label for="radio-enable-receiver">On</label>
-        <input type="radio" name="radio-1" id="radio-enable-receiver" onchange="changeReceiveMode()"><br /><br />
-        <textarea id="receivedMessage" name="fmessage" readonly
-                  rows="15" cols="80"></textarea>
-      </fieldset>
-    </div>
+            <span>Send message</span>
+        </li>
+        <li>
+            <label for="radio-disable-receiver">Mic Off</label>
+            <input type="radio" name="radio-1" id="radio-disable-receiver" checked onchange="changeReceiveMode()" autocomplete="off">
+            <label for="radio-enable-receiver">Mic On</label>
+            <input type="radio" name="radio-1" id="radio-enable-receiver" onchange="changeReceiveMode()" autocomplete="off"><br/><br/>
+            <textarea id="receivedMessage" name="fmessage" readonly autocomplete="off"
+                      rows="15" cols="80"></textarea>
+            <span>Receive message</span>
+        </li>
+    </ul>
+
+
 </div>
 </body>
 </html>

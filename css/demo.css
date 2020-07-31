@@ -3,20 +3,132 @@ body {
     margin: 0;
     padding: none;
 }
-label
-{
-    display: block;
-    width: 150px;
-    float: left;
-}
+
 #tabs {
-    width: 600px;
+    width: 800px;
     margin-left: auto;
     margin-right: auto;
 }
 
-#receive {
-    width: 600px;
-    margin-left: auto;
-    margin-right: auto;
+.form-style-7{
+	max-width:850px;
+	margin:10px auto;
+	background:#fff;
+	border-radius:2px;
+	padding:10px;
+	font-family: Georgia, "Times New Roman", Times, serif;
+}
+.msg_error {
+    margin: 10px 0px;
+    padding:12px;
+    color: #D8000C;
+    background-color: #FFD2D2;
+}
+.msg_success {
+    margin: 10px 0px;
+    padding:12px;
+    color: #4F8A10;
+    background-color: #DFF2BF;
+}
+.form-style-7 h1{
+	display: block;
+	text-align: center;
+	padding: 0;
+	margin: 0px 0px 10px 0px;
+	color: #5C5C5C;
+	font-size:x-large;
+}
+.form-style-7 ul{
+	list-style:none;
+	padding:0;
+	margin:0;
+}
+.form-style-7 li{
+	display: block;
+	padding: 9px
+	margin-bottom: 30px;
+	text-align: center;
+}
+.form-style-7 li:last-child{
+	border:none;
+	margin-bottom: 0px;
+	text-align: center;
+}
+textarea {
+  width: 100%;
+  height: 150px;
+  padding: 12px 20px;
+  margin: 15px;
+  box-sizing: border-box;
+  border: 2px solid #ccc;
+  border-radius: 4px;
+  background-color: #f8f8f8;
+  resize: none;
+}
+
+.form-style-7 li > span{
+	background: #F3F3F3;
+	display: block;
+	padding: 3px;
+	margin: 15px;
+	text-align: center;
+	color: #C0C0C0;
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: 11px;
+}
+.form-style-7 textarea{
+	resize:none;
+}
+.form-style-7 input[type="submit"],
+.form-style-7 input[type="button"]{
+	background: #2471FF;
+	border: none;
+	padding: 10px 20px 10px 20px;
+	border-bottom: 3px solid #5994FF;
+	border-radius: 3px;
+	color: #D2E2FF;
+}
+.form-style-7 input[type="button"]:disabled{
+	background: #333333;
+	border: none;
+	padding: 10px 20px 10px 20px;
+	border-bottom: 3px solid #5994FF;
+	border-radius: 3px;
+	color: #666666;
+}
+.form-style-7 input[type="submit"]:hover,
+.form-style-7 input[type="button"]:hover{
+	background: #6B9FFF;
+	color:#fff;
+}
+
+.weekDays-selector input {
+  display: none!important;
+}
+
+.weekDays-selector input[type=checkbox] + label {
+  display: inline-block;
+  border-radius: 6px;
+  background: #dddddd;
+  height: 40px;
+  /*width: 30px;*/
+  margin-right: 3px;
+  margin-bottom: 5px;
+  padding-left: 2px;
+  padding-right: 2px;
+  line-height: 40px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.weekDays-selector input[type=checkbox]:checked + label {
+  background: #2AD705;
+  color: #ffffff;
+}
+
+
+.buttons-bar {
+  display: flex;
+  padding-bottom: 15px;
+  justify-content: space-evenly;
 }
