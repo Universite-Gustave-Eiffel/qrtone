@@ -14,9 +14,9 @@ qrtone_t* qrtone = NULL;
 
 // audio circular buffer size
 #define MAX_AUDIO_WINDOW_SIZE 512
-#define R_LED_PIN            22
-#define G_LED_PIN            23
-#define B_LED_PIN            24
+#define LEDR        (22u)
+#define LEDG        (23u)
+#define LEDB        (24u)
 
 // buffer to read samples into, each sample is 16-bits
 short sampleBuffer[256];
@@ -36,9 +36,9 @@ void setup() {
   // while (!Serial);
 
   // initialize digital pins
-  pinMode(R_LED_PIN, OUTPUT);
-  pinMode(G_LED_PIN, OUTPUT);
-  pinMode(B_LED_PIN, OUTPUT);
+  pinMode(LEDR, OUTPUT);
+  pinMode(LEDG, OUTPUT);
+  pinMode(LEDB, OUTPUT);
 
   // Allocate struct
   qrtone = qrtone_new();
@@ -64,9 +64,9 @@ void setup() {
   }
 
 
-  analogWrite(R_LED_PIN, UINT8_MAX);
-  analogWrite(G_LED_PIN, UINT8_MAX);
-  analogWrite(B_LED_PIN, UINT8_MAX);
+  analogWrite(LEDR, UINT8_MAX);
+  analogWrite(LEDG, UINT8_MAX);
+  analogWrite(LEDB, UINT8_MAX);
 }
 
 void debug_serial(void *ptr, int64_t location, float first_tone_level, float second_tone_level, int32_t triggered) {
@@ -94,9 +94,12 @@ void loop() {
         int8_t* data = qrtone_get_payload(qrtone);
         int32_t data_length = qrtone_get_payload_length(qrtone);
         if(data_length >= 3) {
-          analogWrite(R_LED_PIN, UINT8_MAX - data[0]);
-          analogWrite(G_LED_PIN, UINT8_MAX - data[1]);
-          analogWrite(B_LED_PIN, UINT8_MAX - data[2]);
+          char buf[100];
+          sprintf(buf, "%d,%d,%d\n\r", (uint8_t)data[0], (uint8_t)data[1], (uint8_t)data[2]);
+          Serial.write(buf);
+          analogWrite(LEDR, UINT8_MAX - (uint8_t)data[0]);
+          analogWrite(LEDG, UINT8_MAX - (uint8_t)data[1]);
+          analogWrite(LEDB, UINT8_MAX - (uint8_t)data[2]);
         }
       }
       sample_index += window_length;
