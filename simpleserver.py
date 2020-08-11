@@ -1,5 +1,7 @@
-import SimpleHTTPServer
-class CORSHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+import http.server
+
+
+class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def send_head(self):
         """Common code for GET and HEAD commands.
         This sends the response code and MIME headers.
@@ -45,7 +47,7 @@ class CORSHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     import os
-    import SocketServer
+    import socketserver
 
     PORT = 8000
 
@@ -53,9 +55,8 @@ if __name__ == "__main__":
     Handler.extensions_map.update({
         '.wasm': 'application/wasm',
     })
-    #Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
 
-    httpd = SocketServer.TCPServer(("", PORT), Handler)
+    httpd = socketserver.TCPServer(("", PORT), Handler)
 
-    print "serving at port", PORT
+    print("serving at port", PORT)
 httpd.serve_forever()
