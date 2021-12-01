@@ -6,7 +6,7 @@
         <artifactId>openwarble-parent</artifactId>
         <groupId>org.noise-planet</groupId>
         <version>0.2.3</version>
-        <relativePath>../</relativePath>
+        <relativePath>../pom.xml</relativePath>
     </parent>
 
   <properties>

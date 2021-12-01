@@ -24,7 +24,7 @@ public class PeakFinder {
     }
 
     public double getPeakValue(int index) {
-        return clockRmsHistory[index];
+        return clockRmsHistory[Math.max(0, Math.min(clockRmsHistory.length, index))];
     }
 
     public void clearPeaks(long upTo) {
