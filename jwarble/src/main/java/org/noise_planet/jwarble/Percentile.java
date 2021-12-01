@@ -1,7 +1,5 @@
 package org.noise_planet.jwarble;
 
-import sun.security.util.ArrayUtil;
-
 import java.util.Arrays;
 
 /**
